@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drive Orbit Dashboard Preview</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Orbital Driver View</div>
+          <h1>Landscape Speed Focus</h1>
+        </div>
+        <label class="theme-picker">
+          <span>Theme</span>
+          <select id="theme-select">
+            <option value="minimalist_future">Minimalist Future</option>
+            <option value="midnight_sport">Midnight Sport</option>
+            <option value="neon_circuit">Neon Circuit</option>
+          </select>
+        </label>
+      </header>
+
+      <section class="device-frame" id="frame">
+        <div class="ambient-grid"></div>
+        <div class="welcome-banner" id="welcome-banner">Ignition sync complete</div>
+        <div class="status-pill" id="mode-pill">Cruise</div>
+
+        <section class="cluster-panel">
+          <div class="cluster-header">
+            <div class="hero-label" id="screen-label">Boot</div>
+            <div class="hero-note">speed prioritized for driving glanceability</div>
+          </div>
+
+          <div class="arc-wrap">
+            <svg viewBox="0 0 860 420" class="arc-gauge">
+              <defs>
+                <linearGradient id="rpm-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#ff4fd8"></stop>
+                  <stop offset="50%" stop-color="#9d6cff"></stop>
+                  <stop offset="100%" stop-color="#39e4ff"></stop>
+                </linearGradient>
+              </defs>
+              <path
+                d="M 120 340 A 310 310 0 0 1 740 340"
+                class="arc-outline"
+                pathLength="100"
+              ></path>
+              <path
+                d="M 160 340 A 270 270 0 0 1 700 340"
+                class="arc-track"
+                pathLength="100"
+              ></path>
+              <path
+                d="M 160 340 A 270 270 0 0 1 700 340"
+                class="arc-progress"
+                id="rpm-arc"
+                pathLength="100"
+              ></path>
+            </svg>
+
+            <div class="speed-center">
+              <div class="hero-speed" id="speed">0</div>
+              <div class="hero-unit">km/h</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="bottom-strip">
+          <article class="mini-card accent icon-card">
+            <div class="mini-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="mini-svg">
+                <path d="M12 3 L18 12 L12 21 L6 12 Z"></path>
+              </svg>
+            </div>
+            <strong id="mode-text">Cruise</strong>
+          </article>
+          <article class="mini-card icon-card">
+            <div class="mini-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="mini-svg">
+                <path d="M12 3 C10 7,7 10,7 14 a5 5 0 0 0 10 0 c0-4-3-7-5-11 Z"></path>
+              </svg>
+            </div>
+            <strong id="coolant">84C</strong>
+          </article>
+          <article class="mini-card icon-card">
+            <div class="mini-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="mini-svg">
+                <path d="M7 7 H17 V17 H7 Z M17 10 H20 V14 H17 Z"></path>
+              </svg>
+            </div>
+            <strong id="battery">12.6V</strong>
+          </article>
+          <article class="mini-card icon-card fuel-card">
+            <div class="mini-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="mini-svg">
+                <path d="M8 5 H15 V19 H8 Z M15 7 h2 l2 3 v5 a2 2 0 0 1 -2 2 h-1"></path>
+              </svg>
+            </div>
+            <div class="fuel-meta">
+              <strong id="fuel">78%</strong>
+              <div class="fuel-bar" aria-hidden="true">
+                <div class="fuel-fill" id="fuel-fill"></div>
+              </div>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drive Orbit Preview Hub</title>
+    <style>
+      :root {
+        --bg-0: #06131a;
+        --bg-1: #0a1e29;
+        --bg-2: #123346;
+        --text: #eaf7ff;
+        --muted: #8eaab7;
+        --line: rgba(158, 217, 255, 0.18);
+        --accent: #7df9c6;
+        --accent-2: #ff6b6b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(125, 249, 198, 0.14), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(255, 107, 107, 0.12), transparent 30%),
+          linear-gradient(160deg, var(--bg-0), var(--bg-1) 42%, var(--bg-2));
+        padding: 40px 20px 56px;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+      }
+
+      .eyebrow {
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-size: 12px;
+      }
+
+      h1 {
+        font-size: clamp(42px, 8vw, 84px);
+        line-height: 0.94;
+        margin: 10px 0 18px;
+        max-width: 800px;
+      }
+
+      p {
+        max-width: 700px;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 36px;
+      }
+
+      a.card {
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 24px;
+        color: inherit;
+        text-decoration: none;
+        background: rgba(5, 13, 18, 0.42);
+        backdrop-filter: blur(10px);
+        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      }
+
+      a.card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(125, 249, 198, 0.52);
+        background: rgba(7, 19, 26, 0.62);
+      }
+
+      .label {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 6px 12px;
+        background: rgba(125, 249, 198, 0.12);
+        color: var(--accent);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h2 {
+        font-size: 30px;
+        margin: 18px 0 10px;
+      }
+
+      ul {
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Stage 3 Preview</div>
+      <h1>Drive Orbit local UI previews are now live in this workspace.</h1>
+      <p>
+        Use these host-side prototypes to validate flow, mood, sport-mode intensity, and
+        layout before committing to embedded rendering details.
+      </p>
+
+      <section class="grid">
+        <a class="card" href="./dashboard_preview/">
+          <span class="label">Dashboard</span>
+          <h2>320 x 480 driver display</h2>
+          <ul>
+            <li>Welcome state</li>
+            <li>Default dashboard</li>
+            <li>Trip coaching rail</li>
+            <li>Health tiles</li>
+            <li>Sport transformation</li>
+          </ul>
+        </a>
+
+        <a class="card" href="./companion_preview/">
+          <span class="label">Orb Companion</span>
+          <h2>240 x 240 round reaction display</h2>
+          <ul>
+            <li>Circular mask preview</li>
+            <li>Mood changes from telemetry</li>
+            <li>Sport reaction state</li>
+            <li>Idle and alert messaging</li>
+            <li>Glance-first visual language</li>
+          </ul>
+        </a>
+      </section>
+    </main>
+  </body>
+</html>

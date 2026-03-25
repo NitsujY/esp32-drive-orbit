@@ -1,0 +1,208 @@
+:root {
+  --bg-0: #050910;
+  --bg-1: #111a31;
+  --bg-2: #1f264f;
+  --text: #f2f7ff;
+  --muted: #95a4c7;
+  --accent: #86ffe1;
+  --accent-2: #71cfff;
+  --sport: #ff7f61;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top, rgba(134, 255, 225, 0.12), transparent 25%),
+    radial-gradient(circle at bottom right, rgba(113, 207, 255, 0.14), transparent 30%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 48%, var(--bg-2));
+}
+
+.shell {
+  display: grid;
+  gap: 28px;
+  justify-items: center;
+}
+
+.panel {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+}
+
+.caption {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.orb-shell {
+  width: 340px;
+  height: 340px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.orb-screen,
+.halo {
+  border-radius: 50%;
+}
+
+.halo {
+  position: absolute;
+  inset: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.halo-a {
+  animation: spin 16s linear infinite;
+}
+
+.halo-b {
+  inset: 2px;
+  border-style: dashed;
+  animation: spin 26s linear infinite reverse;
+}
+
+.orb-screen {
+  width: 240px;
+  height: 240px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(134, 255, 225, 0.22), transparent 28%),
+    radial-gradient(circle at 70% 70%, rgba(113, 207, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, rgba(8, 12, 24, 0.96), rgba(10, 20, 34, 0.92));
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.42);
+}
+
+.orb-screen.sport {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 127, 97, 0.26), transparent 28%),
+    radial-gradient(circle at 70% 70%, rgba(255, 225, 121, 0.18), transparent 30%),
+    linear-gradient(180deg, rgba(25, 10, 10, 0.96), rgba(34, 10, 18, 0.92));
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 100% 5px;
+  opacity: 0.2;
+}
+
+.orb-core {
+  position: absolute;
+  inset: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(134, 255, 225, 0.24), rgba(134, 255, 225, 0.02) 70%);
+  transform: scale(1);
+  transition: transform 180ms ease;
+}
+
+.orb-screen.sport .orb-core {
+  transform: scale(1.12);
+}
+
+.orb-face,
+.orb-label,
+.orb-subtitle,
+.orb-speed {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.orb-face {
+  top: 66px;
+  font-size: 62px;
+}
+
+.orb-label {
+  top: 134px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.orb-subtitle {
+  top: 166px;
+  width: 176px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.orb-speed {
+  bottom: 22px;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 12px;
+  width: min(100%, 520px);
+}
+
+.readout article {
+  border-radius: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 12, 24, 0.52);
+}
+
+.readout span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.readout strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 18px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .orb-shell {
+    width: 300px;
+    height: 300px;
+  }
+
+  .orb-screen {
+    width: 220px;
+    height: 220px;
+  }
+
+  .readout {
+    grid-template-columns: 1fr;
+  }
+}

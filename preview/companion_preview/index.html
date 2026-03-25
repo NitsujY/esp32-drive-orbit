@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drive Orbit Companion Preview</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <div class="caption">Orb Companion Preview</div>
+        <div class="orb-shell" id="orb-shell">
+          <div class="halo halo-a"></div>
+          <div class="halo halo-b"></div>
+          <div class="orb-screen">
+            <div class="scanlines"></div>
+            <div class="orb-core" id="orb-core"></div>
+            <div class="orb-face" id="orb-face">◌</div>
+            <div class="orb-label" id="orb-label">Idle Orbit</div>
+            <div class="orb-subtitle" id="orb-subtitle">Warm-up sequence ready</div>
+            <div class="orb-speed" id="orb-speed">0 km/h</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="readout">
+        <article>
+          <span>Mode</span>
+          <strong id="mode">cruise</strong>
+        </article>
+        <article>
+          <span>Mood</span>
+          <strong id="mood">idle</strong>
+        </article>
+        <article>
+          <span>Reaction</span>
+          <strong id="reaction">calm-drive</strong>
+        </article>
+      </aside>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
