@@ -10,11 +10,14 @@ const elements = {
   screenLabel: document.getElementById("screen-label"),
   speed: document.getElementById("speed"),
   rpmArc: document.getElementById("rpm-arc"),
-  coolant: document.getElementById("coolant"),
-  battery: document.getElementById("battery"),
+  gear: document.getElementById("gear"),
+  range: document.getElementById("range"),
+  rangeFill: document.getElementById("range-fill"),
   fuel: document.getElementById("fuel"),
   fuelFill: document.getElementById("fuel-fill"),
 };
+
+const maxRangeKm = 360;
 
 function applyTheme(themeName) {
   const theme = themes[themeName];
@@ -33,8 +36,9 @@ function setGaugeRpm(rpm) {
 
 function updatePreview(telemetry) {
   elements.speed.textContent = telemetry.speedKph;
-  elements.coolant.textContent = `${telemetry.coolantTempC}C`;
-  elements.battery.textContent = `${(telemetry.batteryMv / 1000).toFixed(2)}V`;
+  elements.gear.textContent = telemetry.gear;
+  elements.range.textContent = `${telemetry.rangeKm} km`;
+  elements.rangeFill.style.width = `${Math.round((telemetry.rangeKm / maxRangeKm) * 100)}%`;
   elements.fuel.textContent = `${telemetry.fuelPct}%`;
   elements.fuelFill.style.width = `${telemetry.fuelPct}%`;
   elements.screenLabel.textContent = telemetry.screen;

@@ -8,36 +8,30 @@
   </head>
   <body>
     <main class="shell">
-      <section class="panel">
-        <div class="caption">Orb Companion Preview</div>
-        <div class="orb-shell" id="orb-shell">
-          <div class="halo halo-a"></div>
-          <div class="halo halo-b"></div>
-          <div class="orb-screen">
-            <div class="scanlines"></div>
-            <div class="orb-core" id="orb-core"></div>
-            <div class="orb-face" id="orb-face">◌</div>
-            <div class="orb-label" id="orb-label">Idle Orbit</div>
-            <div class="orb-subtitle" id="orb-subtitle">Warm-up sequence ready</div>
-            <div class="orb-speed" id="orb-speed">0 km/h</div>
-          </div>
+      <label class="mode-picker" for="state-select">
+        <span>Orb State</span>
+        <select id="state-select">
+          <option value="auto">Auto cycle</option>
+          <option value="idle">Idle</option>
+          <option value="ready">Ready</option>
+          <option value="aware">Aware</option>
+          <option value="focus">Focus</option>
+        </select>
+      </label>
+
+      <section class="orb-shell" id="orb-shell" aria-label="Orb companion preview">
+        <div class="orb-screen">
+          <div class="orb-noise"></div>
+          <div class="orb-ring orb-ring-outer"></div>
+          <div class="orb-ring orb-ring-inner"></div>
+          <div class="orb-core" id="orb-core"></div>
+          <div class="orb-face" id="orb-face">·</div>
+          <div class="orb-label" id="orb-label">Idle</div>
+          <div class="orb-subtitle" id="orb-subtitle">Waiting quietly for motion.</div>
+          <div class="orb-pulse" id="orb-pulse">standby</div>
+          <div class="orb-glow"></div>
         </div>
       </section>
-
-      <aside class="readout">
-        <article>
-          <span>Mode</span>
-          <strong id="mode">cruise</strong>
-        </article>
-        <article>
-          <span>Mood</span>
-          <strong id="mood">idle</strong>
-        </article>
-        <article>
-          <span>Reaction</span>
-          <strong id="reaction">calm-drive</strong>
-        </article>
-      </aside>
     </main>
 
     <script type="module" src="./app.js"></script>

@@ -28,28 +28,37 @@
 - [x] Preview welcome sequence
 - [x] Preview trip and health views
 - [x] Preview sport mode transformation
-- [ ] Review theme architecture and approve default theme set
+- [x] Review theme architecture and approve default theme set
 
 ## Stage 4: Protocol Approval
 
-- [ ] Review local-first architecture split
-- [ ] Approve no-Wi-Fi first-stage scope
-- [ ] Approve deferred inter-board transport decision
-- [ ] Approve `companion_orb` as a secondary display-oriented board
+- [x] Review local-first architecture split
+- [x] Approve no-Wi-Fi first-stage scope
+- [x] Approve deferred inter-board transport decision
+- [x] Approve `companion_orb` as a secondary display-oriented board
 
 ## Stage 5: Implementation
 
 - [x] Add PlatformIO multi-environment configuration
 - [x] Add shared telemetry packet definition
 - [x] Implement Master simulated telemetry publisher
-- [ ] Implement Slave UART parser with partial-packet handling
 - [x] Build and verify `dash_35`
+- [x] Add `dash_35` standalone dashboard-state and trip/coaching pipeline
+- [x] Prioritize `dash_35` standalone embedded UI integration
+- [x] Add `dash_35` display smoke test using Waveshare ST7796 bring-up
+- [ ] Integrate ELM327 Bluetooth Classic on the Master
+- [ ] Replace simulated telemetry with real vehicle data
+
+## Stage 6: Companion Linkage And Integration
+
+- [x] Implement Slave UART parser with partial-packet handling
+- [x] Add framed fast/status telemetry transmitter on the Master
 - [x] Build and verify `companion_orb`
+- [ ] Connect the framed transport to real inter-board I/O
+- [ ] Add GC9A01 rendering on the Slave
+- [ ] Validate live `dash_35` to `companion_orb` telemetry exchange
 
 ## Follow-Up Tasks
 
-- [ ] Integrate ELM327 Bluetooth Classic on the Master
 - [ ] Add Wi-Fi/mobile hotspot support on the Master
-- [ ] Add GC9A01 rendering on the Slave
-- [ ] Add LVGL or alternate UI stack selection decision record
-- [ ] Replace simulated telemetry with real vehicle data
+- [ ] Add full embedded UI framework decision for post-smoke-test rendering

@@ -17,6 +17,25 @@ This repository uses a lightweight spec-driven development structure.
 - `docs/plans/smart-jdm-dashboard/staged-delivery-plan.md`
 - `docs/tasks/smart-jdm-dashboard/foundation-tasks.md`
 - `docs/tasks/smart-jdm-dashboard/hardware-verification-checklist.md`
+- `docs/decisions/smart-jdm-dashboard/stage-4-protocol-approval.md`
+- `docs/decisions/smart-jdm-dashboard/stage-5-display-smoke-test-stack.md`
+
+## Current Stage
+
+- Stage 4: interaction validation complete
+- Stage 5: implementation active
+
+Current Stage 5 slice:
+
+- `dash_35`-first standalone implementation
+- dashboard-screen selection and trip/coaching state pipeline
+- ST7796 display smoke-test rendering on `dash_35`
+- companion linkage intentionally deferred
+
+Deferred later stage:
+
+- master/slave framed transport hookup
+- `companion_orb` board integration
 
 ## Usage
 

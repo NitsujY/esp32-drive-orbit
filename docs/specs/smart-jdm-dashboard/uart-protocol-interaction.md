@@ -4,6 +4,11 @@
 
 This document isolates the future board-to-board interaction contract from the rest of the application so transport choices do not block the first hardware stage.
 
+Current prioritization note:
+
+- `dash_35` standalone completion takes priority.
+- The transport contract remains valid, but live linkage and companion-board integration are intentionally deferred until the last implementation stage.
+
 ## Actors
 
 ### Master: `dash_35`
@@ -54,7 +59,76 @@ The shared state shape is still useful even before transport is chosen. It shoul
 3. `coolant_temp`
 4. `ai_mood`
 
-The transport framing details are intentionally deferred.
+## Update Cadence Guidance
+
+The future interaction contract should distinguish between fast-changing motion signals and slow-changing status signals.
+
+Fast cadence:
+
+1. `speed`
+2. `rpm`
+3. Target delivery interval: 500 ms to 1000 ms
+
+Slow cadence:
+
+1. `fuel`
+2. `range`
+3. `coolant_temp`
+4. `battery_voltage`
+5. other derived or health-oriented values
+6. Target delivery interval: about 10 seconds
+
+Protocol implication:
+
+1. The parser must tolerate packets that omit slow-changing fields between slow-refresh updates.
+2. The receiver should preserve the most recent valid slow-changing values until a newer update arrives.
+3. Transport design should not spend bandwidth refreshing static values at the same rate as `speed` and `rpm`.
+
+## Current Framing For Stage 5 Parser Work
+
+The first implementation slice uses a compact framed byte stream with explicit synchronization and checksum validation.
+
+Frame layout:
+
+1. `sync0` = `0xA5`
+2. `sync1` = `0x5A`
+3. `version` = `1`
+4. `type` = packet type
+5. `payload_length` = payload byte count
+6. `payload` = packet-specific bytes
+7. `checksum` = XOR of `version`, `type`, `payload_length`, and all payload bytes
+
+Packet types:
+
+1. `FastTelemetry`
+2. `StatusTelemetry`
+
+`FastTelemetry` fields:
+
+1. `sequence`
+2. `uptime_ms`
+3. `rpm`
+4. `speed_kph`
+5. `drive_mode`
+6. `companion_mood`
+7. `gear`
+
+`StatusTelemetry` fields:
+
+1. `sequence`
+2. `coolant_temp_c`
+3. `battery_mv`
+4. `fuel_level_pct`
+5. `estimated_range_km`
+
+Parser behavior requirements:
+
+1. Accumulate bytes until a complete frame is available.
+2. Discard leading noise until sync bytes are found.
+3. Validate protocol version and packet type before parsing.
+4. Validate checksum before accepting payload bytes.
+5. Keep the most recent valid slow-changing status values when only fast packets are arriving.
+6. Recover from malformed or partial input by resynchronizing on the next valid frame.
 
 ## Interaction Sequence
 

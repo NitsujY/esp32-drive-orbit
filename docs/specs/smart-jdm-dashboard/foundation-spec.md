@@ -231,6 +231,41 @@ Recommended initial health widgets:
 5. engine-load placeholder for later integration
 6. diagnostic summary placeholder for a future stage
 
+## Telemetry Freshness Requirements
+
+Not all dashboard values need the same update cadence.
+
+Driver-critical motion values should refresh more frequently than slow-changing health or estimate values.
+
+Fast-refresh values:
+
+1. `speed`
+2. `rpm`
+
+Fast-refresh target:
+
+1. Update every 500 ms to 1000 ms
+2. Prefer the lower end of the range when the transport and rendering path can sustain it cleanly
+
+Slow-refresh values:
+
+1. `fuel`
+2. `range`
+3. `coolant_temp`
+4. `battery_voltage`
+5. other health or derived estimate values that do not materially change second to second
+
+Slow-refresh target:
+
+1. Update about every 10 seconds
+2. Reuse the last known value between refreshes rather than forcing high-frequency polling
+
+Practical requirement:
+
+1. The architecture should support mixed telemetry cadences.
+2. Transport and parser logic must not assume every field is refreshed every cycle.
+3. UI rendering should prioritize freshness for `speed` and `rpm` while treating `fuel`, `range`, and similar values as coarse-grained status data.
+
 ### G-Force Meter
 
 Assumption: your note "reverse room for g-force meter" means "reserve room for g-force meter."

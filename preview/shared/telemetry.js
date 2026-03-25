@@ -17,6 +17,35 @@ function computeDriveMode(speedKph) {
   return speedKph > 80 ? "sport" : "cruise";
 }
 
+function computeGear(speedKph) {
+  if (speedKph < 12) {
+    return "D1";
+  }
+
+  if (speedKph < 28) {
+    return "D2";
+  }
+
+  if (speedKph < 44) {
+    return "D3";
+  }
+
+  if (speedKph < 62) {
+    return "D4";
+  }
+
+  if (speedKph < 82) {
+    return "D5";
+  }
+
+  return "D6";
+}
+
+function computeRangeKm(fuelPct, speedKph) {
+  const efficiencyFactor = clamp(1.02 - speedKph / 260, 0.72, 1.02);
+  return Math.round(fuelPct * 4.6 * efficiencyFactor);
+}
+
 function computeMood(speedKph) {
   if (speedKph < 10) {
     return "idle";
@@ -98,6 +127,8 @@ function nextTelemetry() {
     coolantTempC: state.coolantTempC,
     batteryMv: state.batteryMv,
     fuelPct: state.fuelPct,
+    gear: computeGear(state.speedKph),
+    rangeKm: computeRangeKm(state.fuelPct, state.speedKph),
     driveMode: computeDriveMode(state.speedKph),
     mood: computeMood(state.speedKph),
     screen: computeScreen(state.frame, state.speedKph),

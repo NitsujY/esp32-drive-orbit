@@ -80,18 +80,32 @@
           <article class="mini-card icon-card">
             <div class="mini-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="mini-svg">
-                <path d="M12 3 C10 7,7 10,7 14 a5 5 0 0 0 10 0 c0-4-3-7-5-11 Z"></path>
+                <path d="M12 3 V21"></path>
+                <path d="M8 6 H14 a3 3 0 0 1 0 6 H8"></path>
+                <path d="M8 12 H14 a3 3 0 0 1 0 6 H8"></path>
               </svg>
             </div>
-            <strong id="coolant">84C</strong>
+            <div class="stack-meta">
+              <span class="mini-label">Gear</span>
+              <strong class="gear-token" id="gear">D1</strong>
+            </div>
           </article>
           <article class="mini-card icon-card">
             <div class="mini-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="mini-svg">
-                <path d="M7 7 H17 V17 H7 Z M17 10 H20 V14 H17 Z"></path>
+                <path d="M4 16 C7 10, 10 8, 20 8"></path>
+                <path d="M17 5 L20 8 L17 11"></path>
               </svg>
             </div>
-            <strong id="battery">12.6V</strong>
+            <div class="meter-meta">
+              <div class="meter-heading">
+                <span class="mini-label">Range</span>
+                <strong id="range">280 km</strong>
+              </div>
+              <div class="meter-bar" aria-hidden="true">
+                <div class="meter-fill range-fill" id="range-fill"></div>
+              </div>
+            </div>
           </article>
           <article class="mini-card icon-card fuel-card">
             <div class="mini-icon" aria-hidden="true">
@@ -99,10 +113,13 @@
                 <path d="M8 5 H15 V19 H8 Z M15 7 h2 l2 3 v5 a2 2 0 0 1 -2 2 h-1"></path>
               </svg>
             </div>
-            <div class="fuel-meta">
-              <strong id="fuel">78%</strong>
-              <div class="fuel-bar" aria-hidden="true">
-                <div class="fuel-fill" id="fuel-fill"></div>
+            <div class="meter-meta">
+              <div class="meter-heading">
+                <span class="mini-label">Fuel</span>
+                <strong id="fuel">78%</strong>
+              </div>
+              <div class="meter-bar" aria-hidden="true">
+                <div class="meter-fill fuel-fill" id="fuel-fill"></div>
               </div>
             </div>
           </article>

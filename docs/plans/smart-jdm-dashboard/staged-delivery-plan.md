@@ -4,6 +4,16 @@
 
 This document separates pre-implementation validation from firmware coding so hardware and protocol risks are discovered early.
 
+## Current Status
+
+- Stage 3 is approved, including the default preview theme set.
+- Stage 4 is approved and complete as an interaction-validation checkpoint.
+- Stage 5 is approved and active.
+- The active Stage 5 priority is `dash_35` standalone progress first.
+- Companion linkage and `companion_orb` integration are intentionally deferred to the last implementation stage.
+- The current `dash_35` slice adds dashboard-screen selection and trip/coaching state for later embedded UI integration.
+- The current `dash_35` slice now includes on-device ST7796 display smoke-test rendering using the board's known-good Arduino bring-up path.
+
 ## Stages
 
 ### Stage 0: Documentation
@@ -70,6 +80,7 @@ Outputs:
 - Approved companion-board role split
 - Approved no-Wi-Fi first-stage scope
 - Approved deferred transport decision
+- Approved `companion_orb` secondary display role
 
 Why it exists:
 
@@ -81,14 +92,27 @@ Why it exists:
 Outputs:
 
 - Working `platformio.ini`
-- Shared transport header
-- Master firmware
-- Slave firmware
+- `dash_35` standalone firmware path
+- Shared transport header ready for later reuse
+- Deferred companion transport and slave integration path
 
 Why it exists:
 
 - Implementation starts only after the environment and hardware are known-good
 
+### Stage 6: Companion Linkage And Board Integration
+
+Outputs:
+
+- Physical or selected inter-board transport hookup
+- `companion_orb` live packet reception from `dash_35`
+- Companion rendering and behavior validated on hardware
+
+Why it exists:
+
+- Keeps `dash_35` delivery moving without blocking on secondary-board integration
+- Preserves the transport work already completed while moving it to the end of the delivery path
+
 ## Gate Policy
 
-The start of Stage 5 requires explicit user approval.
+Stage 5 started after explicit user approval on 2026-03-25.

@@ -82,6 +82,7 @@ Checks:
 2. Checksum behavior is documented and testable
 3. Slave parser requirements are defined for partial packets and resynchronization
 4. Interaction sequence between Master transmit and Slave receive is documented
+5. Mixed telemetry cadence is documented so fast motion data and slow status data are not treated identically
 
 Exit criteria:
 

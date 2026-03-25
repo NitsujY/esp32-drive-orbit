@@ -54,19 +54,23 @@ AppState makeInitialState() {
   state.telemetry = telemetry::makeSimulatedTelemetry(0, 0, kInitialRpm, kInitialSpeedKph,
                                                       kInitialCoolantTempC, kInitialBatteryMv,
                                                       kInitialFuelLevelPct);
+  state.view_state = makeInitialDashboardViewState();
   state.psram_detected = false;
   state.psram_size_bytes = 0;
   state.speed_increasing = true;
+  state.previous_speed_kph = state.telemetry.speed_kph;
   return state;
 }
 
 void advanceSimulation(AppState &state, uint32_t now_ms) {
+  state.previous_speed_kph = state.telemetry.speed_kph;
   updateMotionState(state);
   updateHealthState(state, now_ms);
 
   state.telemetry = telemetry::makeSimulatedTelemetry(
       state.telemetry.sequence + 1, now_ms, state.telemetry.rpm, state.telemetry.speed_kph,
       state.telemetry.coolant_temp_c, state.telemetry.battery_mv, state.telemetry.fuel_level_pct);
+  updateDashboardViewState(state.view_state, state.telemetry, state.previous_speed_kph);
 }
 
 }  // namespace app
