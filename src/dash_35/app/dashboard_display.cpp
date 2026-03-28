@@ -512,15 +512,21 @@ void drawRangeCard(uint16_t range_km, telemetry::DriveMode mode) {
 
 void drawFuelCard(uint8_t fuel_pct, telemetry::DriveMode mode) {
   const uint16_t bg = backgroundColor(mode);
-  const uint16_t accent = accentColor(mode);
+  const bool low_fuel = fuel_pct < 15 && fuel_pct > 0;
+  const uint16_t color = low_fuel ? theme::warning() : accentColor(mode);
   char buf[16];
   snprintf(buf, sizeof(buf), "%u%%", fuel_pct);
   gfx->setFont();
   gfx->setTextSize(1);
-  gfx->setTextColor(accent, bg);
+  gfx->setTextColor(color, bg);
   gfx->setCursor(380, kBottomCardY + 16);
   gfx->print(buf);
   gfx->print("   ");
+  if (low_fuel) {
+    gfx->setCursor(420, kBottomCardY + 16);
+    gfx->setTextColor(theme::warning(), bg);
+    gfx->print("LOW");
+  }
 }
 
 void drawStaticScene(const DashboardViewState &view_state,
