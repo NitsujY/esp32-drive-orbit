@@ -8,11 +8,11 @@ This document separates pre-implementation validation from firmware coding so ha
 
 - Stage 3 is approved, including the default preview theme set.
 - Stage 4 is approved and complete as an interaction-validation checkpoint.
-- Stage 5 is approved and active.
-- The active Stage 5 priority is `dash_35` standalone progress first.
-- Companion linkage and `companion_orb` integration are intentionally deferred to the last implementation stage.
-- The current `dash_35` slice adds dashboard-screen selection and trip/coaching state for later embedded UI integration.
-- The current `dash_35` slice now includes on-device ST7796 display smoke-test rendering using the board's known-good Arduino bring-up path.
+- Stage 5 is complete. Toyota Sienta PID reads validated on hardware; live OBD telemetry is the primary source.
+- Stage 6 is active. Inter-board transport uses ESP-NOW (wireless, no UART wiring required).
+- The `dash_35` transmitter broadcasts framed telemetry packets via ESP-NOW.
+- The `companion_orb` receives ESP-NOW packets and feeds them into the existing stream parser.
+- Remaining Stage 6 work: GC9A01 rendering on the Slave, live telemetry exchange validation.
 
 ## Stages
 
@@ -93,6 +93,9 @@ Outputs:
 
 - Working `platformio.ini`
 - `dash_35` standalone firmware path
+- Welcome and boot flow active on device
+- OBD connection-state UX from disconnected through live data
+- Embedded dashboard layout that clears the bottom toolbar cleanly
 - Shared transport header ready for later reuse
 - Deferred companion transport and slave integration path
 

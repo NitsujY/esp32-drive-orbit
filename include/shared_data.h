@@ -17,6 +17,7 @@ enum class CompanionMood : uint8_t {
 };
 
 enum class TransmissionGear : uint8_t {
+  Park = 0,
   First = 1,
   Second = 2,
   Third = 3,
@@ -55,7 +56,11 @@ inline CompanionMood resolveCompanionMood(int16_t speed_kph) {
   return CompanionMood::Alert;
 }
 
-inline TransmissionGear resolveGear(int16_t speed_kph) {
+inline TransmissionGear resolveGear(int16_t speed_kph, int16_t rpm) {
+  if (rpm <= 0) {
+    return TransmissionGear::Park;
+  }
+
   if (speed_kph < 12) {
     return TransmissionGear::First;
   }
@@ -84,6 +89,13 @@ inline uint16_t estimateRangeKm(uint8_t fuel_level_pct, int16_t speed_kph) {
   return static_cast<uint16_t>(fuel_level_pct * 4.6f * efficiency_factor);
 }
 
+inline void refreshDerivedTelemetry(DashboardTelemetry &telemetry) {
+  telemetry.estimated_range_km = estimateRangeKm(telemetry.fuel_level_pct, telemetry.speed_kph);
+  telemetry.drive_mode = resolveDriveMode(telemetry.speed_kph);
+  telemetry.companion_mood = resolveCompanionMood(telemetry.speed_kph);
+  telemetry.gear = resolveGear(telemetry.speed_kph, telemetry.rpm);
+}
+
 inline DashboardTelemetry makeSimulatedTelemetry(uint32_t sequence,
                                                  uint32_t uptime_ms,
                                                  int16_t rpm,
@@ -99,10 +111,7 @@ inline DashboardTelemetry makeSimulatedTelemetry(uint32_t sequence,
   telemetry.coolant_temp_c = coolant_temp_c;
   telemetry.battery_mv = battery_mv;
   telemetry.fuel_level_pct = fuel_level_pct;
-  telemetry.estimated_range_km = estimateRangeKm(fuel_level_pct, speed_kph);
-  telemetry.drive_mode = resolveDriveMode(speed_kph);
-  telemetry.companion_mood = resolveCompanionMood(speed_kph);
-  telemetry.gear = resolveGear(speed_kph);
+  refreshDerivedTelemetry(telemetry);
   return telemetry;
 }
 

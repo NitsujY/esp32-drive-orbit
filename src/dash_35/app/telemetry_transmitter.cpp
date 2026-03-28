@@ -1,5 +1,8 @@
 #include "telemetry_transmitter.h"
 
+#include <esp_now.h>
+
+#include "espnow_transport.h"
 #include "telemetry_protocol.h"
 
 namespace app {
@@ -8,6 +11,8 @@ namespace {
 
 constexpr uint32_t kFastTelemetryIntervalMs = 500;
 constexpr uint32_t kStatusTelemetryIntervalMs = 10000;
+constexpr bool kLogFastFrames = false;
+constexpr bool kLogStatusFrames = true;
 
 }  // namespace
 
@@ -38,13 +43,23 @@ void TelemetryTransmitter::publish(const telemetry::DashboardTelemetry &telemetr
 void TelemetryTransmitter::publishFastFrame(const telemetry::DashboardTelemetry &telemetry) {
   uint8_t frame[transport::kFastTelemetryFrameSize] = {0};
   const size_t frame_size = transport::encodeFastTelemetryFrame(telemetry, frame, sizeof(frame));
-  logFrame("fast", frame, frame_size);
+  if (frame_size > 0) {
+    esp_now_send(espnow::kBroadcastAddress, frame, frame_size);
+  }
+  if (kLogFastFrames) {
+    logFrame("fast", frame, frame_size);
+  }
 }
 
 void TelemetryTransmitter::publishStatusFrame(const telemetry::DashboardTelemetry &telemetry) {
   uint8_t frame[transport::kStatusTelemetryFrameSize] = {0};
   const size_t frame_size = transport::encodeStatusTelemetryFrame(telemetry, frame, sizeof(frame));
-  logFrame("status", frame, frame_size);
+  if (frame_size > 0) {
+    esp_now_send(espnow::kBroadcastAddress, frame, frame_size);
+  }
+  if (kLogStatusFrames) {
+    logFrame("status", frame, frame_size);
+  }
 }
 
 void TelemetryTransmitter::logFrame(const char *label, const uint8_t *frame, size_t frame_size) const {

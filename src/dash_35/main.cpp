@@ -1,9 +1,13 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include <esp_heap_caps.h>
 
 #include "app/dashboard_display.h"
+#include "app/elm327_client.h"
 #include "app/app_state.h"
 #include "app/telemetry_transmitter.h"
+#include "app/vehicle_profiles/vehicle_profile.h"
+#include "espnow_transport.h"
 #include "shared_data.h"
 
 namespace {
@@ -14,85 +18,76 @@ uint32_t last_publish_ms = 0;
 app::AppState app_state = app::makeInitialState();
 app::TelemetryTransmitter telemetry_transmitter;
 app::DashboardDisplay dashboard_display;
+app::Elm327Client elm327_client;
 
-void printPsramInfo() {
-  const size_t psram_size = ESP.getPsramSize();
-  app_state.psram_detected = psram_size > 0;
-  app_state.psram_size_bytes = psram_size;
-
-  if (psram_size == 0) {
-    Serial.println("[BOOT] PSRAM not detected.");
-    return;
+app::ObdConnectionState mapObdConnectionState(app::Elm327Client::ConnectionState state) {
+  switch (state) {
+    case app::Elm327Client::ConnectionState::Disconnected:
+      return app::ObdConnectionState::Disconnected;
+    case app::Elm327Client::ConnectionState::Connecting:
+      return app::ObdConnectionState::Connecting;
+    case app::Elm327Client::ConnectionState::Live:
+      return app::ObdConnectionState::Live;
   }
-
-  Serial.print("[BOOT] PSRAM detected: ");
-  Serial.print(psram_size);
-  Serial.println(" bytes");
-
-  Serial.print("[BOOT] Free PSRAM: ");
-  Serial.print(ESP.getFreePsram());
-  Serial.println(" bytes");
-}
-
-void publishTelemetry() {
-  const telemetry::DashboardTelemetry &packet = app_state.telemetry;
-  const app::DashboardViewState &view = app_state.view_state;
-
-  Serial.print("[SIM] seq=");
-  Serial.print(packet.sequence);
-  Serial.print(" rpm=");
-  Serial.print(packet.rpm);
-  Serial.print(" speed=");
-  Serial.print(packet.speed_kph);
-  Serial.print(" coolant=");
-  Serial.print(packet.coolant_temp_c);
-  Serial.print("C battery=");
-  Serial.print(packet.battery_mv);
-  Serial.print("mV fuel=");
-  Serial.print(packet.fuel_level_pct);
-  Serial.print("% range=");
-  Serial.print(packet.estimated_range_km);
-  Serial.print("km gear=");
-  Serial.print(static_cast<uint8_t>(packet.gear));
-  Serial.print(" mode=");
-  Serial.print(static_cast<uint8_t>(packet.drive_mode));
-  Serial.print(" mood=");
-  Serial.print(static_cast<uint8_t>(packet.companion_mood));
-  Serial.print(" screen=");
-  Serial.print(app::dashboardScreenName(view.active_screen));
-  Serial.print(" smooth=");
-  Serial.print(view.trip.smoothness_score);
-  Serial.print(" consistency=");
-  Serial.print(view.trip.speed_consistency_score);
-  Serial.print(" coach=");
-  Serial.println(view.trip.coaching_message);
+  return app::ObdConnectionState::Disconnected;
 }
 
 }  // namespace
 
 void setup() {
   Serial.begin(115200);
-
   Serial.println();
   Serial.println("[BOOT] dash_35 starting");
-  Serial.println("[BOOT] Stage 1 local dashboard bring-up mode");
-  Serial.println("[BOOT] Inter-board transport deferred");
+  Serial.print("[BOOT] Vehicle profile: ");
+  Serial.println(app::vehicle_profiles::activeProfile().display_name);
 
-  printPsramInfo();
+  const size_t psram_size = ESP.getPsramSize();
+  if (psram_size > 0) {
+    Serial.print("[BOOT] PSRAM: ");
+    Serial.print(psram_size);
+    Serial.println(" bytes");
+  }
+
   telemetry_transmitter.begin(Serial);
   dashboard_display.begin(Serial);
+  elm327_client.begin(Serial);
+
+  if (espnow::beginTransport() && espnow::addBroadcastPeer()) {
+    Serial.println("[BOOT] ESP-NOW transport ready");
+  } else {
+    Serial.println("[BOOT] ESP-NOW init failed — companion link unavailable");
+  }
+
   app_state = app::makeInitialState();
-  app_state.psram_detected = ESP.getPsramSize() > 0;
-  app_state.psram_size_bytes = ESP.getPsramSize();
+  app_state.psram_detected = psram_size > 0;
+  app_state.psram_size_bytes = psram_size;
 }
 
 void loop() {
   const uint32_t now = millis();
+  elm327_client.poll(now, app_state.telemetry);
 
   if (now - last_publish_ms >= kTelemetryIntervalMs) {
     last_publish_ms = now;
-    app::advanceSimulation(app_state, now);
-    publishTelemetry();
+    if (elm327_client.hasFreshTelemetry(now)) {
+      const app::ObdConnectionState next_obd_state = mapObdConnectionState(elm327_client.connectionState());
+      if (app_state.view_state.obd_connection_state != app::ObdConnectionState::Live &&
+          next_obd_state == app::ObdConnectionState::Live) {
+        app::resetTripMetrics(app_state.view_state, "Live OBD connected. Trip tracking reset.");
+        app_state.last_trip_accum_ms = 0;
+      }
+      const int16_t previous_speed_kph = app_state.previous_speed_kph;
+      app_state.telemetry.sequence += 1;
+      app_state.telemetry.uptime_ms = now;
+      app::accumulateTripDistance(app_state, now, true);
+      app::vehicle_profiles::refreshTelemetry(app_state.telemetry);
+      app::updateDashboardViewState(app_state.view_state, app_state.telemetry, previous_speed_kph);
+      app_state.view_state.obd_connection_state = next_obd_state;
+      app_state.previous_speed_kph = app_state.telemetry.speed_kph;
+    } else {
+      app_state.view_state.obd_connection_state = mapObdConnectionState(elm327_client.connectionState());
+      app::maintainIdleState(app_state, now);
+    }
     telemetry_transmitter.publish(app_state.telemetry, now);
   }
 

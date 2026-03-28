@@ -25,3 +25,12 @@ Use this checklist before firmware implementation proceeds.
 ## Approval Condition
 
 Implementation should begin only after the `dash_35` checks above are confirmed.
+
+## USB Port Assignments
+
+| Board           | USB Port                        |
+|-----------------|---------------------------------|
+| `dash_35`       | `/dev/cu.usbmodem5AAF1861091`   |
+| `companion_orb` | `/dev/cu.usbmodem114401`        |
+
+Note: The `companion_orb` is an ESP32-C3. The RISC-V toolchain requires Rosetta 2 on Apple Silicon.

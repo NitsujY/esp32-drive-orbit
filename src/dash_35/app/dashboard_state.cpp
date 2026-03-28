@@ -60,24 +60,14 @@ void updateTripMetrics(TripMetrics &trip,
 
 DashboardScreen resolveScreen(const DashboardViewState &view_state,
                               const telemetry::DashboardTelemetry &telemetry) {
+  (void)view_state;
+
   if (telemetry.uptime_ms < kBootDurationMs) {
     return DashboardScreen::Boot;
   }
 
   if (telemetry.uptime_ms < kWelcomeDurationMs) {
     return DashboardScreen::Welcome;
-  }
-
-  if (telemetry.drive_mode == telemetry::DriveMode::Sport) {
-    return DashboardScreen::Sport;
-  }
-
-  if (view_state.health_attention || telemetry.sequence % 180U >= 120U) {
-    return DashboardScreen::Health;
-  }
-
-  if (telemetry.sequence % 180U >= 90U) {
-    return DashboardScreen::Trip;
   }
 
   return DashboardScreen::Dashboard;
@@ -90,13 +80,19 @@ DashboardViewState makeInitialDashboardViewState() {
   state.active_screen = DashboardScreen::Boot;
   state.welcome_visible = true;
   state.health_attention = false;
-  state.trip.harsh_acceleration_count = 0;
-  state.trip.harsh_braking_count = 0;
-  state.trip.smoothness_score = 100;
-  state.trip.speed_consistency_score = 100;
-  snprintf(state.trip.coaching_message, sizeof(state.trip.coaching_message),
-           "System booting. Preparing welcome sequence.");
+  state.obd_connection_state = ObdConnectionState::Disconnected;
+  resetTripMetrics(state, "System booting. Preparing welcome sequence.");
   return state;
+}
+
+void resetTripMetrics(DashboardViewState &view_state, const char *message) {
+  view_state.trip.trip_distance_km = 0.0f;
+  view_state.trip.harsh_acceleration_count = 0;
+  view_state.trip.harsh_braking_count = 0;
+  view_state.trip.smoothness_score = 100;
+  view_state.trip.speed_consistency_score = 100;
+  snprintf(view_state.trip.coaching_message, sizeof(view_state.trip.coaching_message), "%s",
+           message != nullptr ? message : "Trip reset. Waiting for live vehicle data.");
 }
 
 void updateDashboardViewState(DashboardViewState &view_state,
