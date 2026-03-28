@@ -401,6 +401,91 @@ async def cmd_test(
     print("All probe checks passed.")
 
 
+async def cmd_toyota_scan(
+    address: Optional[str],
+    name: Optional[str],
+    service_uuid: Optional[str],
+    tx_uuid: Optional[str],
+    rx_uuid: Optional[str],
+    write_with_response: bool,
+    eol: str,
+    resp_timeout: float,
+    timeout: float,
+    scan_timeout: float,
+    protocol: str,
+    header: str,
+    mode: int,
+    pid_start: int,
+    pid_end: int,
+) -> None:
+    """Scan Toyota-specific PIDs using Mode 21 or 22 across a PID range."""
+    resolved_address = address
+    if not resolved_address:
+        resolved_name = name or DEFAULT_TEST_NAME
+        resolved_address = await _scan_for_address(resolved_name, scan_timeout)
+
+    uuids = Uuids(
+        service=_normalize_uuid(service_uuid) or NUS_SERVICE,
+        tx=_normalize_uuid(tx_uuid) or "",
+        rx=_normalize_uuid(rx_uuid) or "",
+    )
+
+    client, session, actual_tx, actual_rx = await _connect_session(
+        resolved_address,
+        uuids,
+        timeout=timeout,
+        write_with_response=write_with_response,
+        eol=eol,
+        resp_timeout=resp_timeout,
+    )
+
+    found: list[tuple[str, str]] = []
+    try:
+        print(f"Connected to {resolved_address}.")
+        print(f"TX char: {actual_tx}")
+        print(f"RX char: {actual_rx}")
+        print("Running init...")
+        await _run_init(session, ["ATZ", "ATE0", "ATL0", "ATS0", "ATH1", protocol])
+
+        # Set Toyota ECU header.
+        print(f"Setting header: ATSH{header}")
+        result = await session.send_line(f"ATSH{header}")
+        _print_rx(result.output)
+        await asyncio.sleep(0.15)
+
+        mode_hex = f"{mode:02X}"
+        response_prefix = f"{mode + 0x40:02X}"
+        print(f"Scanning Mode {mode_hex} PIDs 0x{pid_start:04X}..0x{pid_end:04X} on header {header}")
+        print("-" * 60)
+
+        for pid in range(pid_start, pid_end + 1):
+            pid_hex = f"{pid:04X}" if pid > 0xFF else f"{pid:02X}"
+            command = f"{mode_hex}{pid_hex}"
+            result = await session.send_line(command)
+            text = _normalize_text(result.output).upper()
+
+            # Check for a positive response (mode + 0x40).
+            if response_prefix in text and "NO DATA" not in text and "ERROR" not in text:
+                lines = _normalized_lines(result.output)
+                response_text = " | ".join(lines)
+                found.append((command, response_text))
+                print(f"  [HIT] {command} -> {response_text}")
+            await asyncio.sleep(0.08)
+
+        print("-" * 60)
+        print(f"Scan complete. {len(found)} PID(s) responded.")
+        for cmd, resp in found:
+            print(f"  {cmd}: {resp}")
+
+        # Restore default header.
+        await session.send_line("ATSH7DF")
+        await session.send_line("ATH0")
+
+    finally:
+        await session.stop()
+        await client.disconnect()
+
+
 async def main_async(args: argparse.Namespace) -> None:
     if args.cmd == "scan":
         await cmd_scan(timeout=args.timeout)
@@ -434,6 +519,25 @@ async def main_async(args: argparse.Namespace) -> None:
             scan_timeout=args.scan_timeout,
             protocol=args.protocol,
             include_toyota_fuel=args.include_toyota_fuel,
+        )
+        return
+    if args.cmd == "toyota-scan":
+        await cmd_toyota_scan(
+            address=args.address,
+            name=args.name,
+            service_uuid=args.service_uuid,
+            tx_uuid=args.tx_uuid,
+            rx_uuid=args.rx_uuid,
+            write_with_response=args.write_with_response,
+            eol=args.eol,
+            resp_timeout=args.resp_timeout,
+            timeout=args.timeout,
+            scan_timeout=args.scan_timeout,
+            protocol=args.protocol,
+            header=args.header,
+            mode=args.mode,
+            pid_start=args.pid_start,
+            pid_end=args.pid_end,
         )
         return
 

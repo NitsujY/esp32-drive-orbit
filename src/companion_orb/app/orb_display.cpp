@@ -23,7 +23,7 @@ constexpr int kCx = kW / 2;
 constexpr int kCy = kH / 2;
 
 constexpr uint32_t kModeTransitionMs = 600;   // fade duration
-constexpr uint32_t kSleepAfterMs = 60000;     // sleep after 60s parked
+constexpr uint32_t kSleepAfterMs = 20000;     // sleep after 20s parked
 constexpr uint8_t kLowFuelThreshold = 15;
 constexpr float kBreathSpeed = 0.0025f;       // radians per ms
 
@@ -304,23 +304,56 @@ void OrbDisplay::drawFace(uint8_t drive_mode, uint8_t mood, int16_t rpm, uint32_
     // Idle: neutral line.
     gfx->drawFastHLine(kCx - 8, mouth_y, 16, accent);
   } else if (mood == 1) {
-    // Warm: smile arc.
+    // Warm: slight smile arc.
     for (int x = -12; x <= 12; ++x) {
       int y_off = static_cast<int>(2.0f * sinf(static_cast<float>(x + 12) * 3.14159f / 24.0f));
       gfx->drawPixel(kCx + x, mouth_y + y_off, accent);
     }
-  } else {
-    // Alert/sport: excited open mouth.
+  } else if (mood == 2) {
+    // Alert: open mouth + blink.
     gfx->fillCircle(kCx, mouth_y + 2, 6, accent);
     gfx->fillCircle(kCx, mouth_y + 2, 3, bg);
-
-    // Animated blink.
     if ((now_ms / 300) % 4 == 0) {
       gfx->fillCircle(kCx - eye_spacing + eye_shift, eye_y, eye_r, bg);
       gfx->fillCircle(kCx + eye_spacing + eye_shift, eye_y, eye_r, bg);
       gfx->drawFastHLine(kCx - eye_spacing - eye_r + eye_shift, eye_y, eye_r * 2, accent);
       gfx->drawFastHLine(kCx + eye_spacing - eye_r + eye_shift, eye_y, eye_r * 2, accent);
     }
+  } else if (mood == 3) {
+    // Happy: wide smile + squinted arc eyes.
+    gfx->fillCircle(kCx - eye_spacing + eye_shift, eye_y, eye_r, bg);
+    gfx->fillCircle(kCx + eye_spacing + eye_shift, eye_y, eye_r, bg);
+    for (int x = -eye_r; x <= eye_r; ++x) {
+      int yo = static_cast<int>(-1.5f * sinf(static_cast<float>(x + eye_r) * 3.14159f / (eye_r * 2.0f)));
+      gfx->drawPixel(kCx - eye_spacing + eye_shift + x, eye_y + yo, accent);
+      gfx->drawPixel(kCx + eye_spacing + eye_shift + x, eye_y + yo, accent);
+    }
+    for (int x = -16; x <= 16; ++x) {
+      int y_off = static_cast<int>(4.0f * sinf(static_cast<float>(x + 16) * 3.14159f / 32.0f));
+      gfx->drawPixel(kCx + x, mouth_y + y_off, accent);
+      gfx->drawPixel(kCx + x, mouth_y + y_off + 1, accent);
+    }
+  } else if (mood == 4) {
+    // Sad: droopy eyes + frown.
+    gfx->drawLine(kCx - eye_spacing - eye_r, eye_y - 4, kCx - eye_spacing + eye_r, eye_y - 2, accent);
+    gfx->drawLine(kCx + eye_spacing - eye_r, eye_y - 2, kCx + eye_spacing + eye_r, eye_y - 4, accent);
+    for (int x = -12; x <= 12; ++x) {
+      int y_off = static_cast<int>(-2.0f * sinf(static_cast<float>(x + 12) * 3.14159f / 24.0f));
+      gfx->drawPixel(kCx + x, mouth_y + 4 + y_off, accent);
+    }
+  } else if (mood == 5) {
+    // Excited: star eyes + big grin.
+    gfx->fillCircle(kCx - eye_spacing + eye_shift, eye_y, eye_r, bg);
+    gfx->fillCircle(kCx + eye_spacing + eye_shift, eye_y, eye_r, bg);
+    for (int i = -eye_r; i <= eye_r; ++i) {
+      gfx->drawPixel(kCx - eye_spacing + eye_shift + i, eye_y, accent);
+      gfx->drawPixel(kCx - eye_spacing + eye_shift, eye_y + i, accent);
+      gfx->drawPixel(kCx + eye_spacing + eye_shift + i, eye_y, accent);
+      gfx->drawPixel(kCx + eye_spacing + eye_shift, eye_y + i, accent);
+    }
+    gfx->fillCircle(kCx, mouth_y + 2, 8, accent);
+    gfx->fillCircle(kCx, mouth_y + 2, 5, bg);
+    gfx->fillRect(kCx - 9, mouth_y - 4, 18, 6, bg);
   }
 }
 

@@ -14,6 +14,9 @@ enum class CompanionMood : uint8_t {
   Idle = 0,
   Warm = 1,
   Alert = 2,
+  Happy = 3,
+  Sad = 4,
+  Excited = 5,
 };
 
 enum class TransmissionGear : uint8_t {
@@ -44,16 +47,34 @@ inline DriveMode resolveDriveMode(int16_t speed_kph) {
   return speed_kph > 80 ? DriveMode::Sport : DriveMode::Cruise;
 }
 
-inline CompanionMood resolveCompanionMood(int16_t speed_kph) {
-  if (speed_kph < 10) {
-    return CompanionMood::Idle;
+inline CompanionMood resolveCompanionMood(int16_t speed_kph, int16_t rpm = 0) {
+  // Excited: high RPM burst (sport driving).
+  if (rpm > 4500) {
+    return CompanionMood::Excited;
   }
 
-  if (speed_kph < 45) {
+  // Alert: fast driving.
+  if (speed_kph > 80) {
+    return CompanionMood::Alert;
+  }
+
+  // Happy: steady cruising at moderate speed.
+  if (speed_kph >= 30 && speed_kph <= 80) {
+    return CompanionMood::Happy;
+  }
+
+  // Warm: gentle city driving.
+  if (speed_kph >= 10) {
     return CompanionMood::Warm;
   }
 
-  return CompanionMood::Alert;
+  // Sad: decelerating to stop or very slow.
+  if (speed_kph > 0 && speed_kph < 10 && rpm < 900) {
+    return CompanionMood::Sad;
+  }
+
+  // Idle: parked.
+  return CompanionMood::Idle;
 }
 
 inline TransmissionGear resolveGear(int16_t speed_kph, int16_t rpm) {
@@ -92,7 +113,7 @@ inline uint16_t estimateRangeKm(uint8_t fuel_level_pct, int16_t speed_kph) {
 inline void refreshDerivedTelemetry(DashboardTelemetry &telemetry) {
   telemetry.estimated_range_km = estimateRangeKm(telemetry.fuel_level_pct, telemetry.speed_kph);
   telemetry.drive_mode = resolveDriveMode(telemetry.speed_kph);
-  telemetry.companion_mood = resolveCompanionMood(telemetry.speed_kph);
+  telemetry.companion_mood = resolveCompanionMood(telemetry.speed_kph, telemetry.rpm);
   telemetry.gear = resolveGear(telemetry.speed_kph, telemetry.rpm);
 }
 
