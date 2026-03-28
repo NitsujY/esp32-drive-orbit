@@ -14,6 +14,16 @@ This document separates pre-implementation validation from firmware coding so ha
 - The `companion_orb` receives ESP-NOW packets and feeds them into the existing stream parser.
 - Remaining Stage 6 work: GC9A01 rendering on the Slave, live telemetry exchange validation.
 
+### Light/Dark Mode
+
+- Both boards support light mode (default, headlights OFF) and dark mode (headlights ON).
+- The `headlights_on` field in `DashboardTelemetry` controls the mode.
+- The dash_35 sets `theme::darkMode()` from the telemetry each loop cycle.
+- The companion_orb receives `headlights_on` via the fast telemetry ESP-NOW packet and sets its own `theme::darkMode()`.
+- Light mode: light gray backgrounds, darker accents for daytime readability.
+- Dark mode: near-black backgrounds, bright neon accents for night driving.
+- The Toyota headlight PID is pending discovery via the `toyota-scan` probe tool. Once found, the ELM327 client will set `headlights_on` from the OBD response.
+
 ## Stages
 
 ### Stage 0: Documentation

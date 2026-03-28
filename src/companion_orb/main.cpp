@@ -2,6 +2,7 @@
 #include <esp_now.h>
 
 #include "espnow_transport.h"
+#include "cyber_theme.h"
 #include "shared_data.h"
 #include "app/telemetry_stream_parser.h"
 #include "app/orb_display.h"
@@ -69,6 +70,7 @@ void loop() {
 
   if (parser.hasFreshTelemetry()) {
     const telemetry::DashboardTelemetry snapshot = parser.takeTelemetry();
+    theme::darkMode() = snapshot.headlights_on;
     logParsedTelemetry(snapshot);
     display.render(snapshot, now);
   }

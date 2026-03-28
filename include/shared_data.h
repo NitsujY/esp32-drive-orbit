@@ -41,6 +41,7 @@ struct DashboardTelemetry {
   DriveMode drive_mode;
   CompanionMood companion_mood;
   TransmissionGear gear;
+  bool headlights_on;
 };
 
 inline DriveMode resolveDriveMode(int16_t speed_kph) {

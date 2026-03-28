@@ -32,6 +32,7 @@ struct FastTelemetryPayload {
   uint8_t drive_mode;
   uint8_t companion_mood;
   uint8_t gear;
+  uint8_t headlights_on;
 } __attribute__((packed));
 
 struct StatusTelemetryPayload {
@@ -43,7 +44,7 @@ struct StatusTelemetryPayload {
 } __attribute__((packed));
 
 static_assert(sizeof(FrameHeader) == 5, "Unexpected frame header size");
-static_assert(sizeof(FastTelemetryPayload) == 15, "Unexpected fast telemetry size");
+static_assert(sizeof(FastTelemetryPayload) == 16, "Unexpected fast telemetry size");
 static_assert(sizeof(StatusTelemetryPayload) == 11, "Unexpected status telemetry size");
 
 inline uint8_t computeChecksum(const uint8_t *data, size_t length) {
@@ -91,6 +92,7 @@ inline FastTelemetryPayload makeFastTelemetryPayload(const telemetry::DashboardT
   payload.drive_mode = static_cast<uint8_t>(telemetry.drive_mode);
   payload.companion_mood = static_cast<uint8_t>(telemetry.companion_mood);
   payload.gear = static_cast<uint8_t>(telemetry.gear);
+  payload.headlights_on = telemetry.headlights_on ? 1 : 0;
   return payload;
 }
 

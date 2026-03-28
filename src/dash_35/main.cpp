@@ -7,6 +7,7 @@
 #include "app/app_state.h"
 #include "app/telemetry_transmitter.h"
 #include "app/vehicle_profiles/vehicle_profile.h"
+#include "cyber_theme.h"
 #include "espnow_transport.h"
 #include "shared_data.h"
 
@@ -90,6 +91,9 @@ void loop() {
     }
     telemetry_transmitter.publish(app_state.telemetry, now);
   }
+
+  // Sync light/dark mode from headlight state.
+  theme::darkMode() = app_state.telemetry.headlights_on;
 
   dashboard_display.render(app_state.telemetry, app_state.view_state, app_state.psram_detected,
                            app_state.psram_size_bytes, now);
