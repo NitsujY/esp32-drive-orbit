@@ -46,16 +46,13 @@ function computeRangeKm(fuelPct, speedKph) {
   return Math.round(fuelPct * 4.6 * efficiencyFactor);
 }
 
-function computeMood(speedKph) {
-  if (speedKph < 10) {
-    return "idle";
-  }
-
-  if (speedKph < 45) {
-    return "warm";
-  }
-
-  return "alert";
+function computeMood(speedKph, rpm) {
+  if (rpm > 4500) return "excited";
+  if (speedKph > 80) return "alert";
+  if (speedKph >= 30 && speedKph <= 80) return "happy";
+  if (speedKph >= 10) return "warm";
+  if (speedKph > 0 && speedKph < 10 && rpm < 900) return "sad";
+  return "idle";
 }
 
 function computeScreen(frame, speedKph) {
@@ -130,7 +127,7 @@ function nextTelemetry() {
     gear: computeGear(state.speedKph),
     rangeKm: computeRangeKm(state.fuelPct, state.speedKph),
     driveMode: computeDriveMode(state.speedKph),
-    mood: computeMood(state.speedKph),
+    mood: computeMood(state.speedKph, rpm),
     screen: computeScreen(state.frame, state.speedKph),
     obdConnected: true,
     trip: computeTrip(state.frame, state.speedKph),
@@ -159,24 +156,24 @@ export function startTelemetryStream(onUpdate) {
 
 export const themes = {
   minimalist_future: {
-    accent: "#7df9c6",
-    accentStrong: "#c8fff0",
-    danger: "#ff8474",
-    panel: "rgba(7, 20, 28, 0.82)",
-    line: "rgba(145, 212, 228, 0.18)",
+    accent: "#00ffc8",
+    accentStrong: "#b4fff0",
+    danger: "#ffc83c",
+    panel: "rgba(4, 10, 20, 0.85)",
+    line: "rgba(0, 255, 200, 0.12)",
   },
   midnight_sport: {
-    accent: "#ff7357",
-    accentStrong: "#ffd6c8",
-    danger: "#ffe66d",
-    panel: "rgba(30, 10, 10, 0.84)",
-    line: "rgba(255, 115, 87, 0.22)",
+    accent: "#ff3278",
+    accentStrong: "#ffb4d2",
+    danger: "#ffc83c",
+    panel: "rgba(12, 2, 4, 0.85)",
+    line: "rgba(255, 50, 120, 0.15)",
   },
   neon_circuit: {
-    accent: "#70f0ff",
-    accentStrong: "#effdff",
-    danger: "#ff5cb8",
-    panel: "rgba(12, 11, 30, 0.84)",
-    line: "rgba(112, 240, 255, 0.2)",
+    accent: "#7800ff",
+    accentStrong: "#c8a0ff",
+    danger: "#ff00c8",
+    panel: "rgba(8, 4, 18, 0.85)",
+    line: "rgba(120, 0, 255, 0.18)",
   },
 };

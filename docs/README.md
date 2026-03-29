@@ -16,6 +16,10 @@ This repository uses a lightweight spec-driven development structure.
 - `docs/specs/smart-jdm-dashboard/persistent-trip-data.md`
 - `docs/specs/smart-jdm-dashboard/touch-screen-navigation.md`
 - `docs/specs/smart-jdm-dashboard/wifi-hotspot-weather.md`
+- `docs/specs/smart-jdm-dashboard/live-traffic-overlay.md`
+- `docs/specs/smart-jdm-dashboard/fuel-price-lookup.md`
+- `docs/specs/smart-jdm-dashboard/speed-camera-alerts.md`
+- `docs/specs/smart-jdm-dashboard/ntp-time-sync.md`
 - `docs/plans/smart-jdm-dashboard/foundation-plan.md`
 - `docs/plans/smart-jdm-dashboard/staged-delivery-plan.md`
 - `docs/tasks/smart-jdm-dashboard/foundation-tasks.md`

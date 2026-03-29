@@ -1,3 +1,6 @@
 .DS_Store
 .pio/
 .vscode/
+
+# Wi-Fi credentials — never commit
+include/wifi_config.h

@@ -7,6 +7,7 @@
 #include "app/app_state.h"
 #include "app/telemetry_transmitter.h"
 #include "app/vehicle_profiles/vehicle_profile.h"
+#include "app/wifi_manager.h"
 #include "cyber_theme.h"
 #include "espnow_transport.h"
 #include "shared_data.h"
@@ -20,6 +21,7 @@ app::AppState app_state = app::makeInitialState();
 app::TelemetryTransmitter telemetry_transmitter;
 app::DashboardDisplay dashboard_display;
 app::Elm327Client elm327_client;
+app::WifiManager wifi_manager;
 
 app::ObdConnectionState mapObdConnectionState(app::Elm327Client::ConnectionState state) {
   switch (state) {
@@ -59,6 +61,8 @@ void setup() {
     Serial.println("[BOOT] ESP-NOW init failed — companion link unavailable");
   }
 
+  wifi_manager.begin(Serial);
+
   app_state = app::makeInitialState();
   app_state.psram_detected = psram_size > 0;
   app_state.psram_size_bytes = psram_size;
@@ -67,6 +71,7 @@ void setup() {
 void loop() {
   const uint32_t now = millis();
   elm327_client.poll(now, app_state.telemetry);
+  wifi_manager.poll(now);
 
   if (now - last_publish_ms >= kTelemetryIntervalMs) {
     last_publish_ms = now;
