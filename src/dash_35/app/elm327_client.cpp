@@ -707,7 +707,14 @@ void Elm327Client::handleLine(const char *line, uint32_t now_ms, telemetry::Dash
         (((static_cast<int>(value) * 100) / 255) *
          static_cast<int>(vehicle_profiles::activeProfile().fuel_scale_percent)) /
         100;
-      telemetry.fuel_level_pct = static_cast<uint8_t>(constrain(scaled_pct, 0, 100));
+      const float raw_fuel = static_cast<float>(constrain(scaled_pct, 0, 100));
+      if (smoothed_fuel_pct_ < 0.0f) {
+        smoothed_fuel_pct_ = raw_fuel;
+      } else {
+        // Low-pass filter: ~45 second time constant at 10s poll interval.
+        smoothed_fuel_pct_ += (raw_fuel - smoothed_fuel_pct_) * 0.08f;
+      }
+      telemetry.fuel_level_pct = static_cast<uint8_t>(lroundf(smoothed_fuel_pct_));
         standard_fuel_unsupported_ = false;
         last_fuel_update_ms_ = now_ms;
         fuel_unknown_since_ms_ = 0;
@@ -725,7 +732,12 @@ void Elm327Client::handleLine(const char *line, uint32_t now_ms, telemetry::Dash
             (liters * 100.0f / profile.fuel_tank_liters) *
                 (static_cast<float>(profile.fuel_scale_percent) / 100.0f),
             0.0f, 100.0f);
-        telemetry.fuel_level_pct = static_cast<uint8_t>(lroundf(scaled_pct));
+        if (smoothed_fuel_pct_ < 0.0f) {
+          smoothed_fuel_pct_ = scaled_pct;
+        } else {
+          smoothed_fuel_pct_ += (scaled_pct - smoothed_fuel_pct_) * 0.08f;
+        }
+        telemetry.fuel_level_pct = static_cast<uint8_t>(lroundf(smoothed_fuel_pct_));
         last_fuel_update_ms_ = now_ms;
         fuel_unknown_since_ms_ = 0;
         last_live_update_ms_ = now_ms;

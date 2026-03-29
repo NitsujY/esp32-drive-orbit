@@ -64,6 +64,10 @@ const char *bleRxUuid() {
 }
 
 int16_t applySpeedOffset(int16_t speed_kph) {
+  // Don't apply offset when OBD reports 0 — car is actually stopped.
+  if (speed_kph == 0) {
+    return 0;
+  }
   const int adjusted = static_cast<int>(speed_kph) + activeProfile().speed_offset_kph;
   return static_cast<int16_t>(max(0, adjusted));
 }
