@@ -190,6 +190,7 @@ void OrbDisplay::render(const telemetry::DashboardTelemetry &telemetry, uint32_t
     last_mood_ = mood;
     last_gear_ = gear;
     last_rpm_ = telemetry.rpm;
+    last_accel_mg_ = telemetry.longitudinal_accel_mg;
     last_score_ = coaching_score_;
     last_fuel_pct_ = telemetry.fuel_level_pct;
     last_low_fuel_ = low_fuel;
@@ -217,14 +218,16 @@ void OrbDisplay::render(const telemetry::DashboardTelemetry &telemetry, uint32_t
 
   if (theme::isSport(dm)) {
     if (gear != last_gear_ || telemetry.rpm != last_rpm_) {
-      drawGearRpm(telemetry.gear, telemetry.rpm, dm);
+      drawGearRpm(telemetry.gear, telemetry.rpm, telemetry.longitudinal_accel_mg, dm);
       last_gear_ = gear;
       last_rpm_ = telemetry.rpm;
+      last_accel_mg_ = telemetry.longitudinal_accel_mg;
     }
   } else {
-    if (coaching_score_ != last_score_) {
-      drawCoachingScore(coaching_score_, dm);
+    if (coaching_score_ != last_score_ || abs(telemetry.longitudinal_accel_mg - last_accel_mg_) > 20) {
+      drawCoachingScore(coaching_score_, telemetry.longitudinal_accel_mg, dm);
       last_score_ = coaching_score_;
+      last_accel_mg_ = telemetry.longitudinal_accel_mg;
     }
   }
 }
@@ -248,9 +251,9 @@ void OrbDisplay::drawFullScene(const telemetry::DashboardTelemetry &telemetry, u
   }
 
   if (theme::isSport(dm)) {
-    drawGearRpm(telemetry.gear, telemetry.rpm, dm);
+    drawGearRpm(telemetry.gear, telemetry.rpm, telemetry.longitudinal_accel_mg, dm);
   } else if (!sleeping_) {
-    drawCoachingScore(coaching_score_, dm);
+    drawCoachingScore(coaching_score_, telemetry.longitudinal_accel_mg, dm);
   }
 }
 
@@ -412,12 +415,12 @@ void OrbDisplay::drawSleepFace(uint8_t drive_mode) {
   gfx->print("z");
 }
 
-void OrbDisplay::drawCoachingScore(uint8_t score, uint8_t drive_mode) {
+void OrbDisplay::drawCoachingScore(uint8_t score, int16_t longitudinal_accel_mg, uint8_t drive_mode) {
   const uint16_t bg = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
   const uint16_t accent = blend565(theme::chill::accent(), theme::sport::accent(), mode_blend_);
   const uint16_t dim = blend565(theme::chill::accentDim(), theme::sport::accentDim(), mode_blend_);
 
-  gfx->fillRect(kCx - 40, kCy + 30, 80, 50, bg);
+  gfx->fillRect(kCx - 44, kCy + 26, 88, 62, bg);
 
   char buf[8];
   snprintf(buf, sizeof(buf), "%u", score);
@@ -430,29 +433,72 @@ void OrbDisplay::drawCoachingScore(uint8_t score, uint8_t drive_mode) {
   gfx->setTextSize(1);
   gfx->setCursor(kCx - 18, kCy + 62);
   gfx->print("smooth");
+
+  char g_buf[12];
+  snprintf(g_buf, sizeof(g_buf), "%+.2fg", static_cast<float>(longitudinal_accel_mg) / 1000.0f);
+  gfx->setTextColor(accent);
+  gfx->setCursor(kCx - 20, kCy + 74);
+  gfx->print(g_buf);
 }
 
-void OrbDisplay::drawGearRpm(telemetry::TransmissionGear gear, int16_t rpm, uint8_t drive_mode) {
+void OrbDisplay::drawGearRpm(telemetry::TransmissionGear gear,
+                             int16_t rpm,
+                             int16_t longitudinal_accel_mg,
+                             uint8_t drive_mode) {
   const uint16_t bg = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
   const uint16_t accent = blend565(theme::chill::accent(), theme::sport::accent(), mode_blend_);
+  const uint16_t dim = blend565(theme::chill::accentDim(), theme::sport::accentDim(), mode_blend_);
 
-  gfx->fillRect(kCx - 30, kCy + 25, 60, 45, bg);
+  gfx->fillRect(kCx - 40, kCy + 22, 80, 66, bg);
 
   gfx->setTextColor(accent);
   gfx->setTextSize(4);
   gfx->setCursor(kCx - 12, kCy + 28);
   gfx->print(gearChar(gear));
 
+  char g_buf[12];
+  snprintf(g_buf, sizeof(g_buf), "%+.2fg", static_cast<float>(longitudinal_accel_mg) / 1000.0f);
+  gfx->setTextColor(dim);
+  gfx->setTextSize(1);
+  gfx->setCursor(kCx - 20, kCy + 74);
+  gfx->print(g_buf);
+
   const float rpm_norm = constrain(static_cast<float>(rpm) / 7000.0f, 0.0f, 1.0f);
   const float sweep_end = 200.0f + rpm_norm * 140.0f;
 
-  drawArc(kCx, kCy, 108, 103, 200, 340, bg);
+  // Clear full arc area.
+  drawArc(kCx, kCy, 110, 101, 200, 340, bg);
 
-  uint16_t arc_color = rpm > 5500 ? theme::sport::accent() : accent;
-  drawArc(kCx, kCy, 108, 103, 200, sweep_end, arc_color);
+  // Draw neon gradient arc — sweep through arcStart→arcMid→arcHigh→arcEnd.
+  const float arc_span = sweep_end - 200.0f;
+  if (arc_span > 0.5f) {
+    for (float a = 200.0f; a <= sweep_end; a += 0.8f) {
+      float t = (a - 200.0f) / 140.0f;  // 0..1 across full sweep range
+      uint16_t c;
+      if (t < 0.33f) {
+        c = blend565(theme::arcStart(), theme::arcMid(), t / 0.33f);
+      } else if (t < 0.66f) {
+        c = blend565(theme::arcMid(), theme::arcHigh(), (t - 0.33f) / 0.33f);
+      } else {
+        c = blend565(theme::arcHigh(), theme::arcEnd(), (t - 0.66f) / 0.34f);
+      }
+      // Draw a thicker solid fill for neon punch.
+      float rad = a * DEG_TO_RAD;
+      float cs = cosf(rad);
+      float sn = sinf(rad);
+      for (int r = 102; r <= 109; ++r) {
+        int x = kCx + static_cast<int>(cs * r);
+        int y = kCy + static_cast<int>(sn * r);
+        if (x >= 0 && x < kW && y >= 0 && y < kH) {
+          gfx->drawPixel(x, y, c);
+        }
+      }
+    }
+  }
 
+  // Dim track for the unfilled portion.
   if (sweep_end < 340.0f) {
-    drawArc(kCx, kCy, 108, 105, sweep_end, 340, theme::track(drive_mode));
+    drawArc(kCx, kCy, 108, 104, sweep_end, 340, theme::track(drive_mode));
   }
 }
 

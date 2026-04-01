@@ -102,7 +102,11 @@ function nextTelemetry() {
     }
   }
 
-  const rpm = Math.round(780 + state.speedKph * 18 + (state.speedIncreasing ? 70 : 0));
+  const rpm = clamp(
+    Math.round(820 + state.speedKph * 38 + (state.speedIncreasing ? 280 : 80)),
+    780,
+    5200,
+  );
   state.coolantTempC += state.speedIncreasing ? 1 : -1;
   state.coolantTempC = clamp(state.coolantTempC, 82, 92);
 
@@ -155,25 +159,55 @@ export function startTelemetryStream(onUpdate) {
 }
 
 export const themes = {
-  minimalist_future: {
-    accent: "#00ffc8",
-    accentStrong: "#b4fff0",
-    danger: "#ffc83c",
-    panel: "rgba(4, 10, 20, 0.85)",
-    line: "rgba(0, 255, 200, 0.12)",
+  orbital_sync: {
+    bg0: "#050910",
+    bg1: "#111a31",
+    bg2: "#1f264f",
+    bg3: "#08121e",
+    accent: "#86ffe1",
+    accentStrong: "#d7f8ff",
+    accent2: "#71cfff",
+    accent3: "#ff5fd2",
+    danger: "#ffb14b",
+    panel: "rgba(10, 16, 34, 0.78)",
+    line: "rgba(134, 255, 225, 0.16)",
+    glow: "rgba(134, 255, 225, 0.18)",
+    halo: "rgba(113, 207, 255, 0.18)",
+    shift: "#ff5fd2",
+    tachOff: "rgba(255, 255, 255, 0.08)",
   },
-  midnight_sport: {
-    accent: "#ff3278",
-    accentStrong: "#ffb4d2",
-    danger: "#ffc83c",
-    panel: "rgba(12, 2, 4, 0.85)",
-    line: "rgba(255, 50, 120, 0.15)",
+  aurora_grid: {
+    bg0: "#041014",
+    bg1: "#10233a",
+    bg2: "#0f3e49",
+    bg3: "#07161a",
+    accent: "#8effb7",
+    accentStrong: "#f0fff7",
+    accent2: "#5fdcff",
+    accent3: "#67f6ff",
+    danger: "#ffc857",
+    panel: "rgba(7, 20, 28, 0.76)",
+    line: "rgba(142, 255, 183, 0.14)",
+    glow: "rgba(142, 255, 183, 0.2)",
+    halo: "rgba(95, 220, 255, 0.16)",
+    shift: "#67f6ff",
+    tachOff: "rgba(255, 255, 255, 0.07)",
   },
-  neon_circuit: {
-    accent: "#7800ff",
-    accentStrong: "#c8a0ff",
-    danger: "#ff00c8",
-    panel: "rgba(8, 4, 18, 0.85)",
-    line: "rgba(120, 0, 255, 0.18)",
+  afterburn_glow: {
+    bg0: "#10070a",
+    bg1: "#25111c",
+    bg2: "#352142",
+    bg3: "#16090c",
+    accent: "#ffb14b",
+    accentStrong: "#ffe5c2",
+    accent2: "#ff7b5f",
+    accent3: "#ff55c8",
+    danger: "#ffdb6e",
+    panel: "rgba(24, 10, 12, 0.78)",
+    line: "rgba(255, 177, 75, 0.16)",
+    glow: "rgba(255, 177, 75, 0.18)",
+    halo: "rgba(255, 85, 200, 0.14)",
+    shift: "#ff55c8",
+    tachOff: "rgba(255, 255, 255, 0.07)",
   },
 };

@@ -4,6 +4,9 @@
 
 namespace telemetry {
 
+constexpr int8_t kWeatherTempUnknown = -128;
+constexpr uint8_t kWeatherCodeUnknown = 255;
+
 enum class DriveMode : uint8_t {
   Calm = 0,
   Cruise = 1,
@@ -34,6 +37,7 @@ struct DashboardTelemetry {
   uint32_t uptime_ms;
   int16_t rpm;
   int16_t speed_kph;
+  int16_t longitudinal_accel_mg;
   int16_t coolant_temp_c;
   uint16_t battery_mv;
   uint8_t fuel_level_pct;
@@ -41,6 +45,9 @@ struct DashboardTelemetry {
   DriveMode drive_mode;
   CompanionMood companion_mood;
   TransmissionGear gear;
+  int8_t weather_temp_c;
+  uint8_t weather_code;
+  bool wifi_connected;
   bool headlights_on;
 };
 
@@ -130,9 +137,13 @@ inline DashboardTelemetry makeSimulatedTelemetry(uint32_t sequence,
   telemetry.uptime_ms = uptime_ms;
   telemetry.rpm = rpm;
   telemetry.speed_kph = speed_kph;
+  telemetry.longitudinal_accel_mg = 0;
   telemetry.coolant_temp_c = coolant_temp_c;
   telemetry.battery_mv = battery_mv;
   telemetry.fuel_level_pct = fuel_level_pct;
+  telemetry.weather_temp_c = kWeatherTempUnknown;
+  telemetry.weather_code = kWeatherCodeUnknown;
+  telemetry.wifi_connected = false;
   refreshDerivedTelemetry(telemetry);
   return telemetry;
 }

@@ -11,14 +11,14 @@
       <header class="topbar">
         <div>
           <div class="eyebrow">Orbital Driver View</div>
-          <h1>Landscape Speed Focus</h1>
+          <h1>Orb Sync Instrument Cluster</h1>
         </div>
         <label class="theme-picker">
           <span>Theme</span>
           <select id="theme-select">
-            <option value="minimalist_future">Minimalist Future</option>
-            <option value="midnight_sport">Midnight Sport</option>
-            <option value="neon_circuit">Neon Circuit</option>
+            <option value="orbital_sync">Orbital Sync</option>
+            <option value="aurora_grid">Aurora Grid</option>
+            <option value="afterburn_glow">Afterburn Glow</option>
           </select>
         </label>
       </header>
@@ -26,75 +26,56 @@
       <section class="device-frame" id="frame">
         <div class="ambient-grid"></div>
         <div class="welcome-banner" id="welcome-banner">Ignition sync complete</div>
-        <div class="status-pill" id="mode-pill">Cruise</div>
+        <section class="status-rail" aria-label="Dashboard status">
+          <div class="status-block">
+            <span class="status-kicker">Session</span>
+            <strong class="status-value" id="screen-label">Boot</strong>
+          </div>
+          <div class="status-block status-block-clock">
+            <span class="status-kicker">Local Time</span>
+            <strong class="clock-time" id="time">00:00</strong>
+            <span class="clock-date" id="date">Tue 01 Apr</span>
+          </div>
+          <div class="status-pill" id="mode-pill">Cruise</div>
+        </section>
 
         <section class="cluster-panel">
           <div class="cluster-header">
-            <div class="hero-label" id="screen-label">Boot</div>
-            <div class="hero-note">speed prioritized for driving glanceability</div>
+            <div>
+              <div class="hero-label">Tach Ribbon</div>
+              <div class="hero-note">segmented RPM display for cleaner color separation than the filled arc</div>
+            </div>
+            <div class="rpm-readout">
+              <span class="mini-label">RPM</span>
+              <strong id="rpm-value">0000</strong>
+            </div>
           </div>
 
-          <div class="arc-wrap">
-            <svg viewBox="0 0 860 460" class="arc-gauge">
-              <defs>
-                <linearGradient id="rpm-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#ff00c8"></stop>
-                  <stop offset="33%" stop-color="#7800ff"></stop>
-                  <stop offset="66%" stop-color="#0078ff"></stop>
-                  <stop offset="100%" stop-color="#00ffdc"></stop>
-                </linearGradient>
-              </defs>
-              <path
-                d="M 88 392 A 342 342 0 0 1 772 392"
-                class="arc-outline"
-                pathLength="100"
-              ></path>
-              <path
-                d="M 120 392 A 310 310 0 0 1 740 392"
-                class="arc-track"
-                pathLength="100"
-              ></path>
-              <path
-                d="M 120 392 A 310 310 0 0 1 740 392"
-                class="arc-progress"
-                id="rpm-arc"
-                pathLength="100"
-              ></path>
-            </svg>
+          <div class="tach-ribbon" id="tach-ribbon" aria-label="Segmented RPM tachometer"></div>
 
+          <div class="speed-stage">
+            <div class="speed-halo"></div>
+            <div class="speed-orbit speed-orbit-outer"></div>
+            <div class="speed-orbit speed-orbit-inner"></div>
             <div class="speed-center">
               <div class="hero-speed" id="speed">0</div>
               <div class="hero-unit">km/h</div>
             </div>
+            <div class="speed-gloss"></div>
           </div>
         </section>
 
         <section class="bottom-strip">
           <article class="mini-card accent icon-card">
-            <div class="mini-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" class="mini-svg">
-                <path d="M12 3 L18 12 L12 21 L6 12 Z"></path>
-              </svg>
-            </div>
+            <span class="mini-label">Mode</span>
             <strong id="mode-text">Cruise</strong>
           </article>
           <article class="mini-card icon-card">
-            <div class="mini-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" class="mini-svg">
-                <path d="M12 3 V21"></path>
-                <path d="M8 6 H14 a3 3 0 0 1 0 6 H8"></path>
-                <path d="M8 12 H14 a3 3 0 0 1 0 6 H8"></path>
-              </svg>
-            </div>
+            <span class="mini-label">Gear</span>
             <strong class="gear-token" id="gear">D1</strong>
           </article>
           <article class="mini-card icon-card">
-            <div class="mini-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" class="mini-svg">
-                <path d="M4 16 C7 10, 10 8, 20 8"></path>
-                <path d="M17 5 L20 8 L17 11"></path>
-              </svg>
-            </div>
+            <span class="mini-label">Range</span>
             <div class="meter-meta">
               <strong id="range">280 km</strong>
               <div class="meter-bar" aria-hidden="true">
@@ -103,11 +84,7 @@
             </div>
           </article>
           <article class="mini-card icon-card fuel-card">
-            <div class="mini-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" class="mini-svg">
-                <path d="M8 5 H15 V19 H8 Z M15 7 h2 l2 3 v5 a2 2 0 0 1 -2 2 h-1"></path>
-              </svg>
-            </div>
+            <span class="mini-label">Fuel</span>
             <div class="meter-meta">
               <strong id="fuel">78%</strong>
               <div class="meter-bar" aria-hidden="true">

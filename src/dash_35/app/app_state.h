@@ -15,6 +15,7 @@ struct AppState {
   bool speed_increasing;
   int16_t previous_speed_kph;
   uint32_t last_trip_accum_ms;
+  uint32_t last_speed_sample_ms;
 };
 
 AppState makeInitialState();

@@ -7,6 +7,7 @@
 #include "app/app_state.h"
 #include "app/telemetry_transmitter.h"
 #include "app/vehicle_profiles/vehicle_profile.h"
+#include "app/weather_client.h"
 #include "app/wifi_manager.h"
 #include "cyber_theme.h"
 #include "espnow_transport.h"
@@ -22,6 +23,7 @@ app::TelemetryTransmitter telemetry_transmitter;
 app::DashboardDisplay dashboard_display;
 app::Elm327Client elm327_client;
 app::WifiManager wifi_manager;
+app::WeatherClient weather_client;
 
 app::ObdConnectionState mapObdConnectionState(app::Elm327Client::ConnectionState state) {
   switch (state) {
@@ -62,6 +64,7 @@ void setup() {
   }
 
   wifi_manager.begin(Serial);
+  weather_client.begin(Serial);
 
   app_state = app::makeInitialState();
   app_state.psram_detected = psram_size > 0;
@@ -87,13 +90,30 @@ void loop() {
       app_state.telemetry.uptime_ms = now;
       app::accumulateTripDistance(app_state, now, true);
       app::vehicle_profiles::refreshTelemetry(app_state.telemetry);
+      if (app_state.last_speed_sample_ms != 0 && now > app_state.last_speed_sample_ms) {
+        const float dt_s = static_cast<float>(now - app_state.last_speed_sample_ms) / 1000.0f;
+        if (dt_s > 0.05f && dt_s < 2.0f) {
+          const float delta_kph = static_cast<float>(app_state.telemetry.speed_kph - previous_speed_kph);
+          const float delta_mps = delta_kph / 3.6f;
+          const float accel_g = (delta_mps / dt_s) / 9.80665f;
+          app_state.telemetry.longitudinal_accel_mg =
+              static_cast<int16_t>(lroundf(accel_g * 1000.0f));
+        } else {
+          app_state.telemetry.longitudinal_accel_mg = 0;
+        }
+      } else {
+        app_state.telemetry.longitudinal_accel_mg = 0;
+      }
+      app_state.last_speed_sample_ms = now;
       app::updateDashboardViewState(app_state.view_state, app_state.telemetry, previous_speed_kph);
       app_state.view_state.obd_connection_state = next_obd_state;
       app_state.previous_speed_kph = app_state.telemetry.speed_kph;
     } else {
       app_state.view_state.obd_connection_state = mapObdConnectionState(elm327_client.connectionState());
       app::maintainIdleState(app_state, now);
+      app_state.telemetry.longitudinal_accel_mg = 0;
     }
+    weather_client.poll(now, wifi_manager.isConnected(), app_state.telemetry);
     telemetry_transmitter.publish(app_state.telemetry, now);
   }
 

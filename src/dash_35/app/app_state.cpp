@@ -79,6 +79,7 @@ AppState makeInitialState() {
   state.speed_increasing = true;
   state.previous_speed_kph = state.telemetry.speed_kph;
   state.last_trip_accum_ms = 0;
+  state.last_speed_sample_ms = 0;
   return state;
 }
 

@@ -20,7 +20,7 @@ It does not lock the project into the final embedded rendering stack.
 From the repository root:
 
 ```sh
-ruby -run -e httpd preview -p 8123
+python3 -m http.server 8123 --directory preview
 ```
 
 Then open:

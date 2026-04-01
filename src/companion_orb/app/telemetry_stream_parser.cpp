@@ -134,6 +134,7 @@ void TelemetryStreamParser::applyFastPayload(const uint8_t *payload_bytes) {
   latest_.uptime_ms = payload.uptime_ms;
   latest_.rpm = payload.rpm;
   latest_.speed_kph = payload.speed_kph;
+  latest_.longitudinal_accel_mg = payload.longitudinal_accel_mg;
   latest_.drive_mode = static_cast<telemetry::DriveMode>(payload.drive_mode);
   latest_.companion_mood = static_cast<telemetry::CompanionMood>(payload.companion_mood);
   latest_.gear = static_cast<telemetry::TransmissionGear>(payload.gear);

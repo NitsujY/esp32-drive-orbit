@@ -30,11 +30,16 @@ class DashboardDisplay {
   uint32_t last_button_ms_ = 0;
   uint32_t last_toggle_ms_ = 0;
   float displayed_rpm_ = -1.0f;
+  int32_t last_clock_key_ = -1;
+  bool last_time_synced_ = false;
   int16_t last_arc_rpm_drawn_ = -1;
   int16_t last_speed_kph_ = -1;
   int16_t last_rpm_ = -1;
   uint8_t last_fuel_level_pct_ = 255;
   uint16_t last_range_km_ = 0xFFFF;
+  int8_t last_weather_temp_c_ = telemetry::kWeatherTempUnknown;
+  uint8_t last_weather_code_ = telemetry::kWeatherCodeUnknown;
+  bool last_wifi_connected_ = false;
   telemetry::TransmissionGear last_gear_ = telemetry::TransmissionGear::First;
   DashboardScreen last_screen_ = DashboardScreen::Boot;
   ObdConnectionState last_obd_connection_state_ = ObdConnectionState::Disconnected;

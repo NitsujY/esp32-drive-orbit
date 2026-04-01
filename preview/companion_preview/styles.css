@@ -6,7 +6,7 @@
   --muted: #95a4c7;
   --accent: #86ffe1;
   --accent-2: #71cfff;
-  --sport: #ff7f61;
+  --sport: #ff8c00;
 }
 
 * {
@@ -88,9 +88,9 @@ body {
 
 .orb-screen.sport {
   background:
-    radial-gradient(circle at 35% 30%, rgba(255, 127, 97, 0.22), transparent 28%),
-    radial-gradient(circle at 70% 70%, rgba(255, 225, 121, 0.16), transparent 30%),
-    linear-gradient(180deg, rgba(25, 10, 10, 0.96), rgba(34, 10, 18, 0.92));
+    radial-gradient(circle at 35% 30%, rgba(255, 140, 0, 0.22), transparent 28%),
+    radial-gradient(circle at 70% 70%, rgba(255, 200, 80, 0.16), transparent 30%),
+    linear-gradient(180deg, rgba(14, 6, 2, 0.96), rgba(26, 10, 4, 0.92));
 }
 
 .orb-noise {
@@ -130,7 +130,7 @@ body {
 
 .orb-screen.sport .orb-core {
   transform: scale(1.12);
-  background: radial-gradient(circle, rgba(255, 127, 97, 0.26), rgba(255, 127, 97, 0.03) 70%);
+  background: radial-gradient(circle, rgba(255, 140, 0, 0.26), rgba(255, 140, 0, 0.03) 70%);
 }
 
 .orb-face,
@@ -231,7 +231,7 @@ body {
 }
 
 .orb-screen.state-focus {
-  box-shadow: 0 28px 60px rgba(37, 8, 8, 0.5);
+  box-shadow: 0 28px 60px rgba(40, 14, 2, 0.5);
 }
 
 .orb-screen.state-focus .orb-core {

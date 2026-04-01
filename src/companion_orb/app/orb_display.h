@@ -17,8 +17,11 @@ class OrbDisplay {
   void drawFace(uint8_t drive_mode, uint8_t mood, int16_t rpm, uint32_t now_ms);
   void drawLowFuelFace(uint8_t drive_mode, uint32_t now_ms);
   void drawSleepFace(uint8_t drive_mode);
-  void drawCoachingScore(uint8_t score, uint8_t drive_mode);
-  void drawGearRpm(telemetry::TransmissionGear gear, int16_t rpm, uint8_t drive_mode);
+  void drawCoachingScore(uint8_t score, int16_t longitudinal_accel_mg, uint8_t drive_mode);
+  void drawGearRpm(telemetry::TransmissionGear gear,
+                   int16_t rpm,
+                   int16_t longitudinal_accel_mg,
+                   uint8_t drive_mode);
   void updateBacklight(uint8_t drive_mode, int16_t speed_kph, uint32_t now_ms);
   float modeTransition(uint8_t target_dm, uint32_t now_ms);
 
@@ -31,6 +34,7 @@ class OrbDisplay {
   uint8_t last_mood_ = 0xFF;
   uint8_t last_gear_ = 0xFF;
   int16_t last_rpm_ = -1;
+  int16_t last_accel_mg_ = 0;
   uint8_t last_score_ = 0xFF;
   uint8_t last_fuel_pct_ = 0xFF;
   bool last_low_fuel_ = false;
