@@ -13,6 +13,7 @@ class OrbDisplay {
 
  private:
   void drawFullScene(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms);
+  void drawCameraBadge(uint16_t nearest_m);
   void drawMoodRing(uint8_t drive_mode, int16_t rpm, uint32_t now_ms);
   void drawFace(uint8_t drive_mode, uint8_t mood, int16_t rpm, uint32_t now_ms);
   void drawLowFuelFace(uint8_t drive_mode, uint32_t now_ms);
@@ -38,6 +39,7 @@ class OrbDisplay {
   uint8_t last_score_ = 0xFF;
   uint8_t last_fuel_pct_ = 0xFF;
   bool last_low_fuel_ = false;
+  uint16_t last_nearest_camera_m_ = 0xFFFF;
 
   // Coaching score.
   uint8_t coaching_score_ = 80;

@@ -230,6 +230,12 @@ void OrbDisplay::render(const telemetry::DashboardTelemetry &telemetry, uint32_t
       last_accel_mg_ = telemetry.longitudinal_accel_mg;
     }
   }
+
+  // Camera badge incremental update
+  if (telemetry.nearest_camera_m != last_nearest_camera_m_) {
+    drawCameraBadge(telemetry.nearest_camera_m);
+    last_nearest_camera_m_ = telemetry.nearest_camera_m;
+  }
 }
 
 void OrbDisplay::drawFullScene(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms) {
@@ -255,6 +261,33 @@ void OrbDisplay::drawFullScene(const telemetry::DashboardTelemetry &telemetry, u
   } else if (!sleeping_) {
     drawCoachingScore(coaching_score_, telemetry.longitudinal_accel_mg, dm);
   }
+
+  // Camera badge overlay
+  drawCameraBadge(telemetry.nearest_camera_m);
+}
+
+void OrbDisplay::drawCameraBadge(uint16_t nearest_m) {
+  // Draw a small badge at top-center indicating camera distance when within 1000m.
+  const int badge_w = 96;
+  const int badge_h = 18;
+  const int x = kCx - (badge_w / 2);
+  const int y = 6;
+  const uint16_t bg = theme::panel(0);
+  const uint16_t fg = theme::warning();
+
+  if (nearest_m == telemetry::kNearestCameraUnknown || nearest_m > 1000) {
+    // Clear badge area
+    gfx->fillRect(x, y, badge_w, badge_h, theme::bg(0));
+    return;
+  }
+
+  gfx->fillRoundRect(x, y, badge_w, badge_h, 4, bg);
+  gfx->setTextColor(fg);
+  gfx->setTextSize(1);
+  gfx->setCursor(x + 8, y + 4);
+  gfx->print("CAM ");
+  gfx->print(nearest_m);
+  gfx->print("m");
 }
 
 void OrbDisplay::drawMoodRing(uint8_t drive_mode, int16_t rpm, uint32_t now_ms) {

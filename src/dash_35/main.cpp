@@ -9,6 +9,7 @@
 #include "app/vehicle_profiles/vehicle_profile.h"
 #include "app/weather_client.h"
 #include "app/wifi_manager.h"
+#include "app/camera_client.h"
 #include "cyber_theme.h"
 #include "espnow_transport.h"
 #include "shared_data.h"
@@ -24,6 +25,7 @@ app::DashboardDisplay dashboard_display;
 app::Elm327Client elm327_client;
 app::WifiManager wifi_manager;
 app::WeatherClient weather_client;
+app::CameraClient camera_client;
 
 app::ObdConnectionState mapObdConnectionState(app::Elm327Client::ConnectionState state) {
   switch (state) {
@@ -65,6 +67,7 @@ void setup() {
 
   wifi_manager.begin(Serial);
   weather_client.begin(Serial);
+  camera_client.begin(Serial);
 
   app_state = app::makeInitialState();
   app_state.psram_detected = psram_size > 0;
@@ -114,6 +117,7 @@ void loop() {
       app_state.telemetry.longitudinal_accel_mg = 0;
     }
     weather_client.poll(now, wifi_manager.isConnected(), app_state.telemetry);
+    camera_client.poll(now, wifi_manager.isConnected(), app_state.telemetry);
     telemetry_transmitter.publish(app_state.telemetry, now);
   }
 

@@ -6,6 +6,7 @@ namespace telemetry {
 
 constexpr int8_t kWeatherTempUnknown = -128;
 constexpr uint8_t kWeatherCodeUnknown = 255;
+constexpr uint16_t kNearestCameraUnknown = 0xFFFF;
 
 enum class DriveMode : uint8_t {
   Calm = 0,
@@ -42,6 +43,7 @@ struct DashboardTelemetry {
   uint16_t battery_mv;
   uint8_t fuel_level_pct;
   uint16_t estimated_range_km;
+  uint16_t nearest_camera_m;
   DriveMode drive_mode;
   CompanionMood companion_mood;
   TransmissionGear gear;
@@ -144,6 +146,7 @@ inline DashboardTelemetry makeSimulatedTelemetry(uint32_t sequence,
   telemetry.weather_temp_c = kWeatherTempUnknown;
   telemetry.weather_code = kWeatherCodeUnknown;
   telemetry.wifi_connected = false;
+  telemetry.nearest_camera_m = kNearestCameraUnknown;
   refreshDerivedTelemetry(telemetry);
   return telemetry;
 }

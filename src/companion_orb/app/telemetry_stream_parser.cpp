@@ -150,6 +150,7 @@ void TelemetryStreamParser::applyStatusPayload(const uint8_t *payload_bytes) {
   latest_.battery_mv = payload.battery_mv;
   latest_.fuel_level_pct = payload.fuel_level_pct;
   latest_.estimated_range_km = payload.estimated_range_km;
+  latest_.nearest_camera_m = payload.nearest_camera_m;
 }
 
 }  // namespace orb

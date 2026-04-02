@@ -42,11 +42,12 @@ struct StatusTelemetryPayload {
   uint16_t battery_mv;
   uint8_t fuel_level_pct;
   uint16_t estimated_range_km;
+  uint16_t nearest_camera_m;
 } __attribute__((packed));
 
 static_assert(sizeof(FrameHeader) == 5, "Unexpected frame header size");
 static_assert(sizeof(FastTelemetryPayload) == 18, "Unexpected fast telemetry size");
-static_assert(sizeof(StatusTelemetryPayload) == 11, "Unexpected status telemetry size");
+static_assert(sizeof(StatusTelemetryPayload) == 13, "Unexpected status telemetry size");
 
 inline uint8_t computeChecksum(const uint8_t *data, size_t length) {
   uint8_t checksum = 0;
@@ -105,6 +106,7 @@ inline StatusTelemetryPayload makeStatusTelemetryPayload(const telemetry::Dashbo
   payload.battery_mv = telemetry.battery_mv;
   payload.fuel_level_pct = telemetry.fuel_level_pct;
   payload.estimated_range_km = telemetry.estimated_range_km;
+  payload.nearest_camera_m = telemetry.nearest_camera_m;
   return payload;
 }
 
