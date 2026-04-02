@@ -56,8 +56,8 @@ companion_orb (ESP-NOW RX)
 
 ### Location
 
-- Phase 1: hardcoded lat/lon in `wifi_config.h` (your home/city coordinates).
-- Phase 2 (future): companion phone or Wi‑Fi geolocation provides live coordinates (no dedicated GPS hardware required).
+- Phase 1: hardcoded lat/lon in `wifi_config.h` (your home/city coordinates). This is sufficient for the weather display; no GPS hardware is required.
+- Phase 2 (optional): companion phone or Wi‑Fi geolocation could provide live coordinates for improved accuracy, but it is not required.
 
 ### Fetch Cadence
 
