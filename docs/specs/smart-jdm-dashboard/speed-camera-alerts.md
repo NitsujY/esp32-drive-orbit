@@ -50,7 +50,7 @@ Fetch fixed speed camera locations from an open database and flash a visual warn
 
 - Fetch camera locations every 5 minutes (or when position changes significantly).
 - Phase 1: hardcoded lat/lon, fetch cameras around that point.
-- Phase 2: GPS module provides live position, fetch dynamically.
+- Phase 2: companion phone or Wi‑Fi geolocation provides live position (no dedicated GPS hardware required); fetch dynamically.
 - Cache the camera list — recalculate distances locally each loop cycle.
 
 ## Distance Calculation
@@ -71,7 +71,7 @@ uint16_t nearest_camera_m;    // distance to nearest camera in meters, 0xFFFF = 
 
 - Wi-Fi hotspot connection.
 - ArduinoJson.
-- GPS module (future) for live position. Phase 1 uses hardcoded coordinates.
+- Companion phone or Wi‑Fi geolocation (future) for live position. Phase 1 uses hardcoded coordinates.
 
 ## Legal Note
 

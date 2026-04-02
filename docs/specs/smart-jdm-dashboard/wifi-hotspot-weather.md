@@ -57,7 +57,7 @@ companion_orb (ESP-NOW RX)
 ### Location
 
 - Phase 1: hardcoded lat/lon in `wifi_config.h` (your home/city coordinates).
-- Phase 2 (future): GPS module provides live coordinates.
+- Phase 2 (future): companion phone or Wi‑Fi geolocation provides live coordinates (no dedicated GPS hardware required).
 
 ### Fetch Cadence
 
@@ -168,7 +168,7 @@ src/dash_35/app/
 
 ## Out Of Scope
 
-- GPS-based location (future spec)
+- Device-provided location (future spec) — e.g., companion phone or Wi‑Fi geolocation
 - Weather alerts/notifications
 - Multi-day forecast
 - Phone companion app

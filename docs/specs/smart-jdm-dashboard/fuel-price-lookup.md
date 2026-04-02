@@ -54,7 +54,7 @@ Fetch nearby gas station prices and display the cheapest option with distance on
 
 - Wi-Fi hotspot connection.
 - ArduinoJson.
-- GPS module (future) for accurate current location. Phase 1 uses hardcoded coordinates.
+- Companion phone or Wi‑Fi geolocation (future) for accurate current location. Phase 1 uses hardcoded coordinates.
 
 ## Out Of Scope
 
