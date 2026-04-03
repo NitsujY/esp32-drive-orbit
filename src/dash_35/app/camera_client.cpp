@@ -30,10 +30,18 @@ static uint32_t haversine_m(double lat1, double lon1, double lat2, double lon2) 
 void CameraClient::begin(Print &log) {
   log_ = &log;
   if (!LittleFS.begin()) {
-    if (log_) log_->println("[CAM] LittleFS mount failed");
+    if (log_) log_->println("[CAM] LittleFS mount failed, formatting cache volume");
+    if (!LittleFS.begin(true)) {
+      if (log_) log_->println("[CAM] LittleFS format+mount failed");
+      return;
+    }
+    if (log_) log_->println("[CAM] LittleFS recovered after format");
   } else {
     loadCache();
+    return;
   }
+
+  loadCache();
 }
 
 void CameraClient::poll(uint32_t now_ms, bool wifi_connected, telemetry::DashboardTelemetry &telemetry) {
@@ -102,7 +110,7 @@ void CameraClient::loadCache() {
   buf[size] = '\0';
   f.close();
 
-  DynamicJsonDocument doc(16 * 1024);
+  JsonDocument doc;
   const DeserializationError err = deserializeJson(doc, buf.get());
   if (err) {
     if (log_) {
@@ -128,10 +136,10 @@ void CameraClient::loadCache() {
 }
 
 void CameraClient::saveCache() {
-  DynamicJsonDocument doc(16 * 1024);
+  JsonDocument doc;
   JsonArray arr = doc.to<JsonArray>();
   for (const auto &c : cameras_) {
-    JsonObject obj = arr.createNestedObject();
+    JsonObject obj = arr.add<JsonObject>();
     obj["lat"] = c.lat;
     obj["lon"] = c.lon;
   }
@@ -177,7 +185,7 @@ bool CameraClient::fetchCameras() {
   const String payload = http.getString();
   http.end();
 
-  DynamicJsonDocument doc(32 * 1024);
+  JsonDocument doc;
   const DeserializationError err = deserializeJson(doc, payload);
   if (err) {
     if (log_) {
@@ -187,7 +195,7 @@ bool CameraClient::fetchCameras() {
     return false;
   }
 
-  if (!doc.containsKey("elements")) {
+  if (!doc["elements"].is<JsonArray>()) {
     if (log_) log_->println("[CAM] No elements in Overpass response");
     return false;
   }

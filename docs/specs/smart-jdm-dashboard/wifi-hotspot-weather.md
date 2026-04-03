@@ -57,7 +57,6 @@ companion_orb (ESP-NOW RX)
 ### Location
 
 - Phase 1: hardcoded lat/lon in `wifi_config.h` (your home/city coordinates). This is sufficient for the weather display; no GPS hardware is required.
-- Phase 2 (optional): companion phone or Wi‑Fi geolocation could provide live coordinates for improved accuracy, but it is not required.
 
 ### Fetch Cadence
 
@@ -168,7 +167,7 @@ src/dash_35/app/
 
 ## Out Of Scope
 
-- Device-provided location (future spec) — e.g., companion phone or Wi‑Fi geolocation
+- Dynamic location updates (no externally-provided GPS in scope)
 - Weather alerts/notifications
 - Multi-day forecast
 - Phone companion app

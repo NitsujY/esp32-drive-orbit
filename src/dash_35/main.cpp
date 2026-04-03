@@ -110,11 +110,14 @@ void loop() {
       app_state.last_speed_sample_ms = now;
       app::updateDashboardViewState(app_state.view_state, app_state.telemetry, previous_speed_kph);
       app_state.view_state.obd_connection_state = next_obd_state;
+      app_state.view_state.telemetry_data_mode = app::TelemetryDataMode::ObdLive;
       app_state.previous_speed_kph = app_state.telemetry.speed_kph;
     } else {
       app_state.view_state.obd_connection_state = mapObdConnectionState(elm327_client.connectionState());
       app::maintainIdleState(app_state, now);
       app_state.telemetry.longitudinal_accel_mg = 0;
+      app_state.view_state.obd_connection_state = mapObdConnectionState(elm327_client.connectionState());
+      app_state.view_state.telemetry_data_mode = app::TelemetryDataMode::Fallback;
     }
     weather_client.poll(now, wifi_manager.isConnected(), app_state.telemetry);
     camera_client.poll(now, wifi_manager.isConnected(), app_state.telemetry);

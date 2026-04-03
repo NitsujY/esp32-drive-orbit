@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drive Orbit — Features Preview</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+
+      <header class="page-header">
+        <a class="back-link" href="../">← Hub</a>
+        <div class="header-body">
+          <div class="eyebrow">Stage 3 · Features Preview</div>
+          <h1>Smart JDM Dashboard</h1>
+          <p class="subtitle">One shared scenario schema drives both displays. Click a scenario to preview multiple features on the same orb and dash screen.</p>
+        </div>
+        <div class="cycle-badge" id="cycle-badge">Auto-cycling</div>
+      </header>
+
+      <!-- ── Device mockups ──────────────────────────────────────── -->
+      <section class="displays" aria-label="Device previews">
+
+        <!-- Companion Orb -->
+        <div class="device-col orb-col">
+          <div class="device-caption">companion_orb · 240 × 240</div>
+          <div class="orb-shell" id="orb-shell">
+            <div class="orb-bg"></div>
+            <div class="orb-noise"></div>
+            <div class="orb-mood-ring" id="orb-mood-ring"></div>
+            <div class="orb-ring orb-ring-outer" id="orb-ring-outer"></div>
+            <div class="orb-ring orb-ring-inner" id="orb-ring-inner"></div>
+            <div class="orb-haze" id="orb-haze"></div>
+            <div class="orb-content">
+              <div class="orb-weather-line" id="orb-weather"></div>
+              <div class="orb-face" id="orb-face">◡‿◡</div>
+              <div class="orb-score" id="orb-score"></div>
+              <div class="orb-grade" id="orb-grade">smooth</div>
+              <div class="orb-advisory" id="orb-advisory"></div>
+            </div>
+          </div>
+          <div class="device-note" id="orb-note">normal driving</div>
+        </div>
+
+        <!-- Dash 35 Detail View -->
+        <div class="device-col dash-col">
+          <div class="device-caption">dash_35 · 480 × 320 · detail view</div>
+          <div class="dash-shell" id="dash-shell">
+
+            <!-- Top bar -->
+            <div class="dash-topbar">
+              <div class="dtb-left">
+                <span class="dtb-car">Toyota Sienta</span>
+              </div>
+              <div class="dtb-center">
+                <span class="dtb-cam" id="dtb-cam"></span>
+                <span class="dtb-alert" id="dtb-alert"></span>
+                <div class="dtb-icons" id="dtb-icons"></div>
+              </div>
+              <div class="dtb-right">
+                <span class="dtb-mode" id="dtb-mode">Cruise</span>
+                <span class="dtb-time" id="dtb-time">10:42</span>
+              </div>
+            </div>
+
+            <div class="main-drive-stage">
+              <div class="tach-stage-header">
+                <div>
+                  <div class="tach-label">Tach Ribbon</div>
+                  <div class="tach-note">large segmented rpm band</div>
+                </div>
+                <div class="rpm-readout">
+                  <span class="drive-label">RPM</span>
+                  <strong class="drive-value drive-value-rpm" id="drive-rpm">2,380</strong>
+                </div>
+              </div>
+
+              <div class="tach-ribbon hero" id="tach-ribbon" aria-label="Segmented RPM tachometer"></div>
+
+              <div class="speed-hero">
+                <div class="speed-hero-value" id="drive-speed">58</div>
+                <div class="speed-hero-unit">km/h</div>
+              </div>
+            </div>
+
+            <!-- Bottom strip -->
+            <div class="dash-bottom">
+              <div class="dbb-cell">
+                <span class="dbb-lbl">Gear</span>
+                <strong class="dbb-val" id="dbb-gear">D4</strong>
+              </div>
+              <div class="dbb-cell">
+                <span class="dbb-lbl">Range</span>
+                <strong class="dbb-val" id="dbb-range">280 km</strong>
+              </div>
+              <div class="dbb-cell fuel-cell">
+                <span class="dbb-lbl">Fuel</span>
+                <strong class="dbb-val" id="dbb-fuel">62%</strong>
+                <div class="fuel-bar">
+                  <div class="fuel-fill" id="fuel-fill" style="width: 62%"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="device-note" id="dash-note">detail view active</div>
+        </div>
+
+      </section>
+
+      <!-- ── Feature picker ─────────────────────────────────────── -->
+      <section class="picker" aria-label="Scenario list">
+        <h2 class="picker-title">Select a Scenario</h2>
+        <div class="feature-grid" id="feature-grid">
+          <!-- populated by JS -->
+        </div>
+      </section>
+
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

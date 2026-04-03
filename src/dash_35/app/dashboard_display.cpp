@@ -8,6 +8,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #include "cyber_theme.h"
@@ -135,6 +136,20 @@ void buildRollingStatusText(char *buffer,
                             size_t buffer_size,
                             const telemetry::DashboardTelemetry &telemetry,
                             const DashboardViewState &view_state) {
+  if (view_state.telemetry_data_mode == TelemetryDataMode::Fallback) {
+    switch (view_state.obd_connection_state) {
+      case ObdConnectionState::Live:
+        snprintf(buffer, buffer_size, "OBD STALE");
+        return;
+      case ObdConnectionState::Connecting:
+        snprintf(buffer, buffer_size, "OBD SCAN");
+        return;
+      case ObdConnectionState::Disconnected:
+        snprintf(buffer, buffer_size, "NO OBD DATA");
+        return;
+    }
+  }
+
   switch ((telemetry.uptime_ms / 2400U) % 4U) {
     case 0:
       snprintf(buffer, buffer_size, "COOLANT %dC", telemetry.coolant_temp_c);
@@ -425,6 +440,14 @@ void drawMetricTile(Arduino_GFX *target,
                          panel);
 }
 
+uint16_t quantizeTenths(float value) {
+  return static_cast<uint16_t>(constrain(lroundf(max(0.0f, value) * 10.0f), 0L, 65535L));
+}
+
+uint16_t quantizeHundredths(float value) {
+  return static_cast<uint16_t>(constrain(lroundf(max(0.0f, value) * 100.0f), 0L, 65535L));
+}
+
 void drawDashboardScene(const DashboardSnapshot &snapshot,
                         const telemetry::DashboardTelemetry &telemetry,
                         const DashboardViewState &view_state,
@@ -571,7 +594,11 @@ void drawDetailView(const DashboardSnapshot &snapshot,
 
   gfx->setTextColor(muted, bg);
   gfx->setCursor(22, 300);
-  gfx->print("BOOT toggles drive / trip detail");
+  if (view_state.telemetry_data_mode == TelemetryDataMode::Fallback) {
+    gfx->print("OBD data missing. Fallback drive model active.");
+  } else {
+    gfx->print("BOOT toggles drive / trip detail");
+  }
 }
 
 constexpr uint8_t kButtonBootPin = 0;
@@ -673,13 +700,56 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
                              displayed_rpm);
 
   if (detail_view_) {
-    drawDetailView(snapshot, telemetry, view_state);
+    const TripMetrics &trip = view_state.trip;
+    const bool trip_changed = !telemetry_cached_ ||
+                              last_trip_distance_tenths_ != quantizeTenths(trip.trip_distance_km) ||
+                              last_trip_avg_l100_tenths_ != quantizeTenths(trip.avg_l_per_100km) ||
+                              last_trip_instant_l100_tenths_ != quantizeTenths(trip.instant_l_per_100km) ||
+                              last_trip_gph_hundredths_ != quantizeHundredths(trip.instant_gph) ||
+                              last_trip_fuel_used_hundredths_ != quantizeHundredths(trip.fuel_used_l) ||
+                              last_trip_maf_tenths_ != quantizeTenths(trip.estimated_maf_gps) ||
+                              last_trip_event_counts_ !=
+                                  static_cast<uint16_t>((static_cast<uint16_t>(trip.harsh_acceleration_count) << 8) |
+                                                        trip.harsh_braking_count) ||
+                              last_trip_fuel_score_ != trip.fuel_saving_score ||
+                              last_trip_comfort_score_ != trip.comfort_score ||
+                              last_trip_flow_score_ != trip.flow_score ||
+                              last_trip_score_ != trip.trip_score ||
+                              strcmp(last_trip_message_, trip.coaching_message) != 0;
+    const bool detail_header_changed = !telemetry_cached_ ||
+                                       last_clock_key_ != clock_key ||
+                                       last_time_synced_ != time_synced ||
+                                       last_telemetry_data_mode_ != view_state.telemetry_data_mode ||
+                                       last_weather_temp_c_ != telemetry.weather_temp_c ||
+                                       last_weather_code_ != telemetry.weather_code ||
+                                       last_wifi_connected_ != telemetry.wifi_connected ||
+                                       last_mode_ != telemetry.drive_mode ||
+                                       last_obd_connection_state_ != view_state.obd_connection_state;
+
+    if (trip_changed || detail_header_changed || !last_detail_view_) {
+      drawDetailView(snapshot, telemetry, view_state);
+    }
     telemetry_cached_ = true;
     last_detail_view_ = true;
     last_speed_kph_ = telemetry.speed_kph;
     last_rpm_ = telemetry.rpm;
     last_fuel_level_pct_ = telemetry.fuel_level_pct;
     last_range_km_ = telemetry.estimated_range_km;
+    last_trip_distance_tenths_ = quantizeTenths(trip.trip_distance_km);
+    last_trip_avg_l100_tenths_ = quantizeTenths(trip.avg_l_per_100km);
+    last_trip_instant_l100_tenths_ = quantizeTenths(trip.instant_l_per_100km);
+    last_trip_gph_hundredths_ = quantizeHundredths(trip.instant_gph);
+    last_trip_fuel_used_hundredths_ = quantizeHundredths(trip.fuel_used_l);
+    last_trip_maf_tenths_ = quantizeTenths(trip.estimated_maf_gps);
+    last_trip_event_counts_ =
+        static_cast<uint16_t>((static_cast<uint16_t>(trip.harsh_acceleration_count) << 8) |
+                              trip.harsh_braking_count);
+    last_trip_fuel_score_ = trip.fuel_saving_score;
+    last_trip_comfort_score_ = trip.comfort_score;
+    last_trip_flow_score_ = trip.flow_score;
+    last_trip_score_ = trip.trip_score;
+    snprintf(last_trip_message_, sizeof(last_trip_message_), "%s", trip.coaching_message);
+    last_telemetry_data_mode_ = view_state.telemetry_data_mode;
     last_gear_ = telemetry.gear;
     last_obd_connection_state_ = view_state.obd_connection_state;
     last_mode_ = telemetry.drive_mode;
@@ -719,6 +789,8 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
                                last_weather_temp_c_ != telemetry.weather_temp_c ||
                                last_weather_code_ != telemetry.weather_code ||
                                last_wifi_connected_ != telemetry.wifi_connected;
+  const bool data_mode_changed = !telemetry_cached_ ||
+                                 last_telemetry_data_mode_ != view_state.telemetry_data_mode;
   const bool camera_changed = !telemetry_cached_ ||
                               last_nearest_camera_m_ != telemetry.nearest_camera_m;
   const bool reminder_changed = !telemetry_cached_ || last_reminder_visible_ != reminder_visible;
@@ -726,6 +798,7 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
 
   if (scene_changed || time_changed || weather_changed || camera_changed || speed_changed ||
       rpm_changed || arc_animating || reminder_changed || gear_changed || range_changed ||
+      data_mode_changed ||
       fuel_changed || mode_changed) {
     drawDashboardScene(snapshot, telemetry, view_state, reminder_visible);
     scene_drawn_ = true;
@@ -745,6 +818,7 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
   last_clock_key_ = clock_key;
   last_time_synced_ = time_synced;
   last_reminder_visible_ = reminder_visible;
+  last_telemetry_data_mode_ = view_state.telemetry_data_mode;
   last_weather_temp_c_ = telemetry.weather_temp_c;
   last_weather_code_ = telemetry.weather_code;
   last_wifi_connected_ = telemetry.wifi_connected;

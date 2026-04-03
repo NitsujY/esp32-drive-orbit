@@ -27,16 +27,21 @@
         <div class="ambient-grid"></div>
         <div class="welcome-banner" id="welcome-banner">Ignition sync complete</div>
         <section class="status-rail" aria-label="Dashboard status">
-          <div class="status-block">
-            <span class="status-kicker">Session</span>
+          <div class="status-block status-block-screen">
+            <span class="status-kicker">Screen</span>
             <strong class="status-value" id="screen-label">Boot</strong>
+          </div>
+          <div class="status-chip-row" aria-label="Status chips">
+            <div class="status-chip" id="connection-chip">SCAN</div>
+            <div class="status-chip" id="mode-chip">CRUISE</div>
+            <div class="status-chip" id="weather-chip">WX --</div>
+            <div class="status-chip" id="fill-chip">FILL OK</div>
           </div>
           <div class="status-block status-block-clock">
             <span class="status-kicker">Local Time</span>
             <strong class="clock-time" id="time">00:00</strong>
             <span class="clock-date" id="date">Tue 01 Apr</span>
           </div>
-          <div class="status-pill" id="mode-pill">Cruise</div>
         </section>
 
         <section class="cluster-panel">
@@ -54,22 +59,14 @@
           <div class="tach-ribbon" id="tach-ribbon" aria-label="Segmented RPM tachometer"></div>
 
           <div class="speed-stage">
-            <div class="speed-halo"></div>
-            <div class="speed-orbit speed-orbit-outer"></div>
-            <div class="speed-orbit speed-orbit-inner"></div>
             <div class="speed-center">
               <div class="hero-speed" id="speed">0</div>
               <div class="hero-unit">km/h</div>
             </div>
-            <div class="speed-gloss"></div>
           </div>
         </section>
 
         <section class="bottom-strip">
-          <article class="mini-card accent icon-card">
-            <span class="mini-label">Mode</span>
-            <strong id="mode-text">Cruise</strong>
-          </article>
           <article class="mini-card icon-card">
             <span class="mini-label">Gear</span>
             <strong class="gear-token" id="gear">D1</strong>

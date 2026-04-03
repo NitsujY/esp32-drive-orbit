@@ -67,3 +67,75 @@ The active Sienta profile currently uses:
 3. Speed-adjusted factor for range estimate
 
 The formula is implemented in the vehicle profile layer rather than the ELM327 transport layer so it can be tuned per car later.
+
+## Battery Level Guessing Algorithm
+
+Yes. A practical dashboard-side battery estimation algorithm is possible, but it should be treated as a **heuristic State of Charge (SoC)** estimate rather than a true battery-management reading.
+
+### Recommended Approach
+
+1. Use **resting voltage** as the primary SoC signal.
+2. Use **charging voltage** only to detect alternator health, not battery percentage.
+3. Smooth readings over time and publish both an SoC estimate and a confidence level.
+
+### Step 1: Capture the Best Voltage Sample
+
+Preferred sample windows:
+
+1. Engine off, 30 to 60 seconds after shutdown.
+2. Immediately before the engine settles into charging voltage.
+3. Long idle with alternator load known to be low, but with lower confidence.
+
+### Step 2: Convert Resting Voltage to SoC
+
+Use a lookup table with linear interpolation:
+
+| Resting Voltage | Estimated SoC |
+| --------------- | ------------- |
+| >= 12.73V | 100% |
+| 12.62V | 90% |
+| 12.50V | 80% |
+| 12.37V | 70% |
+| 12.24V | 60% |
+| 12.10V | 50% |
+| 11.96V | 40% |
+| 11.81V | 30% |
+| 11.66V | 20% |
+| 11.51V | 10% |
+| <= 11.36V | 0% |
+
+### Step 3: Charging-State Logic
+
+When engine RPM is above idle and measured voltage is between about 13.4V and 14.8V:
+
+1. Freeze the last known SoC estimate.
+2. Report charging health instead:
+  `LOW CHARGE`, `NORMAL CHARGE`, or `OVERVOLT`.
+
+Suggested thresholds:
+
+1. `< 13.4V`: charging weak
+2. `13.4V - 14.8V`: charging normal
+3. `> 15.0V`: over-voltage warning
+
+### Step 4: Confidence Model
+
+Use a simple confidence score:
+
+1. `HIGH`: engine off resting sample
+2. `MEDIUM`: just-before-charge sample
+3. `LOW`: estimate held during active charging
+
+### Step 5: UI Recommendation
+
+In the main driving cluster:
+
+1. Do not show percentage continuously.
+2. Only surface battery information in rolling status or health/detail view.
+
+Suggested outputs:
+
+1. `BATTERY 78%`
+2. `BATTERY LOW`
+3. `CHARGING 13.8V`
+4. `CHARGING FAULT`

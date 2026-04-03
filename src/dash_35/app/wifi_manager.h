@@ -14,6 +14,9 @@ class WifiManager {
   String localIp() const;
 
  private:
+  void startConnection(uint32_t now_ms, const char *reason);
+  void logScanDiagnostics();
+
   Print *log_ = nullptr;
   bool connected_ = false;
   bool attempted_ = false;

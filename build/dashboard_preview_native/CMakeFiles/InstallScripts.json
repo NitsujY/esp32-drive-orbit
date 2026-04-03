@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/justinyu/Develop/esp32-drive-orbit/build/dashboard_preview_native/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

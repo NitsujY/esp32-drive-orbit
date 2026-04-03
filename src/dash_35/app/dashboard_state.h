@@ -21,6 +21,11 @@ enum class ObdConnectionState : uint8_t {
   Live = 2,
 };
 
+enum class TelemetryDataMode : uint8_t {
+  Fallback = 0,
+  ObdLive = 1,
+};
+
 struct TripMetrics {
   float trip_distance_km;
   float fuel_used_l;
@@ -43,6 +48,7 @@ struct DashboardViewState {
   bool welcome_visible;
   bool health_attention;
   ObdConnectionState obd_connection_state;
+  TelemetryDataMode telemetry_data_mode;
   TripMetrics trip;
 };
 

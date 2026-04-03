@@ -136,7 +136,6 @@ h1 {
 }
 
 .welcome-banner,
-.status-pill,
 .status-rail {
   position: absolute;
   z-index: 2;
@@ -162,14 +161,14 @@ h1 {
   left: 24px;
   right: 24px;
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: start;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
   gap: 14px;
 }
 
 .status-block,
-.status-pill {
-  min-height: 60px;
+.status-chip {
+  min-height: 56px;
   border-radius: 18px;
   border: 1px solid var(--line);
   background: rgba(5, 10, 20, 0.52);
@@ -183,9 +182,29 @@ h1 {
   padding: 12px 16px;
 }
 
+.status-block-screen {
+  min-width: 108px;
+}
+
+.status-chip-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.status-chip {
+  display: grid;
+  place-items: center;
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
 .status-block-clock {
   justify-items: end;
-  min-width: 168px;
+  min-width: 164px;
 }
 
 .status-kicker,
@@ -206,18 +225,6 @@ h1 {
 
 .clock-date {
   text-align: right;
-}
-
-.status-pill {
-  align-self: stretch;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 18px;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent-strong);
 }
 
 .device-frame::before {
@@ -253,8 +260,8 @@ h1 {
   grid-template-rows: auto auto 1fr;
   height: 100%;
   align-content: start;
-  gap: 18px;
-  padding-top: 96px;
+  gap: 16px;
+  padding-top: 92px;
 }
 
 .cluster-header {
@@ -296,8 +303,8 @@ h1 {
   grid-template-columns: repeat(20, minmax(0, 1fr));
   align-items: end;
   gap: 8px;
-  padding: 18px 20px;
-  min-height: 86px;
+  padding: 20px 22px;
+  min-height: 108px;
   border-radius: 22px;
   border: 1px solid var(--line);
   background:
@@ -327,7 +334,7 @@ h1 {
 .tach-segment.active {
   background: linear-gradient(180deg, var(--accent-strong), var(--accent-2));
   border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-5px);
+  transform: translateY(-6px);
   box-shadow:
     0 0 18px var(--glow),
     0 0 28px rgba(113, 207, 255, 0.18);
@@ -342,51 +349,15 @@ h1 {
 
 .speed-stage {
   position: relative;
-  min-height: 290px;
+  min-height: 360px;
   display: grid;
   place-items: center;
   border-radius: 28px;
   border: 1px solid var(--line);
   background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.03), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 36%),
     rgba(5, 10, 20, 0.36);
   overflow: hidden;
-}
-
-.speed-halo,
-.speed-orbit,
-.speed-gloss {
-  position: absolute;
-  border-radius: 50%;
-}
-
-.speed-halo {
-  width: 360px;
-  height: 360px;
-  background: radial-gradient(circle, var(--glow), transparent 62%);
-  filter: blur(6px);
-  animation: pulseHalo 4.8s ease-in-out infinite;
-}
-
-.speed-orbit-outer {
-  width: 360px;
-  height: 360px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  animation: spin 20s linear infinite;
-}
-
-.speed-orbit-inner {
-  width: 272px;
-  height: 272px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  animation: spin 14s linear infinite reverse;
-}
-
-.speed-gloss {
-  inset: 18% 32%;
-  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.1), transparent 65%);
-  filter: blur(18px);
-  opacity: 0.7;
 }
 
 .speed-center {
@@ -394,23 +365,23 @@ h1 {
   display: grid;
   place-items: center;
   text-align: center;
-  gap: 4px;
+  align-content: center;
+  gap: 10px;
+  padding: 14px 0 18px;
   z-index: 2;
 }
 
 .hero-speed {
-  font-size: clamp(96px, 12vw, 160px);
-  line-height: 0.84;
+  font-size: clamp(98px, 12vw, 156px);
+  line-height: 0.78;
   font-weight: 700;
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.04em;
-  text-shadow:
-    0 0 24px var(--glow),
-    0 0 36px rgba(113, 207, 255, 0.16);
+  text-shadow: 0 0 18px rgba(113, 207, 255, 0.12);
 }
 
 .hero-unit {
-  font-size: clamp(20px, 2.4vw, 32px);
+  font-size: clamp(18px, 2.1vw, 28px);
   color: var(--accent-strong);
   line-height: 1;
 }
@@ -418,7 +389,7 @@ h1 {
 /* Bottom strip — glassy pill bar */
 .bottom-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
   gap: 12px;
   padding: 0;
@@ -500,26 +471,26 @@ h1 {
 
 .fuel-card { /* no special styling */ }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
+@media (max-width: 920px) {
+  .status-rail {
+    grid-template-columns: 1fr;
   }
 
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulseHalo {
-  0%,
-  100% {
-    transform: scale(0.96);
-    opacity: 0.72;
+  .status-block-screen,
+  .status-block-clock {
+    min-width: 0;
   }
 
-  50% {
-    transform: scale(1.02);
-    opacity: 1;
+  .status-block-clock {
+    justify-items: start;
+  }
+
+  .clock-date {
+    text-align: left;
+  }
+
+  .status-chip-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

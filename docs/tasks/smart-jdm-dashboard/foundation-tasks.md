@@ -66,3 +66,15 @@
 
 - [ ] Add Wi-Fi/mobile hotspot support on the Master
 - [ ] Add full embedded UI framework decision for post-smoke-test rendering
+
+## Stage 7: Toyota PID Discovery And Reminder Logic
+
+- [ ] Add a documented Toyota probing matrix for headers `7C0`, `750`, and `7E0` across Mode `21` and `22`
+- [ ] Capture differential probe logs for headlights OFF vs headlights ON using `python -m obd2_probe toyota-scan`
+- [ ] Narrow candidate PIDs whose response bytes change only with the headlight switch state
+- [ ] Validate the winning headlight PID in repeated ignition cycles and day/night conditions
+- [ ] Map the confirmed signal into `DashboardTelemetry.headlights_on` in the ELM327 client
+- [ ] Implement a sunset fallback when Wi-Fi time is known but the Toyota headlight PID is still unavailable
+- [ ] Add a top-center reminder flow for `LIGHTS OFF AFTER SUNSET`
+- [ ] Escalate ignored reminders into the full-width top alert banner
+- [ ] Reserve the lower-left rail for drivetrain-only context and keep reminders out of that block

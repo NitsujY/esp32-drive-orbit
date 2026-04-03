@@ -54,10 +54,42 @@ Fetch nearby gas station prices and display the cheapest option with distance on
 
 - Wi-Fi hotspot connection.
 - ArduinoJson.
-- Companion phone or Wi‑Fi geolocation (future) for accurate current location. Phase 1 uses hardcoded coordinates.
+- Location hardcoded in `wifi_config.h`; no GPS hardware required.
+
+## Good Day to Fill
+
+Track a rolling price history to give the driver a simple fill/skip signal.
+
+### Price History Storage
+
+- Store up to 14 daily price samples in NVS under namespace `fuel_hist`.
+- Each sample is a `uint16_t` (price in tenths of a currency unit, e.g. 1580 = ¥158.0/L).
+- One sample recorded per successful fetch (at most once per 30 minutes, so one per refuel opportunity).
+
+### Judgment Logic
+
+| Condition | Display | Color |
+|-----------|---------|-------|
+| Price ≤ 7-day avg − threshold | `GOOD DAY ↓` | Green |
+| Price within ±threshold of avg | `NORMAL` | White |
+| Price ≥ 7-day avg + threshold | `HIGH TODAY ↑` | Amber |
+| Fewer than 3 samples collected | `CHECKING...` | Gray |
+
+- Default threshold: `3` (configurable as `FUEL_PRICE_GOOD_THRESHOLD` in `wifi_config.h`).
+- Displayed beneath the cheapest station row in detail view.
+
+```
+| Cheapest Fuel | ¥158/L  ENEOS 1.2km |
+| Price Trend   | GOOD DAY ↓          |
+```
+
+### NVS Usage
+
+- Write one new sample after each successful fetch if price has changed.
+- Cap history at 14 entries (circular buffer, oldest overwritten).
+- Shared namespace with `app::storage` Preferences instance.
 
 ## Out Of Scope
 
 - Navigation to the station
 - Price comparison UI with multiple stations
-- Fuel price history/trends

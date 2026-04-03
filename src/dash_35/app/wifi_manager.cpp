@@ -13,6 +13,7 @@ namespace {
 constexpr uint32_t kRetryIntervalMs = 60000;
 constexpr uint32_t kConnectTimeoutMs = 10000;
 constexpr uint32_t kLogIntervalMs = 30000;
+constexpr int kScanResultLogLimit = 5;
 
 const char *wifiStatusLabel(wl_status_t status) {
   switch (status) {
@@ -42,23 +43,12 @@ const char *wifiStatusLabel(wl_status_t status) {
 void WifiManager::begin(Print &log) {
   log_ = &log;
 
-  // ESP-NOW requires STA mode, which is already set by espnow::beginTransport().
-  // We just need to start the connection — WiFi.begin() in STA mode is additive.
-  log_->print("[WIFI] Connecting to ");
-  log_->println(WIFI_SSID);
-
-  WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
   // Configure NTP timezone.
   configTime(0, 0, "pool.ntp.org");
   setenv("TZ", TIMEZONE_POSIX, 1);
   tzset();
 
-  attempted_ = true;
-  last_attempt_ms_ = millis();
-  last_status_ = WiFi.status();
-  connect_timeout_logged_ = false;
+  startConnection(millis(), "Connecting to");
   ntp_synced_ = false;
 }
 
@@ -70,12 +60,23 @@ void WifiManager::poll(uint32_t now_ms) {
   if (status != last_status_) {
     log_->print("[WIFI] Status -> ");
     log_->println(wifiStatusLabel(status));
+
+    if (status == WL_NO_SSID_AVAIL) {
+      log_->println("[WIFI] Configured SSID not found. ESP32 hotspots must be exposed on 2.4 GHz.");
+    } else if (status == WL_CONNECT_FAILED) {
+      log_->println("[WIFI] Association failed. Recheck hotspot password and security mode.");
+    }
+
     last_status_ = status;
   }
 
   if (connected_ && !was_connected) {
     log_->print("[WIFI] Connected. IP: ");
-    log_->println(WiFi.localIP());
+    log_->print(WiFi.localIP());
+    log_->print(" RSSI=");
+    log_->print(WiFi.RSSI());
+    log_->print(" CH=");
+    log_->println(WiFi.channel());
   }
 
   if (!connected_ && was_connected) {
@@ -87,18 +88,15 @@ void WifiManager::poll(uint32_t now_ms) {
       (now_ms - last_attempt_ms_ >= kConnectTimeoutMs)) {
     log_->print("[WIFI] Connect timeout. Status=");
     log_->println(wifiStatusLabel(status));
+    logScanDiagnostics();
     connect_timeout_logged_ = true;
   }
 
   // Retry connection periodically.
   if (!connected_ && (now_ms - last_attempt_ms_ >= kRetryIntervalMs)) {
-    log_->print("[WIFI] Retrying connection to ");
-    log_->print(WIFI_SSID);
-    log_->print(". Last status=");
+    log_->print("[WIFI] Last status before retry: ");
     log_->println(wifiStatusLabel(status));
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    last_attempt_ms_ = now_ms;
-    connect_timeout_logged_ = false;
+    startConnection(now_ms, "Retrying connection to");
   }
 
   if (connected_) {
@@ -137,6 +135,76 @@ bool WifiManager::isConnected() const {
 
 String WifiManager::localIp() const {
   return WiFi.localIP().toString();
+}
+
+void WifiManager::startConnection(uint32_t now_ms, const char *reason) {
+  WiFi.mode(WIFI_STA);
+  WiFi.persistent(false);
+  WiFi.setAutoReconnect(true);
+  WiFi.setSleep(true);
+  WiFi.disconnect(false, false);
+  delay(50);
+
+  if (log_ != nullptr) {
+    log_->print("[WIFI] ");
+    log_->print(reason);
+    log_->println(WIFI_SSID);
+    logScanDiagnostics();
+  }
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  attempted_ = true;
+  connected_ = false;
+  last_attempt_ms_ = now_ms;
+  last_status_ = WiFi.status();
+  connect_timeout_logged_ = false;
+}
+
+void WifiManager::logScanDiagnostics() {
+  if (log_ == nullptr) {
+    return;
+  }
+
+  log_->println("[WIFI] Scanning visible networks...");
+  const int network_count = WiFi.scanNetworks();
+  if (network_count < 0) {
+    log_->println("[WIFI] Scan failed");
+    return;
+  }
+
+  int found_channel = 0;
+  int32_t found_rssi = -127;
+  bool found_ssid = false;
+
+  for (int index = 0; index < network_count; ++index) {
+    if (WiFi.SSID(index) == WIFI_SSID) {
+      found_ssid = true;
+      if (WiFi.RSSI(index) >= found_rssi) {
+        found_rssi = WiFi.RSSI(index);
+        found_channel = WiFi.channel(index);
+      }
+    }
+  }
+
+  if (found_ssid) {
+    log_->print("[WIFI] Target SSID visible. RSSI=");
+    log_->print(found_rssi);
+    log_->print(" channel=");
+    log_->println(found_channel);
+  } else {
+    log_->println("[WIFI] Target SSID not visible. If this is a phone hotspot, force 2.4 GHz mode.");
+    const int log_count = min(network_count, kScanResultLogLimit);
+    for (int index = 0; index < log_count; ++index) {
+      log_->print("[WIFI]   saw ");
+      log_->print(WiFi.SSID(index));
+      log_->print(" RSSI=");
+      log_->print(WiFi.RSSI(index));
+      log_->print(" channel=");
+      log_->println(WiFi.channel(index));
+    }
+  }
+
+  WiFi.scanDelete();
 }
 
 }  // namespace app

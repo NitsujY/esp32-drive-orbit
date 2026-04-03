@@ -9,9 +9,11 @@ const maxDisplayedRpm = 5200;
 
 const elements = {
   welcomeBanner: document.getElementById("welcome-banner"),
-  modePill: document.getElementById("mode-pill"),
-  modeText: document.getElementById("mode-text"),
   screenLabel: document.getElementById("screen-label"),
+  connectionChip: document.getElementById("connection-chip"),
+  modeChip: document.getElementById("mode-chip"),
+  weatherChip: document.getElementById("weather-chip"),
+  fillChip: document.getElementById("fill-chip"),
   rpmValue: document.getElementById("rpm-value"),
   speed: document.getElementById("speed"),
   gear: document.getElementById("gear"),
@@ -34,13 +36,51 @@ const dateFormatter = new Intl.DateTimeFormat([], {
   month: "short",
 });
 
+function resolveConnectionLabel(telemetry) {
+  if (telemetry.screen === "boot" || telemetry.screen === "welcome") {
+    return "IGNITION";
+  }
+
+  return telemetry.obdConnected ? "LIVE" : "OBD OFF";
+}
+
+function resolveModeLabel(telemetry) {
+  return telemetry.driveMode === "sport" ? "SPORT" : "CRUISE";
+}
+
+function resolveScreenLabel(telemetry) {
+  switch (telemetry.screen) {
+    case "boot":
+      return "Boot";
+    case "welcome":
+      return "Welcome";
+    case "dashboard":
+      return "Drive";
+    case "health":
+      return "Health";
+    case "sport":
+      return "Sport";
+    default:
+      return "Drive";
+  }
+}
+
+function resolveWeatherLabel(telemetry) {
+  const weatherTempC = 24 + Math.round(Math.sin(telemetry.sequence / 28) * 2);
+  return `${weatherTempC}C`;
+}
+
+function resolveFillLabel(telemetry) {
+  return telemetry.fuelPct < 15 ? "FILL SOON" : "FILL OK";
+}
+
 function createTachSegments() {
   const fragment = document.createDocumentFragment();
 
   for (let index = 0; index < tachSegmentCount; index += 1) {
     const segment = document.createElement("span");
     segment.className = "tach-segment";
-    segment.style.setProperty("--segment-height", `${24 + index * 2.1}px`);
+    segment.style.setProperty("--segment-height", `${28 + index * 2.4}px`);
 
     if (index >= tachShiftZoneStart) {
       segment.classList.add("shift-zone");
@@ -107,9 +147,11 @@ function updatePreview(telemetry) {
   elements.rangeFill.style.width = `${Math.round((telemetry.rangeKm / maxRangeKm) * 100)}%`;
   elements.fuel.textContent = `${telemetry.fuelPct}%`;
   elements.fuelFill.style.width = `${telemetry.fuelPct}%`;
-  elements.screenLabel.textContent = telemetry.screen;
-  elements.modePill.textContent = telemetry.driveMode === "sport" ? "Sport" : "Cruise";
-  elements.modeText.textContent = telemetry.driveMode === "sport" ? "Sport" : "Cruise";
+  elements.screenLabel.textContent = resolveScreenLabel(telemetry);
+  elements.connectionChip.textContent = resolveConnectionLabel(telemetry);
+  elements.modeChip.textContent = resolveModeLabel(telemetry);
+  elements.weatherChip.textContent = resolveWeatherLabel(telemetry);
+  elements.fillChip.textContent = resolveFillLabel(telemetry);
 
   frame.classList.toggle("sport", telemetry.driveMode === "sport");
   elements.welcomeBanner.classList.toggle(

@@ -247,13 +247,11 @@ bool discoverBleCharacteristics(Stream *log_output) {
 }
 
 bool connectBleTarget(const char *target_name, Stream *log_output) {
-  if (!ble_ready) {
-    BLEDevice::init(kBluetoothClientName);
-    ble_scan = BLEDevice::getScan();
-    ble_scan->setActiveScan(true);
-    ble_scan->setInterval(120);
-    ble_scan->setWindow(80);
-    ble_ready = true;
+  if (!ble_ready || ble_scan == nullptr) {
+    if (log_output != nullptr) {
+      log_output->println("[ELM327] BLE stack not initialized.");
+    }
+    return false;
   }
 
   resetBleTransport();
@@ -371,6 +369,12 @@ void Elm327Client::begin(Stream &log_output) {
   }
 
   started_ = true;
+  BLEDevice::init(kBluetoothClientName);
+  ble_scan = BLEDevice::getScan();
+  ble_scan->setActiveScan(true);
+  ble_scan->setInterval(120);
+  ble_scan->setWindow(80);
+  ble_ready = true;
   if (log_output_) {
     log_output_->println("[ELM327] BLE client ready.");
     log_output_->print("[ELM327] Vehicle profile: ");
@@ -555,7 +559,7 @@ void Elm327Client::updateConnection(uint32_t now_ms) {
   connect_task_done = false;
   connect_task_result = false;
   connect_task_running_ = true;
-  xTaskCreatePinnedToCore(connectTaskFunc, "ble_conn", 4096, &connect_task_params, 1, nullptr, 0);
+  xTaskCreatePinnedToCore(connectTaskFunc, "ble_conn", 6144, &connect_task_params, 1, nullptr, 1);
 }
 
 void Elm327Client::updateInitialization(uint32_t now_ms) {

@@ -86,6 +86,12 @@ AppState makeInitialState() {
 }
 
 void advanceSimulation(AppState &state, uint32_t now_ms) {
+  const int8_t weather_temp_c = state.telemetry.weather_temp_c;
+  const uint8_t weather_code = state.telemetry.weather_code;
+  const bool wifi_connected = state.telemetry.wifi_connected;
+  const uint16_t nearest_camera_m = state.telemetry.nearest_camera_m;
+  const bool headlights_on = state.telemetry.headlights_on;
+
   state.previous_speed_kph = state.telemetry.speed_kph;
   updateMotionState(state);
   updateHealthState(state, now_ms);
@@ -107,6 +113,11 @@ void advanceSimulation(AppState &state, uint32_t now_ms) {
       state.telemetry.sequence + 1, now_ms, state.telemetry.rpm, state.telemetry.speed_kph,
       state.telemetry.coolant_temp_c, state.telemetry.battery_mv, state.telemetry.fuel_level_pct);
   state.telemetry.longitudinal_accel_mg = longitudinal_accel_mg;
+  state.telemetry.weather_temp_c = weather_temp_c;
+  state.telemetry.weather_code = weather_code;
+  state.telemetry.wifi_connected = wifi_connected;
+  state.telemetry.nearest_camera_m = nearest_camera_m;
+  state.telemetry.headlights_on = headlights_on;
   vehicle_profiles::refreshTelemetry(state.telemetry);
   updateDashboardViewState(state.view_state, state.telemetry, state.previous_speed_kph);
 }

@@ -126,6 +126,21 @@ Why it exists:
 - Keeps `dash_35` delivery moving without blocking on secondary-board integration
 - Preserves the transport work already completed while moving it to the end of the delivery path
 
+### Stage 7: Toyota Custom PID Discovery And Driver Reminders
+
+Outputs:
+
+- Captured Toyota custom PID evidence for header and mode combinations relevant to lighting and body-state signals
+- Confirmed headlight-state source for `headlights_on` or a documented sunset-based fallback policy
+- Reminder-zone behavior defined for high-priority driver prompts such as `LIGHTS OFF AFTER SUNSET`
+- Firmware task list ready for implementing probe findings in the ELM327 client and dashboard reminder logic
+
+Why it exists:
+
+- Vehicle-specific reverse engineering should stay isolated from display-polish work
+- Reminder behavior depends on both signal confidence and screen placement, so it needs an explicit stage instead of being folded into random UI edits
+- The same workflow can later be reused for doors, seatbelt, and other Toyota body-state signals
+
 ## Gate Policy
 
 Stage 5 started after explicit user approval on 2026-03-25.

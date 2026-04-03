@@ -124,6 +124,7 @@ DashboardViewState makeInitialDashboardViewState() {
   state.welcome_visible = true;
   state.health_attention = false;
   state.obd_connection_state = ObdConnectionState::Disconnected;
+  state.telemetry_data_mode = TelemetryDataMode::Fallback;
   resetTripMetrics(state, "System booting. Preparing welcome sequence.");
   return state;
 }

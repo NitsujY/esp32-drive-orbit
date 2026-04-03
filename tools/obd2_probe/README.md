@@ -44,6 +44,15 @@ python -m obd2_probe test --name V-LINK \
   --include-toyota-fuel
 ```
 
+Scan Toyota custom Mode 21 or 22 PID ranges:
+
+```bash
+python -m obd2_probe toyota-scan --name V-LINK \
+  --tx-uuid 00002af1-0000-1000-8000-00805f9b34fb \
+  --rx-uuid 00002af0-0000-1000-8000-00805f9b34fb \
+  --header 7C0 --mode 21 --pid-start 0x00 --pid-end 0xFF
+```
+
 Inside the REPL:
 
 - Type ELM commands like `ATI`, `ATZ`, `ATE0`, `ATSP6`, `0100`, `010C`, `010D`, `2129`
@@ -79,6 +88,13 @@ The `test` command will:
 - run init plus `ATI`, `ATDP`, `0100`, `010C`, and `010D`
 - optionally run the Toyota `2129` fuel sequence
 - exit non-zero if the expected replies are not seen
+
+The `toyota-scan` command will:
+
+- initialize the adapter and set the requested protocol and CAN header
+- sweep a Toyota diagnostic mode across a PID range
+- print only the PIDs that return payloads instead of silence or `NO DATA`
+- give you a quick way to compare the car in two states, such as headlights OFF vs ON
 
 ## Fuel Checks For Toyota Sienta
 
@@ -127,6 +143,36 @@ ATDP
 ```
 
 That gives you the protocol confirmation plus the same raw fuel-related checks documented in your earlier DIY probe flow.
+
+## Toyota Custom PID Discovery Workflow
+
+For body-state signals like headlights, doors, or HVAC toggles, use a differential scan instead of guessing one PID at a time.
+
+Recommended workflow:
+
+1. Keep the car in one stable state, such as ignition ON and headlights OFF.
+2. Run `toyota-scan` over one header and one mode, for example header `7C0` with Mode `21`.
+3. Save the responding PID list and payload bytes.
+4. Change exactly one car state, such as turning the headlights ON.
+5. Repeat the exact same scan.
+6. Diff the two outputs and focus on PIDs whose payload bytes changed only with that one switch action.
+7. Repeat on headers `750` and `7E0`, then repeat with Mode `22` if Mode `21` does not expose the signal.
+
+Suggested scan matrix for Toyota Sienta:
+
+```bash
+python -m obd2_probe toyota-scan --address "$OBD2_BLE_ID" --tx-uuid "$OBD2_TX_UUID" --rx-uuid "$OBD2_RX_UUID" --header 7C0 --mode 21 --pid-start 0x00 --pid-end 0xFF
+python -m obd2_probe toyota-scan --address "$OBD2_BLE_ID" --tx-uuid "$OBD2_TX_UUID" --rx-uuid "$OBD2_RX_UUID" --header 750 --mode 21 --pid-start 0x00 --pid-end 0xFF
+python -m obd2_probe toyota-scan --address "$OBD2_BLE_ID" --tx-uuid "$OBD2_TX_UUID" --rx-uuid "$OBD2_RX_UUID" --header 7E0 --mode 21 --pid-start 0x00 --pid-end 0xFF
+python -m obd2_probe toyota-scan --address "$OBD2_BLE_ID" --tx-uuid "$OBD2_TX_UUID" --rx-uuid "$OBD2_RX_UUID" --header 7C0 --mode 22 --pid-start 0x0000 --pid-end 0x00FF
+```
+
+Practical advice:
+
+- Change only one physical switch per scan pass.
+- Do at least two OFF/ON/OFF cycles before trusting a candidate PID.
+- Prefer stable bytes over counters or timestamps.
+- Once a candidate looks promising, confirm it in the REPL with repeated manual reads before wiring it into firmware.
 
 ## Defaults
 
