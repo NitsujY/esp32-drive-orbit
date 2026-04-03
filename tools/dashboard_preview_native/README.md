@@ -23,13 +23,18 @@ This executable is the macOS native preview. It is separate from the browser pre
 
 ## Controls
 
+- `D` toggles the trip-detail screen
 - `N` toggles the night palette
+- `L` toggles the reminder-zone demo
 - `Space` pauses or resumes the simulation
 - `R` resets the simulation
 
 ## Current Preview
 
-The native preview currently renders a screenshot-inspired sport cluster reference with a weather/UV/temperature top row, a central speed frame with right-aligned unit text, a relocated gear badge, and a tach ribbon.
+The native preview currently renders two local review states:
+
+- the screenshot-inspired sport drive cluster with a compact weather block at top-left, a rolling status line in the top center, a dedicated reminder capsule below it, a central speed frame with right-aligned unit text, a tach ribbon, a lower-left drivetrain status block, and a merged bottom-right energy field
+- a trip-detail screen with fuel-saving, comfort, flow, and overall trip scoring plus a mock 0-60 MAF reference strip
 
 ## Scope
 

@@ -11,6 +11,7 @@
 #include <time.h>
 
 #include "cyber_theme.h"
+#include "dashboard_scene.h"
 #include "vehicle_profiles/vehicle_profile.h"
 
 namespace app {
@@ -30,24 +31,14 @@ constexpr uint32_t kDisplaySpiHz = 80000000;
 constexpr uint32_t kRenderIntervalMs = 33;
 constexpr int16_t kScreenWidth = 480;
 constexpr int16_t kScreenHeight = 320;
-constexpr int16_t kClusterX = 0;
-constexpr int16_t kClusterY = 56;
-constexpr int16_t kClusterWidth = 480;
-constexpr int16_t kClusterHeight = 224;
-constexpr int16_t kBottomCardY = 284;
-constexpr int16_t kBottomCardWidth = 110;
-constexpr int16_t kBottomCardHeight = 36;
-constexpr int16_t kBottomCardGap = 10;
-constexpr int16_t kBottomCardX0 = 8;
 constexpr int16_t kRpmMax = 5000;
 constexpr uint8_t kTachSegmentCount = 20;
-constexpr uint8_t kTachShiftStart = 16;
-constexpr int16_t kTachX = 18;
-constexpr int16_t kTachY = 10;
-constexpr int16_t kTachWidth = 444;
-constexpr int16_t kTachHeight = 52;
-constexpr int16_t kSpeedCenterX = kClusterWidth / 2;
-constexpr int16_t kSpeedCenterY = 150;
+constexpr int16_t kTachX = 42;
+constexpr int16_t kTachY = 202;
+constexpr int16_t kTachWidth = 396;
+constexpr int16_t kTachHeight = 54;
+constexpr int16_t kSpeedCenterX = 240;
+constexpr int16_t kSpeedCenterY = 122;
 
 struct Rect {
   int16_t x;
@@ -56,11 +47,11 @@ struct Rect {
   int16_t h;
 };
 
-constexpr Rect kSessionBlock{8, 8, 104, 36};
-constexpr Rect kSyncBlock{118, 8, 104, 36};
-constexpr Rect kClockBlock{228, 8, 124, 36};
-constexpr Rect kWeatherBlock{358, 8, 114, 36};
-constexpr Rect kTripRegion{112, 214, 256, 14};
+constexpr Rect kClusterPanel{10, 12, 460, 296};
+constexpr Rect kSpeedPanel{74, 56, 332, 138};
+constexpr Rect kReminderRect{134, 34, 212, 18};
+constexpr Rect kDriveRect{28, 274, 100, 20};
+constexpr Rect kEnergyRect{272, 274, 180, 20};
 
 TCA9554 io_expander(kIoExpanderAddress);
 Arduino_DataBus *display_bus =
@@ -68,13 +59,6 @@ Arduino_DataBus *display_bus =
                          kDisplayMisoPin);
 Arduino_GFX *gfx =
     new Arduino_ST7796(display_bus, GFX_NOT_DEFINED, 0, true /* ips */);
-Arduino_Canvas *cluster_canvas =
-  new Arduino_Canvas(kClusterWidth, kClusterHeight, gfx, kClusterX, kClusterY, 0);
-
-uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
-  return theme::rgb565(r, g, b);
-}
-
 uint16_t lerpColor565(uint16_t from, uint16_t to, float t) {
   const float clamped = constrain(t, 0.0f, 1.0f);
   const uint8_t from_r = static_cast<uint8_t>((from >> 11) & 0x1F);
@@ -94,20 +78,8 @@ uint16_t backgroundColor(telemetry::DriveMode mode) {
   return theme::bg(static_cast<uint8_t>(mode));
 }
 
-uint16_t panelColor(telemetry::DriveMode mode) {
-  return theme::panel(static_cast<uint8_t>(mode));
-}
-
 uint16_t lineColor(telemetry::DriveMode mode) {
   return theme::line(static_cast<uint8_t>(mode));
-}
-
-uint16_t accentColor(telemetry::DriveMode mode) {
-  return theme::accent(static_cast<uint8_t>(mode));
-}
-
-uint16_t accentStrongColor(telemetry::DriveMode mode) {
-  return theme::accentStrong(static_cast<uint8_t>(mode));
 }
 
 uint16_t mutedColor() {
@@ -118,122 +90,31 @@ uint16_t textColor() {
   return theme::text();
 }
 
-uint16_t trackArcColor(telemetry::DriveMode mode) {
-  return theme::track(static_cast<uint8_t>(mode));
-}
-
-uint16_t accentAltColor(telemetry::DriveMode mode) {
-  return theme::accentAlt(static_cast<uint8_t>(mode));
-}
-
-uint16_t shiftColor(telemetry::DriveMode mode) {
-  return theme::shift(static_cast<uint8_t>(mode));
-}
-
-uint16_t sportRainbowColor(float position) {
-  static const uint16_t kRainbowStops[] = {
-      theme::rgb565(255, 84, 84),
-      theme::rgb565(255, 168, 60),
-      theme::rgb565(255, 220, 64),
-      theme::rgb565(80, 236, 122),
-      theme::rgb565(77, 205, 255),
-      theme::rgb565(185, 116, 255),
-  };
-
-  const float clamped = constrain(position, 0.0f, 1.0f);
-  const float scaled = clamped * static_cast<float>((sizeof(kRainbowStops) / sizeof(kRainbowStops[0])) - 1);
-  const uint8_t lower = static_cast<uint8_t>(floorf(scaled));
-  const uint8_t upper = min<uint8_t>(lower + 1, (sizeof(kRainbowStops) / sizeof(kRainbowStops[0])) - 1);
-  return lerpColor565(kRainbowStops[lower], kRainbowStops[upper], scaled - lower);
-}
-
-const char *modeLabel(telemetry::DriveMode mode) {
-  switch (mode) {
-    case telemetry::DriveMode::Calm:
-      return "Calm";
-    case telemetry::DriveMode::Cruise:
-      return "Cruise";
-    case telemetry::DriveMode::Sport:
-      return "Sport";
-  }
-
-  return "Cruise";
-}
-
-const char *gearLabel(telemetry::TransmissionGear gear) {
-  switch (gear) {
-    case telemetry::TransmissionGear::Park:
-      return "P";
-    case telemetry::TransmissionGear::First:
-      return "D1";
-    case telemetry::TransmissionGear::Second:
-      return "D2";
-    case telemetry::TransmissionGear::Third:
-      return "D3";
-    case telemetry::TransmissionGear::Fourth:
-      return "D4";
-    case telemetry::TransmissionGear::Fifth:
-      return "D5";
-    case telemetry::TransmissionGear::Sixth:
-      return "D6";
-  }
-
-  return "P";
-}
-
-const char *compactStatusDetail(ObdConnectionState state, bool welcome_visible) {
-  if (state == ObdConnectionState::Live) {
-    return welcome_visible ? "IGNITION" : "LIVE";
-  }
-
-  if (state == ObdConnectionState::Connecting) {
-    return "SCANNING";
-  }
-
-  return "OBD OFF";
-}
-
-const char *screenLabel(DashboardScreen screen) {
-  switch (screen) {
-    case DashboardScreen::Boot:
-      return "Boot";
-    case DashboardScreen::Welcome:
-      return "Welcome";
-    case DashboardScreen::Dashboard:
-      return "Drive";
-    case DashboardScreen::Trip:
-      return "Trip";
-    case DashboardScreen::Health:
-      return "Health";
-    case DashboardScreen::Sport:
-      return "Sport";
-  }
-
-  return "Drive";
-}
-
 void buildClockLabel(char *time_buffer,
                      size_t time_buffer_size,
                      bool *synced_out,
-                     int32_t *clock_key_out) {
+                     int32_t *clock_key_out,
+                     int8_t *hour_out = nullptr) {
   struct tm local_time_info {};
   const bool synced = getLocalTime(&local_time_info, 0);
 
   if (synced) {
-    int display_hour = local_time_info.tm_hour % 12;
-    if (display_hour == 0) {
-      display_hour = 12;
-    }
-    snprintf(time_buffer, time_buffer_size, "%d:%02d %s", display_hour,
-             local_time_info.tm_min, local_time_info.tm_hour >= 12 ? "PM" : "AM");
+    buildDashboardClockLabel(local_time_info.tm_hour, local_time_info.tm_min, true, time_buffer,
+                             time_buffer_size);
     if (clock_key_out != nullptr) {
       *clock_key_out = (local_time_info.tm_yday * 1440) +
                        (local_time_info.tm_hour * 60) + local_time_info.tm_min;
+    }
+    if (hour_out != nullptr) {
+      *hour_out = static_cast<int8_t>(local_time_info.tm_hour);
     }
   } else {
     snprintf(time_buffer, time_buffer_size, "--:--");
     if (clock_key_out != nullptr) {
       *clock_key_out = -1;
+    }
+    if (hour_out != nullptr) {
+      *hour_out = -1;
     }
   }
 
@@ -242,38 +123,46 @@ void buildClockLabel(char *time_buffer,
   }
 }
 
-uint16_t obdStatusColor(ObdConnectionState state, telemetry::DriveMode mode) {
-  switch (state) {
-    case ObdConnectionState::Disconnected:
-      return mutedColor();
-    case ObdConnectionState::Connecting:
-      return mode == telemetry::DriveMode::Sport ? color565(255, 190, 135)
-                                                 : color565(255, 214, 128);
-    case ObdConnectionState::Live:
-      return accentColor(mode);
+const char *weatherSummaryText(uint8_t weather_code) {
+  if (weather_code == telemetry::kWeatherCodeUnknown) {
+    return "CLEAR";
   }
 
-  return mutedColor();
+  return weather_code < 50 ? "FAIR" : "RAIN";
 }
 
-void drawCenteredTextOn(Arduino_GFX *target,
-                        const char *text,
-                        int16_t center_x,
-                        int16_t baseline_y,
-                        uint8_t text_size,
-                        uint16_t color,
-                        uint16_t background) {
-  int16_t x1 = 0;
-  int16_t y1 = 0;
-  uint16_t width = 0;
-  uint16_t height = 0;
-  target->setFont();
-  target->setTextSize(text_size);
-  target->getTextBounds(text, 0, baseline_y, &x1, &y1, &width, &height);
-  const int16_t cursor_x = center_x - static_cast<int16_t>(width / 2);
-  target->setTextColor(color, background);
-  target->setCursor(cursor_x, baseline_y);
-  target->print(text);
+void buildRollingStatusText(char *buffer,
+                            size_t buffer_size,
+                            const telemetry::DashboardTelemetry &telemetry,
+                            const DashboardViewState &view_state) {
+  switch ((telemetry.uptime_ms / 2400U) % 4U) {
+    case 0:
+      snprintf(buffer, buffer_size, "COOLANT %dC", telemetry.coolant_temp_c);
+      break;
+    case 1:
+      snprintf(buffer, buffer_size, "BATTERY %.1fV", telemetry.battery_mv / 1000.0f);
+      break;
+    case 2:
+      if (telemetry.nearest_camera_m != telemetry::kNearestCameraUnknown && telemetry.nearest_camera_m <= 1000) {
+        snprintf(buffer, buffer_size, "CAM %um", telemetry.nearest_camera_m);
+      } else {
+        snprintf(buffer, buffer_size, "TRIP %.1fKM", view_state.trip.trip_distance_km);
+      }
+      break;
+    default:
+      snprintf(buffer, buffer_size, "%s", telemetry.wifi_connected ? "WIFI LINKED" : "WIFI OFF");
+      break;
+  }
+}
+
+bool shouldShowHeadlightReminder(const telemetry::DashboardTelemetry &telemetry,
+                                 bool time_synced,
+                                 int8_t local_hour) {
+  if (telemetry.headlights_on || telemetry.speed_kph <= 0 || !time_synced || local_hour < 0) {
+    return false;
+  }
+
+  return local_hour >= 18 || local_hour < 6;
 }
 
 void drawCenteredTextInRect(Arduino_GFX *target,
@@ -320,461 +209,369 @@ void drawCenteredFontTextAt(Arduino_GFX *target,
   target->setFont();
 }
 
-const char *weatherShortLabel(uint8_t weather_code) {
-  if (weather_code == telemetry::kWeatherCodeUnknown) {
-    return "--";
-  }
-
-  if (weather_code == 0) {
-    return "SUN";
-  }
-  if (weather_code <= 3) {
-    return "CLD";
-  }
-  if (weather_code == 45 || weather_code == 48) {
-    return "FOG";
-  }
-  if ((weather_code >= 51 && weather_code <= 55) ||
-      (weather_code >= 61 && weather_code <= 65) ||
-      (weather_code >= 80 && weather_code <= 82)) {
-    return "RAIN";
-  }
-  if (weather_code >= 71 && weather_code <= 75) {
-    return "SNOW";
-  }
-  if (weather_code >= 95) {
-    return "STM";
-  }
-  return "WX";
-}
-
-void drawWeatherIcon(Arduino_GFX *target,
-                     int16_t origin_x,
-                     int16_t origin_y,
-                     uint8_t weather_code,
-                     uint16_t color,
-                     uint16_t background) {
-  if (weather_code == telemetry::kWeatherCodeUnknown) {
-    target->drawCircle(origin_x, origin_y, 7, color);
-    target->drawLine(origin_x - 5, origin_y + 5, origin_x + 5, origin_y - 5, color);
-    return;
-  }
-
-  if (weather_code == 0) {
-    target->fillCircle(origin_x, origin_y, 5, color);
-    for (int8_t ray = 0; ray < 8; ++ray) {
-      const float angle = static_cast<float>(ray) * 45.0f * DEG_TO_RAD;
-      const int16_t x0 = origin_x + static_cast<int16_t>(cosf(angle) * 8.0f);
-      const int16_t y0 = origin_y + static_cast<int16_t>(sinf(angle) * 8.0f);
-      const int16_t x1 = origin_x + static_cast<int16_t>(cosf(angle) * 11.0f);
-      const int16_t y1 = origin_y + static_cast<int16_t>(sinf(angle) * 11.0f);
-      target->drawLine(x0, y0, x1, y1, color);
-    }
-    return;
-  }
-
-  target->fillCircle(origin_x - 4, origin_y, 4, color);
-  target->fillCircle(origin_x + 1, origin_y - 2, 5, color);
-  target->fillCircle(origin_x + 6, origin_y, 4, color);
-  target->fillRoundRect(origin_x - 8, origin_y, 18, 6, 3, color);
-
-  if ((weather_code >= 51 && weather_code <= 55) ||
-      (weather_code >= 61 && weather_code <= 65) ||
-      (weather_code >= 80 && weather_code <= 82)) {
-    target->drawFastVLine(origin_x - 3, origin_y + 8, 4, color);
-    target->drawFastVLine(origin_x + 2, origin_y + 9, 4, color);
-    target->drawFastVLine(origin_x + 7, origin_y + 8, 4, color);
-  } else if (weather_code >= 71 && weather_code <= 75) {
-    target->fillCircle(origin_x - 2, origin_y + 10, 1, color);
-    target->fillCircle(origin_x + 3, origin_y + 12, 1, color);
-    target->fillCircle(origin_x + 8, origin_y + 10, 1, color);
-  } else if (weather_code >= 95) {
-    target->fillTriangle(origin_x + 1, origin_y + 7, origin_x + 6, origin_y + 7,
-                         origin_x + 2, origin_y + 15, color);
-    target->fillTriangle(origin_x + 4, origin_y + 15, origin_x + 8, origin_y + 15,
-                         origin_x + 5, origin_y + 21, color);
-  } else if (weather_code == 45 || weather_code == 48) {
-    target->drawFastHLine(origin_x - 8, origin_y + 9, 18, background);
-    target->drawFastHLine(origin_x - 8, origin_y + 10, 18, color);
-    target->drawFastHLine(origin_x - 8, origin_y + 13, 18, color);
-  }
-}
-
-void drawClusterGrid(Arduino_GFX *target, telemetry::DriveMode mode) {
-  (void)target;
-  (void)mode;
-  // Clean background — no pattern.
-}
-
-void drawTopChrome(const DashboardViewState &view_state,
-                   telemetry::DriveMode mode,
-                   bool welcome_visible,
-                   const char *clock_label,
-                   bool time_synced,
-                   int8_t weather_temp_c,
-                   uint8_t weather_code,
-                   bool wifi_connected) {
-  const uint16_t bg = backgroundColor(mode);
-  const uint16_t panel = panelColor(mode);
-  const uint16_t line = lineColor(mode);
-  const uint16_t accent = accentColor(mode);
-  const uint16_t strong = accentStrongColor(mode);
-  const uint16_t dim = theme::accentDim(static_cast<uint8_t>(mode));
+void drawTopChrome(const DashboardSnapshot &snapshot,
+                   const telemetry::DashboardTelemetry &telemetry,
+                   const DashboardViewState &view_state) {
+  const uint16_t panel = theme::rgb565(7, 18, 30);
   const uint16_t muted = mutedColor();
-
-  gfx->fillRect(0, 0, kScreenWidth, 52, bg);
-
-  const char *status_text = nullptr;
-  uint16_t status_color = mutedColor();
-  if (view_state.obd_connection_state != ObdConnectionState::Live) {
-    status_text = compactStatusDetail(view_state.obd_connection_state, welcome_visible);
-    status_color = obdStatusColor(view_state.obd_connection_state, mode);
-  } else if (welcome_visible) {
-    status_text = compactStatusDetail(view_state.obd_connection_state, welcome_visible);
-    status_color = accent;
+  const uint16_t strong = theme::rgb565(226, 249, 255);
+  const uint16_t weatherAccent = strong;
+  char rolling_text[24];
+  buildRollingStatusText(rolling_text, sizeof(rolling_text), telemetry, view_state);
+  char temp_text[8];
+  if (telemetry.weather_temp_c == telemetry::kWeatherTempUnknown) {
+    snprintf(temp_text, sizeof(temp_text), "--C");
   } else {
-    status_text = compactStatusDetail(view_state.obd_connection_state, welcome_visible);
-    status_color = accent;
+    snprintf(temp_text, sizeof(temp_text), "%dC", telemetry.weather_temp_c);
   }
 
-  gfx->fillRoundRect(kSessionBlock.x, kSessionBlock.y, kSessionBlock.w, kSessionBlock.h, 10, panel);
-  gfx->drawRoundRect(kSessionBlock.x, kSessionBlock.y, kSessionBlock.w, kSessionBlock.h, 10, line);
-  drawCenteredTextInRect(gfx, screenLabel(view_state.active_screen), kSessionBlock, 1, accent, panel);
-
-  gfx->fillRoundRect(kSyncBlock.x, kSyncBlock.y, kSyncBlock.w, kSyncBlock.h, 10, panel);
-  gfx->drawRoundRect(kSyncBlock.x, kSyncBlock.y, kSyncBlock.w, kSyncBlock.h, 10, line);
-  drawCenteredTextInRect(gfx, status_text, kSyncBlock, 1, status_color, panel);
-
-  gfx->fillRoundRect(kClockBlock.x, kClockBlock.y, kClockBlock.w, kClockBlock.h, 10, panel);
-  gfx->drawRoundRect(kClockBlock.x, kClockBlock.y, kClockBlock.w, kClockBlock.h, 10, line);
-  drawCenteredTextInRect(gfx, clock_label, kClockBlock, 1, time_synced ? strong : muted, panel);
-
-  gfx->fillRoundRect(kWeatherBlock.x, kWeatherBlock.y, kWeatherBlock.w, kWeatherBlock.h, 12, panel);
-  gfx->drawRoundRect(kWeatherBlock.x, kWeatherBlock.y, kWeatherBlock.w, kWeatherBlock.h, 12,
-                     wifi_connected ? strong : line);
-  const uint16_t weather_color = wifi_connected ? strong : muted;
-  drawWeatherIcon(gfx, kWeatherBlock.x + 18, kWeatherBlock.y + 16, weather_code, weather_color,
-                  panel);
-  char weather_text[16];
-  if (weather_temp_c == telemetry::kWeatherTempUnknown) {
-    snprintf(weather_text, sizeof(weather_text), "%s", wifi_connected ? "--" : "OFF");
-  } else {
-    snprintf(weather_text, sizeof(weather_text), "%dC", weather_temp_c);
-  }
   gfx->setFont();
   gfx->setTextSize(1);
-  gfx->setTextColor(weather_color, panel);
-  gfx->setCursor(kWeatherBlock.x + 38, kWeatherBlock.y + 16);
-  gfx->print(weather_text);
+  gfx->setTextColor(strong, panel);
+  gfx->setCursor(22, 18);
+  gfx->print(weatherSummaryText(telemetry.weather_code));
   gfx->setTextColor(muted, panel);
-  gfx->setCursor(kWeatherBlock.x + 38, kWeatherBlock.y + 28);
-  gfx->print(weatherShortLabel(weather_code));
+  gfx->setCursor(72, 18);
+  gfx->print("/");
+  gfx->setTextColor(weatherAccent, panel);
+  gfx->setCursor(84, 18);
+  gfx->print(temp_text);
 
-  gfx->drawFastHLine(12, 48, kScreenWidth - 24, dim);
+  drawCenteredTextInRect(gfx, rolling_text, Rect{168, 11, 144, 18}, 1, strong, panel);
+  gfx->drawFastHLine(154, 19, 10, muted);
+  gfx->drawFastHLine(316, 19, 10, muted);
+  gfx->setTextColor(strong, panel);
+  gfx->setCursor(402, 18);
+  gfx->print(snapshot.clock_text);
 }
 
 void drawSpeedBackdrop(Arduino_GFX *target, telemetry::DriveMode mode) {
-  (void)target;
-  (void)mode;
+  const uint16_t soft = theme::rgb565(22, 86, 110);
+  target->fillTriangle(kSpeedPanel.x - 38, kSpeedPanel.y + 28,
+                       kSpeedPanel.x - 8, kSpeedPanel.y + 28,
+                       kSpeedPanel.x - 20, kSpeedPanel.y + 58, soft);
+  target->fillTriangle(kSpeedPanel.x - 38, kSpeedPanel.y + 28,
+                       kSpeedPanel.x - 20, kSpeedPanel.y + 58,
+                       kSpeedPanel.x - 52, kSpeedPanel.y + 58, soft);
+  target->fillTriangle(kSpeedPanel.x + kSpeedPanel.w + 8, kSpeedPanel.y + 28,
+                       kSpeedPanel.x + kSpeedPanel.w + 38, kSpeedPanel.y + 28,
+                       kSpeedPanel.x + kSpeedPanel.w + 52, kSpeedPanel.y + 58, soft);
+  target->fillTriangle(kSpeedPanel.x + kSpeedPanel.w + 8, kSpeedPanel.y + 28,
+                       kSpeedPanel.x + kSpeedPanel.w + 52, kSpeedPanel.y + 58,
+                       kSpeedPanel.x + kSpeedPanel.w + 20, kSpeedPanel.y + 58, soft);
 }
 
 void drawTachRibbon(Arduino_GFX *target, telemetry::DriveMode mode, float displayed_rpm) {
-  const uint16_t bg = backgroundColor(mode);
-  const uint16_t line = lineColor(mode);
-  const uint16_t accent = accentColor(mode);
-  const uint16_t accent_alt = accentAltColor(mode);
-  const uint16_t strong = accentStrongColor(mode);
-  const uint16_t shift = shiftColor(mode);
-  const uint16_t track = trackArcColor(mode);
+  const uint16_t line = theme::rgb565(84, 226, 244);
+  const uint16_t accent = theme::rgb565(116, 242, 250);
+  const uint16_t accent_alt = theme::rgb565(34, 196, 226);
+  const uint16_t strong = theme::rgb565(210, 252, 255);
+  const uint16_t track = theme::rgb565(25, 60, 80);
+  const uint16_t redline = theme::rgb565(255, 154, 94);
   const uint8_t active_segments = static_cast<uint8_t>(roundf(constrain(
       displayed_rpm / static_cast<float>(kRpmMax), 0.0f, 1.0f) * kTachSegmentCount));
 
-  char rpm_buffer[8];
-  snprintf(rpm_buffer, sizeof(rpm_buffer), "%d", static_cast<int>(displayed_rpm));
-
-  constexpr int16_t kSegmentInsetX = 10;
-  constexpr int16_t kSegmentBottomPad = 3;
-  constexpr int16_t kSegmentGap = 5;
+  constexpr int16_t kSegmentInsetX = 0;
+  constexpr int16_t kSegmentGap = 4;
+  const int16_t baseline_y = kTachY + kTachHeight - 12;
   const int16_t segment_width =
-      (kTachWidth - (kSegmentInsetX * 2) - ((kTachSegmentCount - 1) * kSegmentGap)) /
-      kTachSegmentCount;
+      (kTachWidth - (kSegmentInsetX * 2) - ((kTachSegmentCount - 1) * kSegmentGap)) / kTachSegmentCount;
 
-  target->drawFastHLine(kTachX + kSegmentInsetX, kTachY + kTachHeight - 1,
-                        kTachWidth - (kSegmentInsetX * 2), line);
+  target->drawFastHLine(kTachX - 8, baseline_y + 6, kTachWidth + 14, line);
+  target->drawFastVLine(kTachX - 2, baseline_y + 2, 8, strong);
+  target->drawFastVLine(kTachX + 150, baseline_y + 3, 6, strong);
+  target->drawFastVLine(kTachX + 284, baseline_y + 3, 6, strong);
+  target->drawFastHLine(kTachX + kTachWidth - 8, baseline_y + 4, 26, redline);
 
   for (uint8_t index = 0; index < kTachSegmentCount; ++index) {
-    const int16_t segment_height = 14 + ((index * 32) / max<uint8_t>(1, kTachSegmentCount - 1));
+    const int16_t segment_height = 18 + ((index * 26) / max<uint8_t>(1, kTachSegmentCount - 1));
     const int16_t x = kTachX + kSegmentInsetX + (index * (segment_width + kSegmentGap));
-    const int16_t y = kTachY + kTachHeight - kSegmentBottomPad - segment_height;
-    uint16_t color = (index >= kTachShiftStart) ? lerpColor565(track, shift, 0.55f) : track;
+    const int16_t y = baseline_y - segment_height;
+    uint16_t color = track;
 
     if (index < active_segments) {
-      if (mode == telemetry::DriveMode::Sport) {
-        const float ratio = static_cast<float>(index) /
-                            static_cast<float>(max<int>(1, kTachSegmentCount - 1));
-        color = sportRainbowColor(ratio);
-      } else if (index >= kTachShiftStart) {
-        color = shift;
-      } else {
-        const float mix = static_cast<float>(index) /
-                          static_cast<float>(max(1, static_cast<int>(kTachShiftStart - 1)));
-        color = lerpColor565(accent, accent_alt, mix);
-      }
+      const float mix = static_cast<float>(index) /
+                        static_cast<float>(max<int>(1, kTachSegmentCount - 1));
+      color = lerpColor565(accent, accent_alt, mix * 0.72f);
     }
 
-    target->fillRoundRect(x, y, segment_width, segment_height, 3, color);
+    target->fillTriangle(x, y, x + segment_width, y, x + 4, baseline_y, color);
+    target->fillTriangle(x + segment_width, y, x + segment_width + 4, baseline_y,
+                         x + 4, baseline_y, color);
   }
+
+  drawCenteredTextInRect(target, "RPM", Rect{kTachX + 120, baseline_y + 10, 160, 16}, 1, strong,
+                         backgroundColor(mode));
+}
+
+void drawReminderZone(Arduino_GFX *target, telemetry::DriveMode mode) {
+  const uint16_t fill = theme::rgb565(39, 20, 12);
+  const uint16_t line = theme::rgb565(255, 164, 94);
+  const uint16_t text = theme::rgb565(255, 224, 194);
+  const uint16_t accent = theme::rgb565(255, 196, 132);
+
+  target->fillRoundRect(kReminderRect.x, kReminderRect.y, kReminderRect.w, kReminderRect.h, 8, fill);
+  target->drawRoundRect(kReminderRect.x, kReminderRect.y, kReminderRect.w, kReminderRect.h, 8, line);
+  target->drawFastHLine(kReminderRect.x - 10, kReminderRect.y + (kReminderRect.h / 2), 8, accent);
+  target->drawFastHLine(kReminderRect.x + kReminderRect.w + 2,
+                        kReminderRect.y + (kReminderRect.h / 2), 8, accent);
+  drawCenteredTextInRect(target, "LIGHTS OFF AFTER SUNSET", kReminderRect, 1, text, fill);
+}
+
+const char *scoreBandLabel(uint8_t score) {
+  if (score >= 88) {
+    return "EXCELLENT";
+  }
+  if (score >= 72) {
+    return "STEADY";
+  }
+  if (score >= 56) {
+    return "WATCH";
+  }
+  return "PUSHY";
+}
+
+uint16_t scoreTint(uint8_t score) {
+  if (score >= 84) {
+    return theme::rgb565(116, 242, 250);
+  }
+  if (score >= 68) {
+    return theme::rgb565(255, 204, 102);
+  }
+  return theme::rgb565(255, 122, 96);
+}
+
+void buildCoachingLines(const char *message,
+                        char *line_one,
+                        size_t line_one_size,
+                        char *line_two,
+                        size_t line_two_size) {
+  line_one[0] = '\0';
+  line_two[0] = '\0';
+
+  if (message == nullptr || message[0] == '\0') {
+    return;
+  }
+
+  const size_t message_length = strlen(message);
+  if (message_length <= 46U) {
+    snprintf(line_one, line_one_size, "%.*s", static_cast<int>(line_one_size - 1), message);
+    return;
+  }
+
+  size_t split_index = 46U;
+  while (split_index > 24U && message[split_index] != ' ') {
+    --split_index;
+  }
+  if (split_index <= 24U) {
+    split_index = 46U;
+  }
+
+  snprintf(line_one, line_one_size, "%.*s", static_cast<int>(split_index), message);
+  while (message[split_index] == ' ') {
+    ++split_index;
+  }
+  snprintf(line_two, line_two_size, "%s", message + split_index);
+}
+
+void drawScoreCard(Arduino_GFX *target,
+                   const Rect &rect,
+                   telemetry::DriveMode mode,
+                   const char *label,
+                   uint8_t score) {
+  const uint16_t panel = theme::rgb565(10, 24, 36);
+  const uint16_t line = lineColor(mode);
+  const uint16_t muted = mutedColor();
+  const uint16_t strong = textColor();
+  const uint16_t tint = scoreTint(score);
+  char score_text[8];
+
+  snprintf(score_text, sizeof(score_text), "%u", score);
+  target->fillRoundRect(rect.x, rect.y, rect.w, rect.h, 12, panel);
+  target->drawRoundRect(rect.x, rect.y, rect.w, rect.h, 12, line);
+  drawCenteredTextInRect(target, label,
+                         Rect{rect.x, static_cast<int16_t>(rect.y + 6), rect.w, 12}, 1, muted,
+                         panel);
+  drawCenteredTextInRect(target, score_text,
+                         Rect{rect.x, static_cast<int16_t>(rect.y + 20), rect.w, 22}, 2, strong,
+                         panel);
+  target->fillRoundRect(rect.x + 10, rect.y + rect.h - 18, rect.w - 20, 6, 3,
+                        theme::rgb565(24, 56, 70));
+  target->fillRoundRect(rect.x + 10, rect.y + rect.h - 18,
+                        static_cast<int16_t>((rect.w - 20) * score / 100.0f), 6, 3, tint);
+  drawCenteredTextInRect(target, scoreBandLabel(score),
+                         Rect{rect.x, static_cast<int16_t>(rect.y + rect.h - 12), rect.w, 10},
+                         1, tint, panel);
+}
+
+void drawMetricTile(Arduino_GFX *target,
+                    const Rect &rect,
+                    telemetry::DriveMode mode,
+                    const char *label,
+                    const char *value,
+                    uint16_t value_color) {
+  const uint16_t panel = theme::rgb565(10, 24, 36);
+  const uint16_t line = lineColor(mode);
+  const uint16_t muted = mutedColor();
+
+  target->fillRoundRect(rect.x, rect.y, rect.w, rect.h, 10, panel);
+  target->drawRoundRect(rect.x, rect.y, rect.w, rect.h, 10, line);
+  drawCenteredTextInRect(target, label,
+                         Rect{rect.x, static_cast<int16_t>(rect.y + 6), rect.w, 10}, 1, muted,
+                         panel);
+  drawCenteredTextInRect(target, value,
+                         Rect{rect.x, static_cast<int16_t>(rect.y + 18), rect.w, 16}, 1,
+                         value_color,
+                         panel);
+}
+
+void drawDashboardScene(const DashboardSnapshot &snapshot,
+                        const telemetry::DashboardTelemetry &telemetry,
+                        const DashboardViewState &view_state,
+                        bool reminder_visible) {
+  Arduino_GFX *target = gfx;
+  const telemetry::DriveMode mode = snapshot.mode;
+  const uint16_t bg = backgroundColor(mode);
+  const uint16_t panel = theme::rgb565(7, 18, 30);
+  const uint16_t line = theme::rgb565(36, 124, 150);
+  const uint16_t speed_fill = theme::rgb565(4, 12, 22);
+  const uint16_t strong = theme::rgb565(190, 248, 255);
+  const uint16_t muted = mutedColor();
+  const uint16_t rail_fill = theme::rgb565(10, 24, 36);
+  const uint16_t fuel_accent = theme::rgb565(116, 242, 250);
+  const uint16_t dim = theme::rgb565(32, 72, 86);
+  const bool low_fuel = snapshot.fuel_level_pct < 15 && snapshot.fuel_level_pct > 0;
+  const uint16_t energy_color = low_fuel ? theme::warning() : fuel_accent;
+  char energy_value[32];
+  snprintf(energy_value, sizeof(energy_value), "%s / %s", snapshot.fuel_text, snapshot.range_text);
+
+  target->fillScreen(bg);
+  target->fillRoundRect(kClusterPanel.x, kClusterPanel.y, kClusterPanel.w, kClusterPanel.h, 20, panel);
+  target->drawRoundRect(kClusterPanel.x, kClusterPanel.y, kClusterPanel.w, kClusterPanel.h, 20, line);
+  drawTopChrome(snapshot, telemetry, view_state);
+  if (reminder_visible) {
+    drawReminderZone(target, mode);
+  }
+
+  target->fillRoundRect(kSpeedPanel.x, kSpeedPanel.y, kSpeedPanel.w, kSpeedPanel.h, 22, speed_fill);
+  drawTachRibbon(target, mode, static_cast<float>(snapshot.displayed_rpm));
+  drawSpeedBackdrop(target, mode);
+
+  drawCenteredFontTextAt(target, u8g2_font_logisoso92_tn, snapshot.speed_text, kSpeedCenterX,
+                         kSpeedCenterY, textColor(), bg);
 
   target->setFont();
   target->setTextSize(1);
   target->setTextColor(strong, bg);
-  int16_t x1 = 0;
-  int16_t y1 = 0;
-  uint16_t width = 0;
-  uint16_t height = 0;
-  target->getTextBounds(rpm_buffer, 0, 0, &x1, &y1, &width, &height);
-  const int16_t rpm_x = kTachX + kTachWidth - 2 - static_cast<int16_t>(width) - x1;
-  const int16_t rpm_y = kTachY + kTachHeight + 14;
-  target->setCursor(rpm_x, rpm_y);
-  target->print(rpm_buffer);
+  target->setCursor(312, 142);
+  target->print("KM/H");
+
+  target->fillRoundRect(kDriveRect.x, kDriveRect.y, kDriveRect.w, kDriveRect.h, 8, rail_fill);
+  target->drawRoundRect(kDriveRect.x, kDriveRect.y, kDriveRect.w, kDriveRect.h, 8, line);
+  target->fillRoundRect(kEnergyRect.x, kEnergyRect.y, kEnergyRect.w, kEnergyRect.h, 8, rail_fill);
+  target->drawRoundRect(kEnergyRect.x, kEnergyRect.y, kEnergyRect.w, kEnergyRect.h, 8, line);
+
+  drawCenteredTextInRect(target, "DRIVE", Rect{kDriveRect.x + 8, kDriveRect.y, 34, kDriveRect.h},
+                         1, muted, rail_fill);
+  drawCenteredTextInRect(target, snapshot.gear_text,
+                         Rect{kDriveRect.x + 42, kDriveRect.y, 42, kDriveRect.h},
+                         1, textColor(), rail_fill);
+
+  drawCenteredTextInRect(target, "ENERGY",
+                         Rect{kEnergyRect.x + 8, kEnergyRect.y, 48, kEnergyRect.h},
+                         1, muted, rail_fill);
+  drawCenteredTextInRect(target, energy_value,
+                         Rect{kEnergyRect.x + 56, kEnergyRect.y, 74, kEnergyRect.h},
+                         1, strong, rail_fill);
+  target->fillRoundRect(kEnergyRect.x + 132, kEnergyRect.y + 8, 34, 4, 2, dim);
+  target->fillRoundRect(kEnergyRect.x + 132, kEnergyRect.y + 8,
+                        static_cast<int16_t>(34.0f * snapshot.fuel_fill_pct / 100.0f), 4, 2,
+                        energy_color);
 }
 
-void drawCluster(const telemetry::DashboardTelemetry &telemetry,
-                 const DashboardViewState &view_state,
-                 telemetry::DriveMode mode,
-                 float displayed_rpm) {
-  Arduino_GFX *target = cluster_canvas;
+void drawDetailView(const DashboardSnapshot &snapshot,
+                    const telemetry::DashboardTelemetry &telemetry,
+                    const DashboardViewState &view_state) {
+  const telemetry::DriveMode mode = snapshot.mode;
   const uint16_t bg = backgroundColor(mode);
-  const uint16_t strong = accentStrongColor(mode);
-
-  target->fillScreen(bg);
-  drawClusterGrid(target, mode);
-  drawTachRibbon(target, mode, displayed_rpm);
-  drawSpeedBackdrop(target, mode);
-
-  char speed_buffer[8];
-  snprintf(speed_buffer, sizeof(speed_buffer), "%d", telemetry.speed_kph);
-  drawCenteredFontTextAt(target, u8g2_font_logisoso92_tn, speed_buffer, kSpeedCenterX,
-                         kSpeedCenterY - 2, textColor(), bg);
-  drawCenteredTextOn(target, "km/h", kSpeedCenterX, kSpeedCenterY + 42, 1, strong, bg);
-
-  char subtitle[48];
-  snprintf(subtitle, sizeof(subtitle), "trip %.1f km", view_state.trip.trip_distance_km);
-  drawCenteredTextInRect(target, subtitle, kTripRegion, 1, mutedColor(), bg);
-  target->flush(true);
-}
-
-void drawModeCard(telemetry::DriveMode mode) {
-  const uint16_t accent = accentColor(mode);
-  const uint16_t dim = theme::accentDim(static_cast<uint8_t>(mode));
-  const uint16_t panel = panelColor(mode);
-  const uint16_t line = lineColor(mode);
-  const uint16_t muted = mutedColor();
-
-  // Glassy pill bar background.
-  constexpr int16_t kBarX = 8;
-  constexpr int16_t kBarY = kBottomCardY;
-  constexpr int16_t kBarW = kScreenWidth - 16;
-  constexpr int16_t kBarH = kBottomCardHeight;
-
-  gfx->fillRect(0, kBarY - 4, kScreenWidth, kScreenHeight - (kBarY - 4), backgroundColor(mode));
-  gfx->fillRoundRect(kBarX, kBarY, kBarW, kBarH, 8, panel);
-  gfx->drawRoundRect(kBarX, kBarY, kBarW, kBarH, 8, line);
-
-  // Four equal columns.
-  constexpr int16_t kColW = kBarW / 4;
-  constexpr int16_t kLabelY = kBarY + 5;
-  constexpr int16_t kValueY = kBarY + 17;
-
-  // Dividers.
-  for (int i = 1; i < 4; ++i) {
-    int16_t dx = kBarX + kColW * i;
-    gfx->drawFastVLine(dx, kBarY + 6, kBarH - 12, dim);
-  }
-
-  // Column 0: Mode — size 1 instead of 2.
-  int16_t cx = kBarX + kColW / 2;
-  gfx->setFont();
-  gfx->setTextSize(1);
-  gfx->setTextColor(muted, panel);
-  gfx->setCursor(cx - 14, kLabelY);
-  gfx->print("MODE");
-  gfx->setTextSize(1);
-  gfx->setTextColor(accent, panel);
-  gfx->setCursor(cx - 18, kValueY);
-  gfx->print(modeLabel(mode));
-}
-
-void drawGearCard(telemetry::TransmissionGear gear, telemetry::DriveMode mode) {
-  const uint16_t panel = panelColor(mode);
   const uint16_t text = textColor();
   const uint16_t muted = mutedColor();
-
-  constexpr int16_t kBarX = 8;
-  constexpr int16_t kBarW = (kScreenWidth - 16) / 4;
-  constexpr int16_t kBarY = kBottomCardY;
-  constexpr int16_t kLabelY = kBarY + 5;
-  constexpr int16_t kValueY = kBarY + 17;
-  int16_t cx = kBarX + kBarW + kBarW / 2;
-
-  gfx->setFont();
-  gfx->setTextSize(1);
-  gfx->setTextColor(muted, panel);
-  gfx->setCursor(cx - 14, kLabelY);
-  gfx->print("GEAR");
-  gfx->setTextSize(1);
-  gfx->setTextColor(text, panel);
-  gfx->setCursor(cx - 8, kValueY);
-  gfx->print(gearLabel(gear));
-}
-
-void drawRangeCard(uint16_t range_km, telemetry::DriveMode mode) {
-  const uint16_t panel = panelColor(mode);
-  const uint16_t muted = mutedColor();
-  const uint16_t strong = accentStrongColor(mode);
-  const uint16_t dim = theme::accentDim(static_cast<uint8_t>(mode));
-
-  constexpr int16_t kBarX = 8;
-  constexpr int16_t kBarW = (kScreenWidth - 16) / 4;
-  constexpr int16_t kBarY = kBottomCardY;
-  constexpr int16_t kLabelY = kBarY + 5;
-  constexpr int16_t kValueY = kBarY + 17;
-  int16_t cx = kBarX + kBarW * 2 + kBarW / 2;
-
-  char buf[16];
-  snprintf(buf, sizeof(buf), "%ukm", range_km);
-
-  gfx->setFont();
-  gfx->setTextSize(1);
-  gfx->setTextColor(muted, panel);
-  gfx->setCursor(cx - 18, kLabelY);
-  gfx->print("RANGE");
-  gfx->setTextColor(strong, panel);
-  gfx->setCursor(cx - 18, kValueY);
-  gfx->print(buf);
-
-  // Meter bar below text.
-  constexpr int16_t kMeterW = 50;
-  constexpr int16_t kMeterH = 2;
-  constexpr uint16_t kMaxRange = 360;
-  int16_t mx = cx - kMeterW / 2;
-  int16_t my = kValueY + 12;
-  uint16_t fill_w = static_cast<uint16_t>(constrain(
-      static_cast<long>(range_km) * kMeterW / kMaxRange, 0L, static_cast<long>(kMeterW)));
-  gfx->fillRoundRect(mx, my, kMeterW, kMeterH, 1, dim);
-  if (fill_w > 0) {
-    gfx->fillRoundRect(mx, my, fill_w, kMeterH, 1, strong);
-  }
-}
-
-void drawFuelCard(uint8_t fuel_pct, telemetry::DriveMode mode) {
-  const uint16_t panel = panelColor(mode);
-  const uint16_t muted = mutedColor();
-  const bool low_fuel = fuel_pct < 15 && fuel_pct > 0;
-  const uint16_t color = low_fuel ? theme::warning() : accentColor(mode);
-  const uint16_t dim = theme::accentDim(static_cast<uint8_t>(mode));
-
-  constexpr int16_t kBarX = 8;
-  constexpr int16_t kBarW = (kScreenWidth - 16) / 4;
-  constexpr int16_t kBarY = kBottomCardY;
-  constexpr int16_t kLabelY = kBarY + 5;
-  constexpr int16_t kValueY = kBarY + 17;
-  int16_t cx = kBarX + kBarW * 3 + kBarW / 2;
-
-  char buf[16];
-  snprintf(buf, sizeof(buf), "%u%%", fuel_pct);
-
-  gfx->setFont();
-  gfx->setTextSize(1);
-  gfx->setTextColor(muted, panel);
-  gfx->setCursor(cx - 14, kLabelY);
-  gfx->print("FUEL");
-  gfx->setTextColor(color, panel);
-  gfx->setCursor(cx - 14, kValueY);
-  gfx->print(buf);
-  if (low_fuel) {
-    gfx->setCursor(cx + 14, kValueY);
-    gfx->print("LOW");
-  }
-
-  // Meter bar below text.
-  constexpr int16_t kMeterW = 50;
-  constexpr int16_t kMeterH = 2;
-  int16_t mx = cx - kMeterW / 2;
-  int16_t my = kValueY + 12;
-  uint16_t fill_w = static_cast<uint16_t>(constrain(
-      static_cast<long>(fuel_pct) * kMeterW / 100L, 0L, static_cast<long>(kMeterW)));
-  gfx->fillRoundRect(mx, my, kMeterW, kMeterH, 1, dim);
-  if (fill_w > 0) {
-    gfx->fillRoundRect(mx, my, fill_w, kMeterH, 1, color);
-  }
-}
-
-void drawStaticScene(const DashboardViewState &view_state,
-                     const telemetry::DashboardTelemetry &telemetry) {
-  gfx->fillScreen(backgroundColor(telemetry.drive_mode));
-  drawTopChrome(view_state, telemetry.drive_mode, view_state.welcome_visible, "--:--", false,
-                telemetry.weather_temp_c, telemetry.weather_code, telemetry.wifi_connected);
-}
-
-void drawDetailView(const telemetry::DashboardTelemetry &telemetry,
-                    const DashboardViewState &view_state,
-                    telemetry::DriveMode mode) {
-  const uint16_t bg = backgroundColor(mode);
-  const uint16_t panel = panelColor(mode);
-  const uint16_t line = lineColor(mode);
-  const uint16_t accent = accentColor(mode);
-  const uint16_t text = textColor();
-  const uint16_t muted = mutedColor();
+  const uint16_t strong = theme::rgb565(210, 252, 255);
+  const uint16_t hero_panel = theme::rgb565(7, 18, 30);
+  const uint16_t hero_line = lineColor(mode);
+  char score_text[8];
+  char distance_text[16];
+  char avg_economy_text[16];
+  char instant_economy_text[16];
+  char gph_text[16];
+  char fuel_used_text[16];
+  char maf_text[16];
+  char event_text[16];
+  char coaching_line_one[56];
+  char coaching_line_two[56];
+  const TripMetrics &trip = view_state.trip;
 
   gfx->fillScreen(bg);
+  drawTopChrome(snapshot, telemetry, view_state);
 
-  gfx->setTextSize(1);
-  gfx->setTextColor(accent, bg);
-  gfx->setCursor(16, 14);
-  gfx->print(vehicle_profiles::activeProfile().display_name);
+  snprintf(score_text, sizeof(score_text), "%u", trip.trip_score);
+  snprintf(distance_text, sizeof(distance_text), "%.1f km", trip.trip_distance_km);
+  snprintf(avg_economy_text, sizeof(avg_economy_text), "%.1f L/100", trip.avg_l_per_100km);
+  if (telemetry.speed_kph > 0) {
+    snprintf(instant_economy_text, sizeof(instant_economy_text), "%.1f L/100",
+             trip.instant_l_per_100km);
+  } else {
+    snprintf(instant_economy_text, sizeof(instant_economy_text), "IDLE");
+  }
+  snprintf(gph_text, sizeof(gph_text), "%.2f GPH", trip.instant_gph);
+  snprintf(fuel_used_text, sizeof(fuel_used_text), "%.2f L", trip.fuel_used_l);
+  snprintf(maf_text, sizeof(maf_text), "%.1f g/s", trip.estimated_maf_gps);
+  snprintf(event_text, sizeof(event_text), "%u / %u", trip.harsh_acceleration_count,
+           trip.harsh_braking_count);
+  buildCoachingLines(trip.coaching_message, coaching_line_one, sizeof(coaching_line_one),
+                     coaching_line_two, sizeof(coaching_line_two));
+
+  gfx->fillRoundRect(16, 58, 160, 88, 14, hero_panel);
+  gfx->drawRoundRect(16, 58, 160, 88, 14, hero_line);
+  drawCenteredTextInRect(gfx, "TRIP SCORE", Rect{16, 66, 160, 12}, 1, muted, hero_panel);
+  drawCenteredTextInRect(gfx, score_text, Rect{16, 84, 160, 28}, 3, strong, hero_panel);
+  drawCenteredTextInRect(gfx, scoreBandLabel(trip.trip_score), Rect{16, 124, 160, 12}, 1,
+                         scoreTint(trip.trip_score), hero_panel);
+
+  drawScoreCard(gfx, Rect{190, 58, 84, 88}, mode, "FUEL", trip.fuel_saving_score);
+  drawScoreCard(gfx, Rect{286, 58, 84, 88}, mode, "COMFORT", trip.comfort_score);
+  drawScoreCard(gfx, Rect{382, 58, 82, 88}, mode, "FLOW", trip.flow_score);
+
+  gfx->fillRoundRect(16, 158, 448, 42, 12, hero_panel);
+  gfx->drawRoundRect(16, 158, 448, 42, 12, hero_line);
+  gfx->setTextColor(muted, hero_panel);
+  gfx->setCursor(28, 173);
+  gfx->print("COACH");
+  gfx->setTextColor(text, hero_panel);
+  gfx->setCursor(92, 173);
+  gfx->print(coaching_line_one);
+  if (coaching_line_two[0] != '\0') {
+    gfx->setCursor(92, 187);
+    gfx->print(coaching_line_two);
+  }
+
+  drawMetricTile(gfx, Rect{16, 214, 140, 42}, mode, "DISTANCE", distance_text, text);
+  drawMetricTile(gfx, Rect{170, 214, 140, 42}, mode, "AVG ECON", avg_economy_text,
+                 scoreTint(trip.fuel_saving_score));
+  drawMetricTile(gfx, Rect{324, 214, 140, 42}, mode, "INST ECON", instant_economy_text,
+                 strong);
+  drawMetricTile(gfx, Rect{16, 266, 140, 42}, mode, "FUEL USED", fuel_used_text, text);
+  drawMetricTile(gfx, Rect{170, 266, 140, 42}, mode, "INSTANT GPH", gph_text, text);
+  drawMetricTile(gfx, Rect{324, 266, 140, 42}, mode, "MAF / EVENTS", maf_text,
+                 scoreTint(trip.comfort_score));
 
   gfx->setTextColor(muted, bg);
-  gfx->setCursor(16, 30);
-  gfx->print("Vehicle Detail");
-
-  // Thin accent separator.
-  gfx->drawFastHLine(12, 46, kScreenWidth - 24, line);
-
-  constexpr int16_t kLabelX = 24;
-  constexpr int16_t kValueX = 280;
-  constexpr int16_t kRowHeight = 32;
-  int16_t y = 60;
-
-  auto drawRow = [&](const char *label, const char *value) {
-    gfx->fillRoundRect(16, y, 448, kRowHeight - 4, 8, panel);
-    gfx->drawRoundRect(16, y, 448, kRowHeight - 4, 8, line);
-    gfx->setTextColor(muted, panel);
-    gfx->setCursor(kLabelX, y + 9);
-    gfx->print(label);
-    gfx->setTextColor(text, panel);
-    gfx->setCursor(kValueX, y + 9);
-    gfx->print(value);
-    y += kRowHeight;
-  };
-
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%d C", telemetry.coolant_temp_c);
-  drawRow("Coolant Temp", buf);
-  snprintf(buf, sizeof(buf), "%.1f V", telemetry.battery_mv / 1000.0f);
-  drawRow("Battery", buf);
-  snprintf(buf, sizeof(buf), "%u%%", telemetry.fuel_level_pct);
-  drawRow("Fuel Level", buf);
-  snprintf(buf, sizeof(buf), "%u km", telemetry.estimated_range_km);
-  drawRow("Est. Range", buf);
-  snprintf(buf, sizeof(buf), "%.1f km", view_state.trip.trip_distance_km);
-  drawRow("Trip Distance", buf);
-  snprintf(buf, sizeof(buf), "%s", gearLabel(telemetry.gear));
-  drawRow("Gear", buf);
+  gfx->setCursor(338, 300);
+  gfx->print(event_text);
 
   gfx->setTextColor(muted, bg);
-  gfx->setCursor(150, 300);
-  gfx->print("press BOOT to return");
+  gfx->setCursor(22, 300);
+  gfx->print("BOOT toggles drive / trip detail");
 }
 
 constexpr uint8_t kButtonBootPin = 0;
@@ -804,11 +601,6 @@ void DashboardDisplay::begin(Stream &log) {
 
   if (!gfx->begin(kDisplaySpiHz)) {
     log.println("[DISPLAY] gfx->begin() failed.");
-    return;
-  }
-
-  if (!cluster_canvas->begin(GFX_SKIP_OUTPUT_BEGIN)) {
-    log.println("[DISPLAY] cluster canvas begin failed.");
     return;
   }
 
@@ -868,13 +660,22 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
   char clock_label[12];
   bool time_synced = false;
   int32_t clock_key = -1;
-  buildClockLabel(clock_label, sizeof(clock_label), &time_synced, &clock_key);
+  int8_t local_hour = -1;
+  buildClockLabel(clock_label, sizeof(clock_label), &time_synced, &clock_key, &local_hour);
+  const bool mode_changed = !scene_drawn_ || last_mode_ != telemetry.drive_mode;
+  const bool reminder_visible = shouldShowHeadlightReminder(telemetry, time_synced, local_hour);
+
+  displayed_rpm_ = smoothDisplayedRpm(displayed_rpm_, telemetry.rpm,
+                                      displayed_rpm_ < 0.0f || mode_changed, delta_ms);
+  const int16_t displayed_rpm = static_cast<int16_t>(lroundf(displayed_rpm_));
+  const DashboardSnapshot snapshot =
+      buildDashboardSnapshot(telemetry, view_state, detail_view_, clock_label, time_synced,
+                             displayed_rpm);
 
   if (detail_view_) {
-    if (!telemetry_cached_) {
-      drawDetailView(telemetry, view_state, telemetry.drive_mode);
-      telemetry_cached_ = true;
-    }
+    drawDetailView(snapshot, telemetry, view_state);
+    telemetry_cached_ = true;
+    last_detail_view_ = true;
     last_speed_kph_ = telemetry.speed_kph;
     last_rpm_ = telemetry.rpm;
     last_fuel_level_pct_ = telemetry.fuel_level_pct;
@@ -888,6 +689,7 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
     last_weather_temp_c_ = telemetry.weather_temp_c;
     last_weather_code_ = telemetry.weather_code;
     last_wifi_connected_ = telemetry.wifi_connected;
+    last_nearest_camera_m_ = telemetry.nearest_camera_m;
     return;
   }
 
@@ -897,7 +699,6 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
     last_detail_view_ = false;
   }
 
-  const bool mode_changed = !scene_drawn_ || last_mode_ != telemetry.drive_mode;
   // Only trigger full scene redraw on Live transition, not Disconnected↔Connecting flicker
   const bool obd_became_live = !scene_drawn_ ||
       (view_state.obd_connection_state == ObdConnectionState::Live &&
@@ -918,48 +719,16 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
                                last_weather_temp_c_ != telemetry.weather_temp_c ||
                                last_weather_code_ != telemetry.weather_code ||
                                last_wifi_connected_ != telemetry.wifi_connected;
-
-  if (displayed_rpm_ < 0.0f || mode_changed) {
-    displayed_rpm_ = static_cast<float>(telemetry.rpm);
-  } else {
-    const float smoothing = min(1.0f, 0.22f * (static_cast<float>(delta_ms) / 33.0f));
-    displayed_rpm_ += (static_cast<float>(telemetry.rpm) - displayed_rpm_) * smoothing;
-    if (fabsf(displayed_rpm_ - static_cast<float>(telemetry.rpm)) < 1.0f) {
-      displayed_rpm_ = static_cast<float>(telemetry.rpm);
-    }
-  }
-  const int16_t displayed_rpm = static_cast<int16_t>(lroundf(displayed_rpm_));
+  const bool camera_changed = !telemetry_cached_ ||
+                              last_nearest_camera_m_ != telemetry.nearest_camera_m;
+  const bool reminder_changed = !telemetry_cached_ || last_reminder_visible_ != reminder_visible;
   const bool arc_animating = !telemetry_cached_ || displayed_rpm != last_arc_rpm_drawn_;
 
-  if (scene_changed) {
-    drawStaticScene(view_state, telemetry);
+  if (scene_changed || time_changed || weather_changed || camera_changed || speed_changed ||
+      rpm_changed || arc_animating || reminder_changed || gear_changed || range_changed ||
+      fuel_changed || mode_changed) {
+    drawDashboardScene(snapshot, telemetry, view_state, reminder_visible);
     scene_drawn_ = true;
-  }
-
-  if (scene_changed || time_changed || weather_changed) {
-    drawTopChrome(view_state, telemetry.drive_mode, view_state.welcome_visible, clock_label,
-                  time_synced, telemetry.weather_temp_c, telemetry.weather_code,
-                  telemetry.wifi_connected);
-  }
-
-  if (scene_changed || speed_changed || rpm_changed || arc_animating) {
-    drawCluster(telemetry, view_state, telemetry.drive_mode, displayed_rpm_);
-  }
-
-  if (scene_changed || mode_changed) {
-    drawModeCard(telemetry.drive_mode);
-  }
-
-  if (scene_changed || gear_changed || mode_changed) {
-    drawGearCard(telemetry.gear, telemetry.drive_mode);
-  }
-
-  if (scene_changed || range_changed || mode_changed) {
-    drawRangeCard(telemetry.estimated_range_km, telemetry.drive_mode);
-  }
-
-  if (scene_changed || fuel_changed || mode_changed) {
-    drawFuelCard(telemetry.fuel_level_pct, telemetry.drive_mode);
   }
 
   telemetry_cached_ = true;
@@ -975,9 +744,11 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
   last_welcome_visible_ = view_state.welcome_visible;
   last_clock_key_ = clock_key;
   last_time_synced_ = time_synced;
+  last_reminder_visible_ = reminder_visible;
   last_weather_temp_c_ = telemetry.weather_temp_c;
   last_weather_code_ = telemetry.weather_code;
   last_wifi_connected_ = telemetry.wifi_connected;
+  last_nearest_camera_m_ = telemetry.nearest_camera_m;
 }
 
 }  // namespace app

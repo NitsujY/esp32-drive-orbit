@@ -1,5 +1,7 @@
 #include "app_state.h"
 
+#include <math.h>
+
 #include "vehicle_profiles/vehicle_profile.h"
 
 namespace app {
@@ -88,10 +90,23 @@ void advanceSimulation(AppState &state, uint32_t now_ms) {
   updateMotionState(state);
   updateHealthState(state, now_ms);
   integrateTripDistance(state, now_ms, true);
+  int16_t longitudinal_accel_mg = 0;
+
+  if (state.last_speed_sample_ms != 0 && now_ms > state.last_speed_sample_ms) {
+    const float dt_s = static_cast<float>(now_ms - state.last_speed_sample_ms) / 1000.0f;
+    if (dt_s > 0.05f && dt_s < 2.0f) {
+      const float delta_kph = static_cast<float>(state.telemetry.speed_kph - state.previous_speed_kph);
+      const float delta_mps = delta_kph / 3.6f;
+      const float accel_g = (delta_mps / dt_s) / 9.80665f;
+      longitudinal_accel_mg = static_cast<int16_t>(lroundf(accel_g * 1000.0f));
+    }
+  }
+  state.last_speed_sample_ms = now_ms;
 
   state.telemetry = telemetry::makeSimulatedTelemetry(
       state.telemetry.sequence + 1, now_ms, state.telemetry.rpm, state.telemetry.speed_kph,
       state.telemetry.coolant_temp_c, state.telemetry.battery_mv, state.telemetry.fuel_level_pct);
+  state.telemetry.longitudinal_accel_mg = longitudinal_accel_mg;
   vehicle_profiles::refreshTelemetry(state.telemetry);
   updateDashboardViewState(state.view_state, state.telemetry, state.previous_speed_kph);
 }

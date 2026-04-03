@@ -119,13 +119,7 @@ void buildDashboardClockLabel(int hour,
     return;
   }
 
-  int display_hour = hour % 12;
-  if (display_hour == 0) {
-    display_hour = 12;
-  }
-
-  snprintf(time_buffer, time_buffer_size, "%d:%02d %s", display_hour, minute,
-           hour >= 12 ? "PM" : "AM");
+  snprintf(time_buffer, time_buffer_size, "%02d:%02d", hour, minute);
 }
 
 float smoothDisplayedRpm(float previous_displayed_rpm,
@@ -169,7 +163,7 @@ DashboardSnapshot buildDashboardSnapshot(const telemetry::DashboardTelemetry &te
   snprintf(snapshot.vehicle_name, sizeof(snapshot.vehicle_name), "%s",
            vehicle_profiles::activeProfile().display_name);
   snprintf(snapshot.subtitle, sizeof(snapshot.subtitle), "%s",
-           detail_view ? (telemetry.wifi_connected ? "WiFi linked" : "WiFi offline")
+           detail_view ? "Trip detail"
                        : screenTitle(view_state.active_screen));
   snprintf(snapshot.speed_text, sizeof(snapshot.speed_text), "%d", telemetry.speed_kph);
   snprintf(snapshot.rpm_text, sizeof(snapshot.rpm_text), "%d", displayed_rpm);

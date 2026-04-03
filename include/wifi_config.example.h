@@ -1,10 +1,11 @@
 #pragma once
 
-// Copy this file to wifi_config.h and fill in your values.
-// wifi_config.h is gitignored — never commit real credentials.
+// Wi-Fi credentials are no longer stored in source files.
+// Put them in a local .env file or export them before running `pio run -e dash_35`.
+// See .env.example for the expected keys.
 
-#define WIFI_SSID "YourPhoneHotspot"
-#define WIFI_PASSWORD "YourPassword"
+#define WIFI_SSID "Injected from DASH_WIFI_SSID"
+#define WIFI_PASSWORD "Injected from DASH_WIFI_PASSWORD"
 
 // Location for weather/traffic (decimal degrees).
 #define LOCATION_LAT 35.6762

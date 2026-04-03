@@ -23,10 +23,18 @@ enum class ObdConnectionState : uint8_t {
 
 struct TripMetrics {
   float trip_distance_km;
+  float fuel_used_l;
+  float avg_l_per_100km;
+  float instant_l_per_100km;
+  float instant_gph;
+  float estimated_maf_gps;
   uint8_t harsh_acceleration_count;
   uint8_t harsh_braking_count;
-  uint8_t smoothness_score;
-  uint8_t speed_consistency_score;
+  uint8_t fuel_saving_score;
+  uint8_t comfort_score;
+  uint8_t flow_score;
+  uint8_t trip_score;
+  uint32_t last_sample_ms;
   char coaching_message[96];
 };
 
