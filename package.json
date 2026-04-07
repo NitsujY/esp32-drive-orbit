@@ -1,0 +1,20 @@
+{
+  "name": "esp32-drive-orbit-dashboard-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node tools/dashboard/dev-server.mjs",
+    "build:web": "node tools/dashboard/build.mjs",
+    "cap:run:ios": "node tools/capacitor/run-ios-device.mjs"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
+    "@capacitor/preferences": "^8.0.1",
+    "esbuild": "^0.25.1",
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.3.0"
+  }
+}

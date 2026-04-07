@@ -1,42 +1,69 @@
 #include <Arduino.h>
-#include <Wire.h>
-#include <esp_heap_caps.h>
 
-#include "app/dashboard_display.h"
+#include "app/car_telemetry_store.h"
+#include "app/dashboard_web_server.h"
 #include "app/elm327_client.h"
-#include "app/app_state.h"
-#include "app/telemetry_transmitter.h"
-#include "app/vehicle_profiles/vehicle_profile.h"
+#include "app/gateway_status_display.h"
+#include "app/simulation_controller.h"
 #include "app/weather_client.h"
 #include "app/wifi_manager.h"
-#include "app/camera_client.h"
-#include "cyber_theme.h"
-#include "espnow_transport.h"
-#include "shared_data.h"
+#include "car_telemetry.h"
 
 namespace {
 
-constexpr uint32_t kTelemetryIntervalMs = 100;
-
-uint32_t last_publish_ms = 0;
-app::AppState app_state = app::makeInitialState();
-app::TelemetryTransmitter telemetry_transmitter;
-app::DashboardDisplay dashboard_display;
+telemetry::CarTelemetry live_telemetry = telemetry::makeInitialCarTelemetry();
+app::CarTelemetryStore telemetry_store;
+app::DashboardWebServer dashboard_web_server(telemetry_store);
 app::Elm327Client elm327_client;
-app::WifiManager wifi_manager;
+app::GatewayStatusDisplay gateway_status_display;
+app::SimulationController simulation_controller;
 app::WeatherClient weather_client;
-app::CameraClient camera_client;
+app::WifiManager wifi_manager;
+int16_t previous_speed_kph = 0;
+uint32_t last_speed_sample_ms = 0;
+uint32_t last_trip_accum_ms = 0;
+float trip_distance_km = 0.0f;
+bool simulation_mode_active = false;
 
-app::ObdConnectionState mapObdConnectionState(app::Elm327Client::ConnectionState state) {
-  switch (state) {
-    case app::Elm327Client::ConnectionState::Disconnected:
-      return app::ObdConnectionState::Disconnected;
-    case app::Elm327Client::ConnectionState::Connecting:
-      return app::ObdConnectionState::Connecting;
-    case app::Elm327Client::ConnectionState::Live:
-      return app::ObdConnectionState::Live;
+void updateDerivedTelemetry(uint32_t now_ms, bool fresh_sample) {
+  live_telemetry.uptime_ms = now_ms;
+  live_telemetry.wifi_connected = wifi_manager.isConnected();
+  live_telemetry.obd_connected =
+      elm327_client.connectionState() == app::Elm327Client::ConnectionState::Live;
+  live_telemetry.telemetry_fresh = elm327_client.hasFreshTelemetry(now_ms);
+
+  if (fresh_sample && last_speed_sample_ms != 0 && now_ms > last_speed_sample_ms) {
+    const float dt_s = static_cast<float>(now_ms - last_speed_sample_ms) / 1000.0f;
+    if (dt_s > 0.05f && dt_s < 2.0f) {
+      const float delta_kph = static_cast<float>(live_telemetry.speed_kph - previous_speed_kph);
+      const float delta_mps = delta_kph / 3.6f;
+      const float accel_g = (delta_mps / dt_s) / 9.80665f;
+      live_telemetry.longitudinal_accel_mg = static_cast<int16_t>(lroundf(accel_g * 1000.0f));
+    } else {
+      live_telemetry.longitudinal_accel_mg = 0;
+    }
+  } else if (!fresh_sample) {
+    live_telemetry.longitudinal_accel_mg = 0;
   }
-  return app::ObdConnectionState::Disconnected;
+
+  telemetry::refreshDerivedTelemetry(live_telemetry);
+}
+
+void accumulateTripDistance(uint32_t now_ms, bool speed_fresh) {
+  if (last_trip_accum_ms == 0) {
+    last_trip_accum_ms = now_ms;
+    return;
+  }
+
+  const uint32_t dt_ms = now_ms - last_trip_accum_ms;
+  last_trip_accum_ms = now_ms;
+
+  if (!speed_fresh || dt_ms <= 50U || dt_ms >= 2000U) {
+    return;
+  }
+
+  const float dt_h = static_cast<float>(dt_ms) / 3600000.0f;
+  trip_distance_km += static_cast<float>(live_telemetry.speed_kph) * dt_h;
 }
 
 }  // namespace
@@ -44,89 +71,65 @@ app::ObdConnectionState mapObdConnectionState(app::Elm327Client::ConnectionState
 void setup() {
   Serial.begin(115200);
   Serial.println();
-  Serial.println("[BOOT] dash_35 starting");
-  Serial.print("[BOOT] Vehicle profile: ");
-  Serial.println(app::vehicle_profiles::activeProfile().display_name);
+  Serial.println("[BOOT] dash_35 headless gateway starting");
 
-  const size_t psram_size = ESP.getPsramSize();
-  if (psram_size > 0) {
-    Serial.print("[BOOT] PSRAM: ");
-    Serial.print(psram_size);
-    Serial.println(" bytes");
-  }
-
-  telemetry_transmitter.begin(Serial);
-  dashboard_display.begin(Serial);
   elm327_client.begin(Serial);
-
-  if (espnow::beginTransport() && espnow::addBroadcastPeer()) {
-    Serial.println("[BOOT] ESP-NOW transport ready");
-  } else {
-    Serial.println("[BOOT] ESP-NOW init failed — companion link unavailable");
-  }
-
   wifi_manager.begin(Serial);
   weather_client.begin(Serial);
-  camera_client.begin(Serial);
-
-  app_state = app::makeInitialState();
-  app_state.psram_detected = psram_size > 0;
-  app_state.psram_size_bytes = psram_size;
+  dashboard_web_server.begin(Serial);
+  gateway_status_display.begin(Serial);
+  simulation_controller.begin(Serial);
+  telemetry_store.publish(live_telemetry);
 }
 
 void loop() {
   const uint32_t now = millis();
-  elm327_client.poll(now, app_state.telemetry);
+  simulation_controller.poll(now);
   wifi_manager.poll(now);
-
-  if (now - last_publish_ms >= kTelemetryIntervalMs) {
-    last_publish_ms = now;
-    if (elm327_client.hasFreshTelemetry(now)) {
-      const app::ObdConnectionState next_obd_state = mapObdConnectionState(elm327_client.connectionState());
-      if (app_state.view_state.obd_connection_state != app::ObdConnectionState::Live &&
-          next_obd_state == app::ObdConnectionState::Live) {
-        app::resetTripMetrics(app_state.view_state, "Live OBD connected. Trip tracking reset.");
-        app_state.last_trip_accum_ms = 0;
-      }
-      const int16_t previous_speed_kph = app_state.previous_speed_kph;
-      app_state.telemetry.sequence += 1;
-      app_state.telemetry.uptime_ms = now;
-      app::accumulateTripDistance(app_state, now, true);
-      app::vehicle_profiles::refreshTelemetry(app_state.telemetry);
-      if (app_state.last_speed_sample_ms != 0 && now > app_state.last_speed_sample_ms) {
-        const float dt_s = static_cast<float>(now - app_state.last_speed_sample_ms) / 1000.0f;
-        if (dt_s > 0.05f && dt_s < 2.0f) {
-          const float delta_kph = static_cast<float>(app_state.telemetry.speed_kph - previous_speed_kph);
-          const float delta_mps = delta_kph / 3.6f;
-          const float accel_g = (delta_mps / dt_s) / 9.80665f;
-          app_state.telemetry.longitudinal_accel_mg =
-              static_cast<int16_t>(lroundf(accel_g * 1000.0f));
-        } else {
-          app_state.telemetry.longitudinal_accel_mg = 0;
-        }
-      } else {
-        app_state.telemetry.longitudinal_accel_mg = 0;
-      }
-      app_state.last_speed_sample_ms = now;
-      app::updateDashboardViewState(app_state.view_state, app_state.telemetry, previous_speed_kph);
-      app_state.view_state.obd_connection_state = next_obd_state;
-      app_state.view_state.telemetry_data_mode = app::TelemetryDataMode::ObdLive;
-      app_state.previous_speed_kph = app_state.telemetry.speed_kph;
-    } else {
-      app_state.view_state.obd_connection_state = mapObdConnectionState(elm327_client.connectionState());
-      app::maintainIdleState(app_state, now);
-      app_state.telemetry.longitudinal_accel_mg = 0;
-      app_state.view_state.obd_connection_state = mapObdConnectionState(elm327_client.connectionState());
-      app_state.view_state.telemetry_data_mode = app::TelemetryDataMode::Fallback;
+  const bool simulation_enabled = simulation_controller.enabled();
+  if (simulation_enabled != simulation_mode_active) {
+    simulation_mode_active = simulation_enabled;
+    previous_speed_kph = live_telemetry.speed_kph;
+    last_speed_sample_ms = 0;
+    last_trip_accum_ms = 0;
+    if (!simulation_enabled) {
+      live_telemetry = telemetry::makeInitialCarTelemetry();
+      live_telemetry.wifi_connected = wifi_manager.isConnected();
     }
-    weather_client.poll(now, wifi_manager.isConnected(), app_state.telemetry);
-    camera_client.poll(now, wifi_manager.isConnected(), app_state.telemetry);
-    telemetry_transmitter.publish(app_state.telemetry, now);
   }
 
-  // Sync light/dark mode from headlight state.
-  theme::darkMode() = app_state.telemetry.headlights_on;
+  bool fresh_sample = false;
+  if (simulation_enabled) {
+    fresh_sample = simulation_controller.apply(live_telemetry, now, wifi_manager.isConnected());
+    accumulateTripDistance(now, fresh_sample);
+  } else {
+    elm327_client.poll(now, live_telemetry);
+    weather_client.poll(now, wifi_manager.isConnected(), live_telemetry);
 
-  dashboard_display.render(app_state.telemetry, app_state.view_state, app_state.psram_detected,
-                           app_state.psram_size_bytes, now);
+    fresh_sample = elm327_client.hasFreshTelemetry(now);
+    if (fresh_sample) {
+      live_telemetry.sequence += 1;
+    }
+
+    accumulateTripDistance(now, fresh_sample);
+    updateDerivedTelemetry(now, fresh_sample);
+  }
+
+  telemetry_store.publish(live_telemetry);
+  dashboard_web_server.poll(now, wifi_manager.isConnected());
+
+  char access_label[48] = {0};
+  if (wifi_manager.isConnected()) {
+    const String ip = wifi_manager.localIp();
+    snprintf(access_label, sizeof(access_label), "%s", ip.c_str());
+  } else {
+    snprintf(access_label, sizeof(access_label), "%s", wifi_manager.hostname());
+  }
+  gateway_status_display.render(live_telemetry, trip_distance_km, access_label,
+                                dashboard_web_server.hasHostedUi(),
+                                dashboard_web_server.usingEmbeddedFallback(),
+                                simulation_enabled, now);
+
+  previous_speed_kph = live_telemetry.speed_kph;
+  last_speed_sample_ms = now;
 }

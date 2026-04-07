@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#include "shared_data.h"
+#include "car_telemetry.h"
 
 namespace app {
 
@@ -44,7 +44,7 @@ class Elm327Client {
   };
 
   void begin(Stream &log_output);
-  void poll(uint32_t now_ms, telemetry::DashboardTelemetry &telemetry);
+  void poll(uint32_t now_ms, telemetry::CarTelemetry &telemetry);
   bool hasFreshTelemetry(uint32_t now_ms) const;
   bool connected() const;
   ConnectionState connectionState() const;
@@ -55,8 +55,8 @@ class Elm327Client {
   void updateConnection(uint32_t now_ms);
   void updateInitialization(uint32_t now_ms);
   void updatePolling(uint32_t now_ms);
-  void processIncoming(uint32_t now_ms, telemetry::DashboardTelemetry &telemetry);
-  void handleLine(const char *line, uint32_t now_ms, telemetry::DashboardTelemetry &telemetry);
+  void processIncoming(uint32_t now_ms, telemetry::CarTelemetry &telemetry);
+  void handleLine(const char *line, uint32_t now_ms, telemetry::CarTelemetry &telemetry);
   void sendCommand(const char *command);
   void advanceQuery();
   void startFuelSequence();

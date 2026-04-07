@@ -357,9 +357,11 @@ src/
         orb_minimal/
           palette.h
           motion.h
+frontend/
+  dashboard/
 preview/
-  dashboard_preview/
-  companion_preview/
+  companion/
+  features/
 ```
 
 Theme rules:

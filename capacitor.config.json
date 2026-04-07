@@ -1,0 +1,9 @@
+{
+  "appId": "com.driveorbit.dashboard",
+  "appName": "Drive Orbit",
+  "bundledWebRuntime": false,
+  "webDir": "build/capacitor",
+  "server": {
+    "iosScheme": "App"
+  }
+}

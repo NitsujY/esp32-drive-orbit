@@ -2,145 +2,141 @@
 
 ## Purpose
 
-This document separates pre-implementation validation from firmware coding so hardware and protocol risks are discovered early.
+This plan is now ordered around a browser-first release flow.
 
-## Current Status
+The web preview is the primary product until the design is locked on desktop and phone. Only after that is stable do we aggressively remove leftover code, harden hotspot reliability, validate the end-to-end dash_35 plus phone behavior, and ship the final ESP32-hosted release.
 
-- Stage 3 is approved, including the default preview theme set.
-- Stage 4 is approved and complete as an interaction-validation checkpoint.
-- Stage 5 is complete. Toyota Sienta PID reads validated on hardware; live OBD telemetry is the primary source.
-- Stage 6 is active. Inter-board transport uses ESP-NOW (wireless, no UART wiring required).
-- The `dash_35` transmitter broadcasts framed telemetry packets via ESP-NOW.
-- The `companion_orb` receives ESP-NOW packets and feeds them into the existing stream parser.
-- Remaining Stage 6 work: GC9A01 rendering on the Slave, live telemetry exchange validation.
+## Current Direction
 
-### Light/Dark Mode
+- `dash_35` is being reduced to a headless telemetry gateway.
+- The browser dashboard is the main UI surface and should be finalized before deeper firmware cleanup continues.
+- `companion_orb` is not part of the active delivery path for this release.
+- The immediate priority is not feature expansion. The priority is sequencing: preview release first, cleanup second, hotspot reliability third, integrated behavior validation fourth, release last.
+- Every dashboard-facing change must be validated in both the preview flow and the live OBD-backed board flow in the same iteration so the preview does not drift from real behavior.
 
-- Both boards support light mode (default, headlights OFF) and dark mode (headlights ON).
-- The `headlights_on` field in `DashboardTelemetry` controls the mode.
-- The dash_35 sets `theme::darkMode()` from the telemetry each loop cycle.
-- The companion_orb receives `headlights_on` via the fast telemetry ESP-NOW packet and sets its own `theme::darkMode()`.
-- Light mode: light gray backgrounds, darker accents for daytime readability.
-- Dark mode: near-black backgrounds, bright neon accents for night driving.
-- The Toyota headlight PID is pending discovery via the `toyota-scan` probe tool. Once found, the ELM327 client will set `headlights_on` from the OBD response.
+## Delivery Order
 
-## Stages
-
-### Stage 0: Documentation
+### Stage 0: Planning Reset
 
 Outputs:
 
-- Foundation specification
-- Delivery plan
-- Task list
-- Hardware verification checklist
+- A repo plan that matches the browser-first delivery order
+- A concrete validation checklist for preview, hotspot, and release gates
+- Explicit de-scoping of companion work from the current release
 
 Why it exists:
 
-- Freeze design decisions before code changes continue
-- Keep hardware constraints visible
-- Give the repo a durable workflow for spec-driven development
+- The old plan assumed a display-centric and inter-board path that is no longer the shipping direction
+- The repo needs one source of truth for the new release order
 
-### Stage 1: Toolchain Installation
+### Stage 1: Web Preview Release Candidate
 
 Outputs:
 
-- PlatformIO core available locally
-- Espressif32 platform packages installed locally
-- Arduino framework packages installed locally
+- A stable local browser dashboard that runs from the Mac
+- A mock WebSocket feed for instant UI iteration
+- A phone-accessible preview flow over LAN or tunnel
+- A design review gate focused on layout, motion, readability, and reconnect behavior
 
 Why it exists:
 
-- Avoid mixing environment setup failures with firmware defects
-- Make later compile failures attributable to code, not missing dependencies
+- Design changes are cheapest before firmware cleanup and hotspot hardening consume time
+- The browser UI is now the shipping experience, so it must be treated as the first release candidate
 
-### Stage 2: Hardware Verification
+Acceptance gate:
+
+- Desktop browser preview feels visually stable and coherent
+- Phone browser preview is usable and responsive on the same UI build
+- Preview changes are checked against the live OBD-backed dashboard path in the same working cycle
+- The team can sign off on the visual direction before firmware cleanup starts
+
+### Stage 2: Code Cleanup And Runtime Simplification
 
 Outputs:
 
-- Confirmed `dash_35` boot behavior
-- Confirmed `dash_35` serial-console visibility
-- Confirmed `dash_35` display and touch baseline
-- Confirmed `dash_35` PSRAM availability
+- `dash_35` reduced to only the code required for OBD polling, Wi-Fi, mDNS, AsyncWebServer, WebSocket broadcast, and LittleFS serving
+- Old dash_35 display code removed from the repository or clearly retired after a final review
+- No weather, camera, ESP-NOW, or local rendering logic left in the active dash_35 path
 
 Why it exists:
 
-- Prevent firmware debugging on unstable primary hardware
-- Catch power, cable, display, touch, or PSRAM issues early
+- Cleanup should happen after the web preview direction is approved, not before
+- The firmware must stay clean and understandable while hotspot and integration testing proceed
 
-### Stage 3: Pure UI Preview
+Acceptance gate:
+
+- The dash_35 source tree is easy to read and limited to the gateway responsibilities
+- `pio run -e dash_35` stays green after cleanup
+
+### Stage 3: iPhone Hotspot Reliability Validation
 
 Outputs:
 
-- Local dashboard UI preview in VS Code
-- Local companion display UI preview in VS Code
-- Theme and motion validation before embedded UI implementation
-- Simulated telemetry driving the preview experience
+- A repeatable Wi-Fi validation procedure against the iPhone hotspot
+- Reliable reconnect behavior across power cycles and hotspot restarts
+- Logs and fallback notes for cases where mDNS is not dependable on the hotspot
 
 Why it exists:
 
-- UI changes are cheaper before device-specific implementation
-- You can validate the futuristic minimalist direction before firmware complexity increases
-- The dashboard and orb can be designed as a coherent pair early
+- The release is blocked if the ESP32 cannot join the iPhone hotspot consistently
+- This is a system behavior problem, not just a code-completion step
 
-### Stage 4: Interaction Validation
+Acceptance gate:
+
+- The ESP32 connects successfully across repeated attempts, not just once
+- The dashboard remains reachable by direct IP even if `carconsole.local` is inconsistent
+- Failures, if any, are reduced to a small documented set of known hotspot limitations
+
+### Stage 4: End-To-End dash_35 And Phone App Behavior Test
 
 Outputs:
 
-- Approved companion-board role split
-- Approved no-Wi-Fi first-stage scope
-- Approved deferred transport decision
-- Approved `companion_orb` secondary display role
+- Verified behavior with live `dash_35` telemetry feeding the browser dashboard
+- Confirmed reconnect behavior when the board restarts, the hotspot cycles, or the browser reloads
+- Confirmed UI responsiveness, stale-data behavior, and visual stability on the phone
 
 Why it exists:
 
-- Prevent UI and transport work from being coupled too early
-- Allow parser and transport behavior to be tested in isolation
+- A good local preview is not enough; the integrated board-plus-phone path must behave correctly under real conditions
+- This stage catches the gap between mock telemetry and live OBD timing
 
-### Stage 5: Firmware Implementation
+Acceptance gate:
+
+- The phone app stays readable and responsive with live board data
+- Live telemetry recovery after disconnects works without manual repair steps beyond page refresh or built-in reconnect
+- The system is stable enough to move to release packaging
+
+### Stage 5: Release Build And Deployment
 
 Outputs:
 
-- Working `platformio.ini`
-- `dash_35` standalone firmware path
-- Welcome and boot flow active on device
-- OBD connection-state UX from disconnected through live data
-- Embedded dashboard layout that clears the bottom toolbar cleanly
-- Shared transport header ready for later reuse
-- Deferred companion transport and slave integration path
+- Minified and gzipped frontend assets
+- A buildable firmware image and LittleFS image
+- A repeatable release sequence for firmware upload and filesystem upload
+- Release notes describing the preferred access path and fallback access path
 
 Why it exists:
 
-- Implementation starts only after the environment and hardware are known-good
+- Packaging needs to happen only after preview approval, cleanup, hotspot reliability, and integrated behavior validation are complete
 
-### Stage 6: Companion Linkage And Board Integration
+Acceptance gate:
 
-Outputs:
+- `npm run build:web` succeeds
+- `pio run -e dash_35` succeeds
+- `pio run -e dash_35 -t buildfs` succeeds
+- Firmware and filesystem upload steps are documented and reproducible
 
-- Physical or selected inter-board transport hookup
-- `companion_orb` live packet reception from `dash_35`
-- Companion rendering and behavior validated on hardware
+## Immediate Next Steps
 
-Why it exists:
+1. Treat the current browser dashboard as a release candidate and iterate only on design-quality issues until the preview is approved.
+2. Every preview-facing UI update must be verified against the live OBD path before the iteration is considered complete.
+3. After preview approval, physically remove unused dash_35 code instead of only excluding it from the build.
+4. Run repeated iPhone hotspot connection trials and tighten Wi-Fi behavior until it is dependable.
+5. Validate live dash_35 plus phone behavior with the real board, not the mock feed.
+6. Only then produce and deploy the final release assets.
 
-- Keeps `dash_35` delivery moving without blocking on secondary-board integration
-- Preserves the transport work already completed while moving it to the end of the delivery path
+## Explicit Non-Goals For This Release
 
-### Stage 7: Toyota Custom PID Discovery And Driver Reminders
-
-Outputs:
-
-- Captured Toyota custom PID evidence for header and mode combinations relevant to lighting and body-state signals
-- Confirmed headlight-state source for `headlights_on` or a documented sunset-based fallback policy
-- Reminder-zone behavior defined for high-priority driver prompts such as `LIGHTS OFF AFTER SUNSET`
-- Firmware task list ready for implementing probe findings in the ELM327 client and dashboard reminder logic
-
-Why it exists:
-
-- Vehicle-specific reverse engineering should stay isolated from display-polish work
-- Reminder behavior depends on both signal confidence and screen placement, so it needs an explicit stage instead of being folded into random UI edits
-- The same workflow can later be reused for doors, seatbelt, and other Toyota body-state signals
-
-## Gate Policy
-
-Stage 5 started after explicit user approval on 2026-03-25.
+- No new companion_orb delivery work
+- No reintroduction of local TFT or LVGL rendering
+- No expansion into extra non-essential runtime features before hotspot reliability is proven

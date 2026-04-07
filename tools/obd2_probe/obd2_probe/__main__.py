@@ -4,6 +4,19 @@ import asyncio
 from .cli import main_async
 
 
+def parse_toyota_mode(value: str) -> int:
+    text = value.strip().lower()
+    if text in {"21", "22"}:
+        mode = int(text, 16)
+    else:
+        mode = int(text, 0)
+
+    if mode not in {0x21, 0x22}:
+        raise argparse.ArgumentTypeError("Toyota mode must be 21/0x21 or 22/0x22")
+
+    return mode
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m obd2_probe",
@@ -55,7 +68,12 @@ def build_parser() -> argparse.ArgumentParser:
     toyota_scan.add_argument("--scan-timeout", type=float, default=6.0)
     toyota_scan.add_argument("--protocol", default="ATSP6")
     toyota_scan.add_argument("--header", default="7C0", help="CAN header for Toyota ECU (e.g. 7C0, 750, 7E0)")
-    toyota_scan.add_argument("--mode", type=int, default=21, choices=[21, 22], help="Toyota diagnostic mode (21 or 22)")
+    toyota_scan.add_argument(
+        "--mode",
+        type=parse_toyota_mode,
+        default=0x21,
+        help="Toyota diagnostic mode (21/0x21 or 22/0x22)",
+    )
     toyota_scan.add_argument("--pid-start", type=lambda x: int(x, 0), default=0x00, help="Start PID (hex or decimal)")
     toyota_scan.add_argument("--pid-end", type=lambda x: int(x, 0), default=0xFF, help="End PID (hex or decimal)")
 

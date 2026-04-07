@@ -30,7 +30,7 @@ void WeatherClient::begin(Print &log) {
 
 void WeatherClient::poll(uint32_t now_ms,
                          bool wifi_connected,
-                         telemetry::DashboardTelemetry &telemetry) {
+                         telemetry::CarTelemetry &telemetry) {
   telemetry.wifi_connected = wifi_connected;
 
   if (!wifi_connected) {
@@ -72,6 +72,10 @@ void WeatherClient::poll(uint32_t now_ms,
 
   telemetry.weather_temp_c = last_temp_c_;
   telemetry.weather_code = last_weather_code_;
+}
+
+bool WeatherClient::hasFreshWeather() const {
+  return has_fresh_weather_;
 }
 
 bool WeatherClient::fetchWeather(int8_t *temp_c_out, uint8_t *weather_code_out) {
@@ -139,6 +143,8 @@ bool WeatherClient::fetchWeather(int8_t *temp_c_out, uint8_t *weather_code_out) 
     log_->print("C code=");
     log_->println(weather_code);
   }
+
+  has_fresh_weather_ = true;
 
   return true;
 }

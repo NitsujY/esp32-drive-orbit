@@ -10,10 +10,11 @@ namespace app {
 
 namespace {
 
-constexpr uint32_t kRetryIntervalMs = 60000;
-constexpr uint32_t kConnectTimeoutMs = 10000;
+constexpr uint32_t kRetryIntervalMs = 15000;
+constexpr uint32_t kConnectTimeoutMs = 12000;
 constexpr uint32_t kLogIntervalMs = 30000;
 constexpr int kScanResultLogLimit = 5;
+constexpr char kWifiHostname[] = "carconsole";
 
 const char *wifiStatusLabel(wl_status_t status) {
   switch (status) {
@@ -42,6 +43,7 @@ const char *wifiStatusLabel(wl_status_t status) {
 
 void WifiManager::begin(Print &log) {
   log_ = &log;
+  stopped_ = false;
 
   // Configure NTP timezone.
   configTime(0, 0, "pool.ntp.org");
@@ -53,6 +55,11 @@ void WifiManager::begin(Print &log) {
 }
 
 void WifiManager::poll(uint32_t now_ms) {
+  if (stopped_) {
+    connected_ = false;
+    return;
+  }
+
   const wl_status_t status = WiFi.status();
   const bool was_connected = connected_;
   connected_ = (status == WL_CONNECTED);
@@ -133,17 +140,47 @@ bool WifiManager::isConnected() const {
   return connected_;
 }
 
+bool WifiManager::isTimeSynced() const {
+  return ntp_synced_;
+}
+
 String WifiManager::localIp() const {
   return WiFi.localIP().toString();
+}
+
+const char *WifiManager::hostname() const {
+  return kWifiHostname;
+}
+
+void WifiManager::stop(const char *reason) {
+  if (stopped_) {
+    return;
+  }
+
+  if (log_ != nullptr) {
+    log_->print("[WIFI] ");
+    log_->println(reason);
+  }
+
+  WiFi.disconnect(true, false);
+  WiFi.setAutoReconnect(false);
+  WiFi.mode(WIFI_OFF);
+
+  connected_ = false;
+  attempted_ = true;
+  stopped_ = true;
+  last_status_ = WL_DISCONNECTED;
 }
 
 void WifiManager::startConnection(uint32_t now_ms, const char *reason) {
   WiFi.mode(WIFI_STA);
   WiFi.persistent(false);
   WiFi.setAutoReconnect(true);
+  WiFi.setHostname(kWifiHostname);
+  // BLE is active for ELM327, so ESP32 requires Wi-Fi modem sleep to remain enabled.
   WiFi.setSleep(true);
-  WiFi.disconnect(false, false);
-  delay(50);
+  WiFi.disconnect(false, true);
+  delay(150);
 
   if (log_ != nullptr) {
     log_->print("[WIFI] ");
@@ -155,6 +192,7 @@ void WifiManager::startConnection(uint32_t now_ms, const char *reason) {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   attempted_ = true;
   connected_ = false;
+  stopped_ = false;
   last_attempt_ms_ = now_ms;
   last_status_ = WiFi.status();
   connect_timeout_logged_ = false;

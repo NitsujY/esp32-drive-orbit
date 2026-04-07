@@ -1,0 +1,23 @@
+Connected to 64543134-6384-D872-24F2-4B44EE306A63.
+TX char: 00002af1-0000-1000-8000-00805f9b34fb
+RX char: 00002af0-0000-1000-8000-00805f9b34fb
+Running init...
+TX: ATZ
+RX: ELM327 v2.3
+TX: ATE0
+RX: ATE0
+RX: OK
+TX: ATL0
+RX: OK
+TX: ATS0
+RX: OK
+TX: ATH1
+RX: OK
+TX: ATSP6
+RX: OK
+Setting header: ATSH7C0
+RX: OK
+Scanning Mode 22 PIDs 0x0000..0x00FF on header 7C0
+------------------------------------------------------------
+------------------------------------------------------------
+Scan complete. 0 PID(s) responded.

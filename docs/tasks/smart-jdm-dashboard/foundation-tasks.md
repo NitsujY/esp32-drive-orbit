@@ -69,9 +69,9 @@
 
 ## Stage 7: Toyota PID Discovery And Reminder Logic
 
-- [ ] Add a documented Toyota probing matrix for headers `7C0`, `750`, and `7E0` across Mode `21` and `22`
-- [ ] Capture differential probe logs for headlights OFF vs headlights ON using `python -m obd2_probe toyota-scan`
-- [ ] Narrow candidate PIDs whose response bytes change only with the headlight switch state
+- [x] Add a documented Toyota probing matrix for headers `7C0`, `750`, and `7E0` across Mode `21` and `22`
+- [x] Capture differential probe logs for headlights OFF vs headlights ON using `python -m obd2_probe toyota-scan`
+- [x] Narrow candidate PIDs whose response bytes change only with the headlight switch state; current best candidate is header `7C0`, Mode `21`, PID `21C4`
 - [ ] Validate the winning headlight PID in repeated ignition cycles and day/night conditions
 - [ ] Map the confirmed signal into `DashboardTelemetry.headlights_on` in the ELM327 client
 - [ ] Implement a sunset fallback when Wi-Fi time is known but the Toyota headlight PID is still unavailable

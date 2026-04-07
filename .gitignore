@@ -1,4 +1,15 @@
 .DS_Store
 .env
 .pio/
+.playwright-mcp/
+.venv/
 .vscode/
+build/capacitor/
+build/dashboard_preview_native/
+build/ios/
+ios/App/App/public/
+ios/App/Pods/
+ios/App/DerivedData/
+.tmp_web_dashboard_app.js
+node_modules/
+web-dashboard-iphone15*.png

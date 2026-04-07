@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "fields": {
+    "v": "schema version",
+    "seq": "telemetry sequence",
+    "up": "uptime milliseconds",
+    "spd": "vehicle speed km/h",
+    "rpm": "engine rpm",
+    "clt": "coolant temperature celsius",
+    "wt": "weather temperature celsius",
+    "wc": "weather code",
+    "bat": "battery millivolts",
+    "fuel": "fuel level percent",
+    "rng": "estimated range km",
+    "acc": "longitudinal acceleration milli-g",
+    "wifi": "wifi connected flag 0 or 1",
+    "hl": "headlights flag 0 or 1",
+    "obd": "obd link live flag 0 or 1",
+    "fresh": "fresh telemetry flag 0 or 1"
+  }
+}

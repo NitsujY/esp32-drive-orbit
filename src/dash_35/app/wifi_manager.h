@@ -11,7 +11,10 @@ class WifiManager {
   void poll(uint32_t now_ms);
 
   bool isConnected() const;
+  bool isTimeSynced() const;
   String localIp() const;
+  const char *hostname() const;
+  void stop(const char *reason);
 
  private:
   void startConnection(uint32_t now_ms, const char *reason);
@@ -25,6 +28,7 @@ class WifiManager {
   wl_status_t last_status_ = WL_IDLE_STATUS;
   bool connect_timeout_logged_ = false;
   bool ntp_synced_ = false;
+  bool stopped_ = false;
 };
 
 }  // namespace app

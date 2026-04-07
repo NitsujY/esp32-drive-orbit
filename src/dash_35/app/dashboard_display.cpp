@@ -58,8 +58,17 @@ TCA9554 io_expander(kIoExpanderAddress);
 Arduino_DataBus *display_bus =
     new Arduino_ESP32SPI(kDisplayDcPin, kDisplayCsPin, kDisplaySckPin, kDisplayMosiPin,
                          kDisplayMisoPin);
-Arduino_GFX *gfx =
+Arduino_GFX *panel_gfx =
     new Arduino_ST7796(display_bus, GFX_NOT_DEFINED, 0, true /* ips */);
+Arduino_Canvas *framebuffer_gfx = nullptr;
+Arduino_GFX *gfx = panel_gfx;
+
+void flushDisplay() {
+  if (framebuffer_gfx != nullptr && gfx == framebuffer_gfx) {
+    framebuffer_gfx->flush();
+  }
+}
+
 uint16_t lerpColor565(uint16_t from, uint16_t to, float t) {
   const float clamped = constrain(t, 0.0f, 1.0f);
   const uint8_t from_r = static_cast<uint8_t>((from >> 11) & 0x1F);
@@ -626,15 +635,30 @@ void DashboardDisplay::begin(Stream &log) {
   io_expander.write1(kDisplayResetExpanderPin, HIGH);
   delay(200);
 
-  if (!gfx->begin(kDisplaySpiHz)) {
-    log.println("[DISPLAY] gfx->begin() failed.");
+  if (!panel_gfx->begin(kDisplaySpiHz)) {
+    log.println("[DISPLAY] panel begin failed.");
     return;
   }
 
-  gfx->setRotation(kDisplayRotation);
+  panel_gfx->setRotation(kDisplayRotation);
+
+  if (framebuffer_gfx == nullptr) {
+    framebuffer_gfx = new Arduino_Canvas(kScreenWidth, kScreenHeight, panel_gfx);
+    if (framebuffer_gfx != nullptr && framebuffer_gfx->begin(GFX_SKIP_OUTPUT_BEGIN)) {
+      gfx = framebuffer_gfx;
+      log.println("[DISPLAY] Canvas back buffer enabled.");
+    } else {
+      delete framebuffer_gfx;
+      framebuffer_gfx = nullptr;
+      gfx = panel_gfx;
+      log.println("[DISPLAY] Canvas unavailable, using direct panel draws.");
+    }
+  }
+
   pinMode(kBacklightPin, OUTPUT);
   digitalWrite(kBacklightPin, HIGH);
   gfx->fillScreen(backgroundColor(telemetry::DriveMode::Cruise));
+  flushDisplay();
 
   initialized_ = true;
   log.println("[DISPLAY] ST7796 display ready.");
@@ -728,6 +752,7 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
 
     if (trip_changed || detail_header_changed || !last_detail_view_) {
       drawDetailView(snapshot, telemetry, view_state);
+      flushDisplay();
     }
     telemetry_cached_ = true;
     last_detail_view_ = true;
@@ -801,6 +826,7 @@ void DashboardDisplay::render(const telemetry::DashboardTelemetry &telemetry,
       data_mode_changed ||
       fuel_changed || mode_changed) {
     drawDashboardScene(snapshot, telemetry, view_state, reminder_visible);
+    flushDisplay();
     scene_drawn_ = true;
   }
 

@@ -4,8 +4,11 @@
 
 namespace telemetry {
 
+#ifndef TELEMETRY_WEATHER_CONSTANTS_DEFINED
+#define TELEMETRY_WEATHER_CONSTANTS_DEFINED
 constexpr int8_t kWeatherTempUnknown = -128;
 constexpr uint8_t kWeatherCodeUnknown = 255;
+#endif
 constexpr uint16_t kNearestCameraUnknown = 0xFFFF;
 
 enum class DriveMode : uint8_t {

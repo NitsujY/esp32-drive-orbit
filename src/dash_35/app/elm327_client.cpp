@@ -20,6 +20,8 @@ constexpr uint32_t kQueryIntervalMs = 180;
 constexpr uint32_t kFuelQueryIntervalMs = 5000;
 constexpr uint32_t kToyotaFuelFallbackDelayMs = 12000;
 constexpr uint32_t kFreshTelemetryTimeoutMs = 1800;
+constexpr uint32_t kStaleMotionTimeoutMs = 5000;
+constexpr uint32_t kStaleFuelTimeoutMs = 15000;
 constexpr uint32_t kBleScanSeconds = 4;
 constexpr size_t kBleRxBufferSize = 1024;
 constexpr char kNusServiceUuid[] = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
@@ -382,7 +384,7 @@ void Elm327Client::begin(Stream &log_output) {
   }
 }
 
-void Elm327Client::poll(uint32_t now_ms, telemetry::DashboardTelemetry &telemetry) {
+void Elm327Client::poll(uint32_t now_ms, telemetry::CarTelemetry &telemetry) {
   if (!started_) {
     return;
   }
@@ -399,15 +401,11 @@ void Elm327Client::poll(uint32_t now_ms, telemetry::DashboardTelemetry &telemetr
     return;
   }
 
-  // Zero stale gauges when the ECU stops responding (ignition off / adapter idle).
-  // Matches the old project's timeout behavior.
-  constexpr uint32_t kStaleMotionTimeoutMs = 2000;
-  constexpr uint32_t kStaleFuelTimeoutMs = 15000;
-
-  if (last_speed_update_ms_ != 0 && now_ms - last_speed_update_ms_ > kStaleMotionTimeoutMs) {
+  // Hold motion values through short BUS INIT / SEARCHING pauses so the dashboard
+  // does not bounce between real readings and zero while the adapter resynchronizes.
+  // Only zero motion once the whole telemetry stream has gone stale.
+  if (last_live_update_ms_ != 0 && now_ms - last_live_update_ms_ > kStaleMotionTimeoutMs) {
     telemetry.speed_kph = 0;
-  }
-  if (last_rpm_update_ms_ != 0 && now_ms - last_rpm_update_ms_ > kStaleMotionTimeoutMs) {
     telemetry.rpm = 0;
   }
   if (last_fuel_update_ms_ != 0 && now_ms - last_fuel_update_ms_ > kStaleFuelTimeoutMs) {
@@ -487,6 +485,7 @@ void Elm327Client::updateConnection(uint32_t now_ms) {
       last_fuel_request_ms_ = 0;
       last_fuel_update_ms_ = 0;
       fuel_unknown_since_ms_ = 0;
+      last_live_update_ms_ = 0;
       last_speed_update_ms_ = 0;
       last_rpm_update_ms_ = 0;
       elm_busy_until_ms_ = 0;
@@ -517,6 +516,7 @@ void Elm327Client::updateConnection(uint32_t now_ms) {
       last_fuel_request_ms_ = 0;
       last_fuel_update_ms_ = 0;
       fuel_unknown_since_ms_ = 0;
+      last_live_update_ms_ = 0;
       last_speed_update_ms_ = 0;
       last_rpm_update_ms_ = 0;
       elm_busy_until_ms_ = 0;
@@ -620,7 +620,7 @@ void Elm327Client::updatePolling(uint32_t now_ms) {
   last_command_ms_ = now_ms;
 }
 
-void Elm327Client::processIncoming(uint32_t now_ms, telemetry::DashboardTelemetry &telemetry) {
+void Elm327Client::processIncoming(uint32_t now_ms, telemetry::CarTelemetry &telemetry) {
   char ch = 0;
   while (dequeueBleByte(ch)) {
     if (ch == '\r' || ch == '\n' || ch == '>') {
@@ -638,7 +638,7 @@ void Elm327Client::processIncoming(uint32_t now_ms, telemetry::DashboardTelemetr
   }
 }
 
-void Elm327Client::handleLine(const char *line, uint32_t now_ms, telemetry::DashboardTelemetry &telemetry) {
+void Elm327Client::handleLine(const char *line, uint32_t now_ms, telemetry::CarTelemetry &telemetry) {
   char scratch[sizeof(line_buffer_)] = {0};
   strncpy(scratch, line, sizeof(scratch) - 1);
   char *trimmed = trimAscii(scratch);

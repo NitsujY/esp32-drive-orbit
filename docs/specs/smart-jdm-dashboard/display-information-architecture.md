@@ -113,6 +113,13 @@ Recommended behavior for the headlight reminder:
 - Escalation: if the condition persists for about 30 seconds, promote it to the full-width top banner.
 - Clear condition: headlights turn ON, vehicle stops, or the car returns to daylight.
 
+Current Toyota Sienta probe result:
+
+- Current best OBD source for `headlights_on`: header `7C0`, Mode `21`, PID `21C4`.
+- Observed compact values: `7C80361C40C` with headlights OFF and `7C80361C40B` with headlights ON.
+- The byte-level working assumption for later firmware mapping is `0x0C = OFF` and `0x0B = ON`.
+- This signal still requires repeated ignition-cycle and day/night validation before it is treated as fully locked.
+
 This keeps reminders close to the driver's primary glance path without polluting the lower drivetrain rail or competing with the speed hero.
 
 ### Top-Bar Alert Banners (highest priority, full width)

@@ -54,3 +54,4 @@ Deferred later stage:
 6. Approve protocol behavior before implementation begins.
 7. Implement code against the task list.
 8. Record notable tradeoffs in `docs/decisions/` when the architecture changes.
+9. On `dash_35` hardware, press BOOT after startup to toggle local demo telemetry for web UI testing; do not hold BOOT during reset or power-on because GPIO 0 is still the ESP32 flash-mode strap.
