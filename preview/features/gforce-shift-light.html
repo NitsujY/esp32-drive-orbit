@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Drive Orbit — G-Force & Shift Light Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#040404;color:#fafafa;font-family:'Helvetica Neue','Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 20px 48px;min-height:100vh}
+
+.page-top,.intro,.preview-grid,.caption{width:min(1180px,100%)}
+.page-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.back-link{display:inline-flex;align-items:center;min-height:34px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);text-decoration:none;font-size:13px;transition:border-color .2s,color .2s}
+.back-link:hover{border-color:rgba(45,212,191,.4);color:#fff}
+.eyebrow{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:rgba(45,212,191,.6);flex:1;text-align:right}
+.intro{max-width:760px;margin-bottom:28px;font-size:14px;line-height:1.7;color:#666}
+
+.preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-items:start}
+.preview-card{display:flex;flex-direction:column;gap:12px}
+.preview-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.preview-kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#2dd4bf}
+.preview-note{font-size:11px;line-height:1.5;color:#555;max-width:280px;text-align:right}
+
+.section-title{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:#444;margin:32px 0 16px;border-top:1px solid rgba(255,255,255,.06);padding-top:16px;width:min(1180px,100%)}
+
+/* ── Shared device shells ── */
+.device-shell{position:relative;overflow:hidden;background:#0c0c0c;border:1px solid rgba(255,255,255,.08);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.device-shell--phone{width:100%;max-width:340px;height:min(640px,72vh);border-radius:42px}
+.device-shell--gateway{width:100%;max-width:480px;aspect-ratio:3/2;border-radius:20px}
+.device-shell--orb{width:100%;max-width:240px;aspect-ratio:1;border-radius:50%;border-color:rgba(134,255,225,.12)}
+.device-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:100px;height:30px;background:#040404;border-radius:0 0 16px 16px;z-index:20}
+.device-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#444;text-align:center;margin-bottom:6px}
+.caption{max-width:760px;margin-top:16px;font-size:12px;color:#444;line-height:1.7;letter-spacing:.02em}
+
+/* ── G-Force Crosshair (shared) ── */
+.gforce-panel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.gforce-ring{position:relative}
+.gforce-ring canvas{position:absolute;inset:0;width:100%;height:100%}
+.gforce-values{display:flex;gap:16px;font-size:11px;letter-spacing:.08em;color:#666}
+.gforce-values span{display:flex;flex-direction:column;align-items:center;gap:2px}
+.gforce-values .val{font-size:18px;font-weight:500;color:#fafafa;font-variant-numeric:tabular-nums}
+.gforce-label{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#444}
+.gforce-peak{font-size:10px;color:#555;letter-spacing:.06em}
+.gforce-peak b{color:#fb7185;font-weight:500}
+
+/* phone-specific sizing */
+.device-shell--phone .gforce-ring{width:240px;height:240px}
+/* gateway-specific sizing */
+.device-shell--gateway .gforce-ring{width:200px;height:200px}
+.device-shell--gateway .gforce-values .val{font-size:14px}
+.device-shell--gateway .gforce-values{font-size:10px;gap:12px}
+.device-shell--gateway .gforce-label{font-size:8px}
+/* orb-specific */
+.device-shell--orb .gforce-ring{width:160px;height:160px}
+.device-shell--orb .gforce-values{display:none}
+.device-shell--orb .gforce-label{display:none}
+.device-shell--orb .gforce-peak{font-size:9px}
+.orb-total-g{font-size:28px;font-weight:300;color:#2dd4bf;font-variant-numeric:tabular-nums;text-shadow:0 0 16px rgba(45,212,191,.3)}
+.orb-total-unit{font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(45,212,191,.5)}
+
+/* ── Shift Light Bar ── */
+.shift-panel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.shift-speed{font-size:100px;font-weight:200;line-height:1;letter-spacing:-5px;font-variant-numeric:tabular-nums}
+.shift-unit{font-size:10px;letter-spacing:.5em;text-transform:uppercase;color:#555;margin-top:4px}
+.shift-rpm-label{font-size:11px;color:#555;margin-top:14px;letter-spacing:.08em}
+.shift-rpm-val{font-size:24px;font-weight:300;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:2px}
+.shift-bar-wrap{position:absolute;top:48px;left:50%;transform:translateX(-50%);display:flex;gap:3px}
+.shift-led{width:16px;height:7px;border-radius:3px;background:rgba(255,255,255,.06);transition:background .08s,box-shadow .08s}
+.shift-led.on-green{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.5)}
+.shift-led.on-amber{background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.5)}
+.shift-led.on-red{background:#ef4444;box-shadow:0 0 12px rgba(239,68,68,.6)}
+.shift-led.on-flash{animation:shift-flash .12s infinite alternate}
+@keyframes shift-flash{0%{opacity:1}100%{opacity:.2}}
+.shift-gear{position:absolute;bottom:32px;font-size:14px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.4)}
+.shift-msg{position:absolute;bottom:52px;font-size:12px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:#ef4444;opacity:0;transition:opacity .15s}
+.shift-msg.visible{opacity:1}
+
+/* ── Gateway shift bar (landscape) ── */
+.device-shell--gateway .shift-bar-wrap{top:16px}
+.device-shell--gateway .shift-speed{font-size:72px;letter-spacing:-3px}
+.device-shell--gateway .shift-rpm-val{font-size:20px}
+.device-shell--gateway .shift-gear{bottom:16px}
+.device-shell--gateway .shift-msg{bottom:34px}
+
+@media (max-width:1000px){
+  .preview-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:720px){
+  .preview-grid{grid-template-columns:1fr}
+  .preview-head{flex-direction:column;align-items:flex-start}
+  .preview-note{text-align:left;max-width:none}
+}
+</style>
+</head>
+<body>
+
+<div class="page-top">
+  <a class="back-link" href="../">← Hub</a>
+  <span class="eyebrow">Performance Gauges Preview</span>
+</div>
+
+<p class="intro">
+  G-Force crosshair across three devices: phone shows full detail, gateway shows a compact version on the 480 × 320 TFT, and the orb shows a simplified G-ball inside the round 240 × 240 display. Shift light bar previews on phone and gateway.
+</p>
+
+<!-- ── G-Force Section ── -->
+<div class="section-title">G-Force Crosshair — three devices</div>
+
+<section class="preview-grid">
+
+  <!-- Phone G-Force -->
+  <article class="preview-card">
+    <div class="preview-head">
+      <span class="preview-kicker">Phone</span>
+      <p class="preview-note">Full crosshair + values + trail.</p>
+    </div>
+    <div class="device-label">iPhone · Capacitor Shell</div>
+    <div class="device-shell device-shell--phone" id="device-gforce-phone">
+      <div class="device-notch"></div>
+      <div class="gforce-panel">
+        <div class="gforce-label">Acceleration</div>
+        <div class="gforce-ring">
+          <canvas id="gf-canvas-phone" width="480" height="480"></canvas>
+        </div>
+        <div class="gforce-values">
+          <span><span class="val" id="gf-lat-p">0.00</span>Lateral G</span>
+          <span><span class="val" id="gf-lon-p">0.00</span>Longitudinal G</span>
+        </div>
+        <div class="gforce-peak">Peak: <b id="gf-peak-p">0.00 G</b></div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Gateway G-Force -->
+  <article class="preview-card">
+    <div class="preview-head">
+      <span class="preview-kicker">Gateway</span>
+      <p class="preview-note">Compact crosshair on the 3.5″ TFT.</p>
+    </div>
+    <div class="device-label">dash_35 · 480 × 320</div>
+    <div class="device-shell device-shell--gateway" id="device-gforce-gateway">
+      <div class="gforce-panel">
+        <div class="gforce-label">Acceleration</div>
+        <div class="gforce-ring">
+          <canvas id="gf-canvas-gw" width="400" height="400"></canvas>
+        </div>
+        <div class="gforce-values">
+          <span><span class="val" id="gf-lat-g">0.00</span>Lat G</span>
+          <span><span class="val" id="gf-lon-g">0.00</span>Lon G</span>
+        </div>
+        <div class="gforce-peak">Peak: <b id="gf-peak-g">0.00 G</b></div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Orb G-Force -->
+  <article class="preview-card" style="align-items:center">
+    <div class="preview-head">
+      <span class="preview-kicker">Companion Orb</span>
+      <p class="preview-note">Simplified G-ball on the round display.</p>
+    </div>
+    <div class="device-label">companion_orb · 240 × 240</div>
+    <div class="device-shell device-shell--orb" id="device-gforce-orb">
+      <div class="gforce-panel">
+        <div class="gforce-ring">
+          <canvas id="gf-canvas-orb" width="320" height="320"></canvas>
+        </div>
+        <div class="orb-total-g" id="orb-total-g">0.00</div>
+        <div class="orb-total-unit">G-Force</div>
+        <div class="gforce-peak">Peak: <b id="gf-peak-o">0.00</b></div>
+      </div>
+    </div>
+  </article>
+
+</section>
+
+<!-- ── Shift Light Section ── -->
+<div class="section-title">Shift Light Bar — phone + gateway</div>
+
+<section class="preview-grid" style="grid-template-columns:1fr 1fr">
+
+  <!-- Phone Shift Light -->
+  <article class="preview-card">
+    <div class="preview-head">
+      <span class="preview-kicker">Phone · Shift Light</span>
+      <p class="preview-note">Sequential LED bar — green → amber → red → flash at redline.</p>
+    </div>
+    <div class="device-label">iPhone · Capacitor Shell</div>
+    <div class="device-shell device-shell--phone" id="device-shift-phone">
+      <div class="device-notch"></div>
+      <div class="shift-bar-wrap" id="shift-bar-p"></div>
+      <div class="shift-panel">
+        <div class="shift-speed" id="shift-speed-p">0</div>
+        <div class="shift-unit">km/h</div>
+        <div class="shift-rpm-label">Engine RPM</div>
+        <div class="shift-rpm-val" id="shift-rpm-p">0</div>
+        <div class="shift-msg" id="shift-msg-p">↑ SHIFT</div>
+        <div class="shift-gear" id="shift-gear-p">D1</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Gateway Shift Light -->
+  <article class="preview-card">
+    <div class="preview-head">
+      <span class="preview-kicker">Gateway · Shift Light</span>
+      <p class="preview-note">Compact shift bar across the top of the 3.5″ TFT.</p>
+    </div>
+    <div class="device-label">dash_35 · 480 × 320</div>
+    <div class="device-shell device-shell--gateway" id="device-shift-gw">
+      <div class="shift-bar-wrap" id="shift-bar-g"></div>
+      <div class="shift-panel">
+        <div class="shift-speed" id="shift-speed-g">0</div>
+        <div class="shift-unit">km/h</div>
+        <div class="shift-rpm-label">Engine RPM</div>
+        <div class="shift-rpm-val" id="shift-rpm-g">0</div>
+        <div class="shift-msg" id="shift-msg-g">↑ SHIFT</div>
+        <div class="shift-gear" id="shift-gear-g">D1</div>
+      </div>
+    </div>
+  </article>
+
+</section>
+
+<p class="caption">
+  All devices run from the same simulated telemetry stream. The orb is a natural fit for G-force — the round display
+  perfectly frames the crosshair, and the simplified single-value readout is glanceable while driving.
+  Shift light works best on phone and gateway where the horizontal LED bar has room.
+</p>
+
+<script type="module">
+import { startTelemetryStream } from '../shared/telemetry.js';
+
+/* ──────────────────────────────────
+   G-Force Crosshair — multi-device
+   ────────────────────────────────── */
+const G_MAX = 1.2;
+
+class GForceGauge {
+  constructor(canvasId, size, radius, showLabels) {
+    this.canvas = document.getElementById(canvasId);
+    this.ctx = this.canvas.getContext('2d');
+    this.W = size; this.H = size;
+    this.CX = size / 2; this.CY = size / 2;
+    this.R = radius;
+    this.showLabels = showLabels;
+    this.trail = [];
+    this.TRAIL_MAX = showLabels ? 40 : 24;
+    this.latG = 0; this.lonG = 0; this.peakG = 0;
+  }
+  update(targetLat, targetLon) {
+    this.latG += (targetLat - this.latG) * 0.12;
+    this.lonG += (targetLon - this.lonG) * 0.12;
+  }
+  draw() {
+    const { ctx, W, H, CX, CY, R } = this;
+    ctx.clearRect(0, 0, W, H);
+
+    for (let r = 1; r <= 3; r++) {
+      const rad = (r / 3) * R;
+      ctx.beginPath(); ctx.arc(CX, CY, rad, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${r === 3 ? 0.08 : 0.04})`;
+      ctx.lineWidth = 1; ctx.stroke();
+      if (this.showLabels) {
+        ctx.font = `${Math.round(R * 0.05)}px sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillText((r * G_MAX / 3).toFixed(1) + 'G', CX + rad + 4, CY - 4);
+      }
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(CX - R, CY); ctx.lineTo(CX + R, CY);
+    ctx.moveTo(CX, CY - R); ctx.lineTo(CX, CY + R);
+    ctx.stroke();
+    if (this.showLabels) {
+      ctx.font = `${Math.round(R * 0.05)}px sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.textAlign = 'center';
+      ctx.fillText('ACCEL', CX, CY - R - 8);
+      ctx.fillText('BRAKE', CX, CY + R + 14);
+      ctx.fillText('LEFT', CX - R - 6, CY + 4);
+      ctx.fillText('RIGHT', CX + R + 8, CY + 4);
+    }
+
+    const bx = CX + (this.latG / G_MAX) * R;
+    const by = CY - (this.lonG / G_MAX) * R;
+    this.trail.push({ x: bx, y: by });
+    if (this.trail.length > this.TRAIL_MAX) this.trail.shift();
+    for (let i = 0; i < this.trail.length; i++) {
+      const t = this.trail[i];
+      const alpha = ((i + 1) / this.trail.length) * 0.25;
+      ctx.beginPath(); ctx.arc(t.x, t.y, R * 0.015, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(45,212,191,${alpha.toFixed(3)})`; ctx.fill();
+    }
+    const totalG = Math.sqrt(this.latG ** 2 + this.lonG ** 2);
+    this.peakG = Math.max(this.peakG, totalG);
+    const grad = ctx.createRadialGradient(bx, by, 0, bx, by, R * 0.12);
+    grad.addColorStop(0, 'rgba(45,212,191,0.35)');
+    grad.addColorStop(1, 'rgba(45,212,191,0)');
+    ctx.fillStyle = grad; ctx.fillRect(bx - R * 0.12, by - R * 0.12, R * 0.24, R * 0.24);
+    ctx.beginPath(); ctx.arc(bx, by, R * 0.035, 0, Math.PI * 2);
+    const ballColor = totalG > 0.8 ? '#fb7185' : totalG > 0.4 ? '#fbbf24' : '#2dd4bf';
+    ctx.fillStyle = ballColor; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+    return { totalG, lat: this.latG, lon: this.lonG, peak: this.peakG };
+  }
+}
+
+const phoneGauge = new GForceGauge('gf-canvas-phone', 480, 190, true);
+const gwGauge = new GForceGauge('gf-canvas-gw', 400, 155, true);
+const orbGauge = new GForceGauge('gf-canvas-orb', 320, 120, false);
+
+function drawAll() {
+  const p = phoneGauge.draw();
+  const g = gwGauge.draw();
+  const o = orbGauge.draw();
+  document.getElementById('gf-lat-p').textContent = Math.abs(p.lat).toFixed(2);
+  document.getElementById('gf-lon-p').textContent = Math.abs(p.lon).toFixed(2);
+  document.getElementById('gf-peak-p').textContent = p.peak.toFixed(2) + ' G';
+  document.getElementById('gf-lat-g').textContent = Math.abs(g.lat).toFixed(2);
+  document.getElementById('gf-lon-g').textContent = Math.abs(g.lon).toFixed(2);
+  document.getElementById('gf-peak-g').textContent = g.peak.toFixed(2) + ' G';
+  document.getElementById('orb-total-g').textContent = o.totalG.toFixed(2);
+  document.getElementById('gf-peak-o').textContent = o.peak.toFixed(2);
+  requestAnimationFrame(drawAll);
+}
+requestAnimationFrame(drawAll);
+
+/* ──────────────────────────────────
+   Shift Light Bar — phone + gateway
+   ────────────────────────────────── */
+const LED_COUNT = 16;
+const RPM_MIN = 800, RPM_MAX = 5800, RPM_SHIFT = 5200;
+
+function createShiftBar(containerId) {
+  const bar = document.getElementById(containerId);
+  const leds = [];
+  for (let i = 0; i < LED_COUNT; i++) {
+    const el = document.createElement('div');
+    el.className = 'shift-led';
+    bar.appendChild(el);
+    leds.push(el);
+  }
+  return leds;
+}
+
+const ledsP = createShiftBar('shift-bar-p');
+const ledsG = createShiftBar('shift-bar-g');
+
+function updateLeds(leds, msgId, rpm) {
+  const frac = Math.max(0, Math.min(1, (rpm - RPM_MIN) / (RPM_MAX - RPM_MIN)));
+  const lit = Math.floor(frac * LED_COUNT);
+  const redline = rpm >= RPM_SHIFT;
+  for (let i = 0; i < LED_COUNT; i++) {
+    leds[i].className = 'shift-led';
+    if (i < lit) {
+      leds[i].classList.add(redline ? 'on-flash' : i < 6 ? 'on-green' : i < 11 ? 'on-amber' : 'on-red');
+    }
+  }
+  document.getElementById(msgId).classList.toggle('visible', redline);
+}
+
+/* ──────────────────────────────────
+   Telemetry
+   ────────────────────────────────── */
+let prevSpeed = 0, simLateralPhase = 0;
+
+startTelemetryStream((t) => {
+  const speedDelta = t.speedKph - prevSpeed;
+  prevSpeed = t.speedKph;
+  const targetLon = Math.max(-G_MAX, Math.min(G_MAX, speedDelta * 0.12));
+  simLateralPhase += 0.07;
+  const targetLat = Math.sin(simLateralPhase) * 0.35 * (t.speedKph / 90);
+
+  phoneGauge.update(targetLat, targetLon);
+  gwGauge.update(targetLat, targetLon);
+  orbGauge.update(targetLat, targetLon);
+
+  /* shift bars */
+  document.getElementById('shift-speed-p').textContent = t.speedKph;
+  document.getElementById('shift-rpm-p').textContent = t.rpm;
+  document.getElementById('shift-gear-p').textContent = t.gear;
+  updateLeds(ledsP, 'shift-msg-p', t.rpm);
+
+  document.getElementById('shift-speed-g').textContent = t.speedKph;
+  document.getElementById('shift-rpm-g').textContent = t.rpm;
+  document.getElementById('shift-gear-g').textContent = t.gear;
+  updateLeds(ledsG, 'shift-msg-g', t.rpm);
+});
+</script>
+</body>
+</html>

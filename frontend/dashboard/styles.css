@@ -41,7 +41,7 @@ body {
 .shell {
   position: relative;
   width: 100%;
-  max-width: 480px;
+  max-width: 720px;
   height: 100vh;
   height: 100dvh;
   margin: 0 auto;
@@ -50,9 +50,9 @@ body {
   overflow: hidden;
   padding:
     max(0px, env(safe-area-inset-top))
-    max(0px, env(safe-area-inset-right))
-    max(0px, env(safe-area-inset-bottom))
-    max(0px, env(safe-area-inset-left));
+    max(20px, env(safe-area-inset-right))
+    0px
+    max(20px, env(safe-area-inset-left));
 }
 
 /* ── Speed Zone ── */
@@ -74,7 +74,7 @@ body {
 }
 
 .speed-num {
-  font-size: min(34vw, 150px);
+  font-size: min(30vw, 34vh, 148px);
   font-weight: 200;
   line-height: 0.88;
   letter-spacing: -0.04em;
@@ -205,6 +205,155 @@ body {
 .range-val,
 .trip-val {
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Shift Light Bar ── */
+
+.shift-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 12px;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.shift-led {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.08s, box-shadow 0.08s;
+}
+
+.shift-led.on-green {
+  background: var(--teal);
+  box-shadow: 0 0 6px rgba(45, 212, 191, 0.5);
+}
+
+.shift-led.on-yellow {
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+}
+
+.shift-led.on-red {
+  background: var(--rose);
+  box-shadow: 0 0 6px rgba(251, 113, 133, 0.6);
+}
+
+.shift-led.on-flash {
+  animation: shift-flash 0.15s ease-in-out infinite alternate;
+}
+
+@keyframes shift-flash {
+  from { opacity: 1; }
+  to { opacity: 0.2; }
+}
+
+/* ── Ambient Canvas ── */
+
+.speed-zone {
+  position: relative;
+}
+
+.ambient-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+
+.speed-num,
+.divider,
+.speed-unit,
+.clock {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Clock ── */
+
+.clock {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* ── Gauge Row ── */
+
+.gauge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 24px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.gauge-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gauge-cell-gforce {
+  gap: 3px;
+}
+
+.gauge-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.gauge-val {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gauge-micro-bar {
+  width: 32px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.gauge-micro-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--teal);
+  border-radius: 2px;
+  transition: width 0.2s ease, background 0.2s;
+}
+
+.gauge-boost {
+  background: var(--amber);
+}
+
+/* ── G-Force Canvas ── */
+
+.gforce-canvas {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
 }
 
 /* ── Status Dot ── */
@@ -442,61 +591,54 @@ body {
 
 /* ── Responsive ── */
 
-@media (max-height: 480px) {
-  .speed-num {
-    font-size: min(28vw, 110px);
-  }
-
-  .rpm-zone {
-    height: 38px;
-    padding-bottom: 4px;
-  }
-
-  .waveform {
-    height: 26px;
+/* Portrait: cap width */
+@media (orientation: portrait) {
+  .shell {
+    max-width: 480px;
   }
 }
 
+/* Landscape: tighten for shorter viewports */
 @media (orientation: landscape) and (max-height: 500px) {
-  .shell {
-    max-width: min(100vw, 720px);
-    padding-left: max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
+  .shift-bar {
+    height: 10px;
+    padding: 0 20px;
+    gap: 3px;
   }
 
-  .speed-zone {
-    justify-content: center;
-  }
-
-  .speed-num {
-    font-size: min(30vw, 34vh, 148px);
-  }
-
-  .divider {
-    width: min(52%, 220px);
-  }
-
-  .speed-unit {
-    letter-spacing: 0.42em;
-  }
-
-  .aux-panel {
-    gap: 0;
-    padding-top: 0;
+  .shift-led {
+    height: 3px;
   }
 
   .rpm-zone {
     height: 40px;
     padding: 0 20px 6px;
-    gap: 10px;
   }
 
   .waveform {
     height: 28px;
   }
 
-  .rpm-readout {
-    min-width: 82px;
+  .gauge-row {
+    padding: 4px 20px;
+    gap: 10px;
+  }
+
+  .gauge-lbl {
+    font-size: 8px;
+  }
+
+  .gauge-val {
+    font-size: 11px;
+  }
+
+  .gauge-micro-bar {
+    width: 28px;
+  }
+
+  .gforce-canvas {
+    width: 24px;
+    height: 24px;
   }
 
   .info-divider {
@@ -504,7 +646,7 @@ body {
   }
 
   .info-bar {
-    padding: 8px 20px max(12px, env(safe-area-inset-bottom));
+    padding: 8px 20px 8px;
     min-width: 0;
   }
 
@@ -522,12 +664,6 @@ body {
 
   .settings-panel.is-open {
     transform: translateX(0);
-  }
-}
-
-@media (min-width: 768px) and (orientation: portrait) {
-  .shell {
-    max-width: 520px;
   }
 }
 

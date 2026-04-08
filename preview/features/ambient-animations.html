@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Drive Orbit — Ambient Animations Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#040404;color:#fafafa;font-family:'Helvetica Neue','Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 20px 48px;min-height:100vh}
+
+.page-top,.intro,.preview-grid,.controls,.caption{width:min(1180px,100%)}
+.page-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.back-link{display:inline-flex;align-items:center;min-height:34px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);text-decoration:none;font-size:13px;transition:border-color .2s,color .2s}
+.back-link:hover{border-color:rgba(45,212,191,.4);color:#fff}
+.eyebrow{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:rgba(45,212,191,.6);flex:1;text-align:right}
+.intro{max-width:760px;margin-bottom:28px;font-size:14px;line-height:1.7;color:#666}
+
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:28px;align-items:start}
+.preview-card{display:flex;flex-direction:column;gap:12px}
+.preview-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.preview-kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#2dd4bf}
+.preview-note{font-size:12px;line-height:1.55;color:#555;max-width:360px;text-align:right}
+
+.device-shell{position:relative;overflow:hidden;background:#0c0c0c;border:1px solid rgba(255,255,255,.08);box-shadow:0 32px 90px rgba(0,0,0,.58)}
+.device-shell--portrait{width:100%;max-width:390px;height:min(820px,90vh);border-radius:48px}
+.device-shell--landscape{width:100%;max-width:760px;aspect-ratio:3/2;border-radius:30px}
+.device-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#040404;border-radius:0 0 18px 18px;z-index:20}
+
+.dash-bg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0c0c0c}
+.bg-speed{font-size:160px;font-weight:200;line-height:1;letter-spacing:-8px;color:#fafafa;font-variant-numeric:tabular-nums;z-index:2;position:relative}
+.bg-unit{font-size:11px;letter-spacing:.5em;text-transform:uppercase;color:#555;margin-top:8px;z-index:2;position:relative}
+.bg-waveform{display:flex;align-items:flex-end;gap:1px;height:32px;width:220px;margin-top:32px;z-index:2;position:relative}
+.bg-waveform .bar{flex:1;min-width:2px;border-radius:1px 1px 0 0;background:#2dd4bf}
+.weather-label{position:absolute;top:52px;right:24px;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:rgba(45,212,191,.5);z-index:5;transition:opacity .3s}
+
+.animation-canvas{position:absolute;inset:0;z-index:1;pointer-events:none}
+
+.bottom-bar{position:absolute;bottom:14px;left:0;width:100%;display:flex;align-items:center;justify-content:center;gap:28px;font-size:12px;letter-spacing:.08em;opacity:.55;pointer-events:none;z-index:2}
+
+.device-shell--landscape .bg-speed{font-size:132px;letter-spacing:-6px}
+.device-shell--landscape .bg-waveform{width:280px;height:28px;margin-top:20px}
+
+.controls{margin-top:24px;display:flex;flex-wrap:wrap;gap:10px;max-width:700px}
+.ctrl-btn{padding:10px 18px;border-radius:12px;font-size:13px;font-weight:500;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fafafa;cursor:pointer;transition:background .2s,border-color .2s;letter-spacing:.04em}
+.ctrl-btn:hover{background:rgba(255,255,255,.1)}
+.ctrl-btn.active{background:rgba(45,212,191,.12);border-color:rgba(45,212,191,.3);color:#2dd4bf}
+.caption{max-width:760px;margin-top:16px;font-size:12px;color:#444;line-height:1.7;letter-spacing:.02em}
+
+@media (max-width:720px){
+  .preview-head{flex-direction:column;align-items:flex-start}
+  .preview-note{text-align:left;max-width:none}
+  .controls{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<div class="page-top">
+  <a class="back-link" href="../">← Hub</a>
+  <span class="eyebrow">Ambient Animations Preview</span>
+</div>
+
+<p class="intro">
+  Subtle background animations that respond to vehicle state and weather. Idle breathing particles appear when parked. Weather effects layer rain, snow, fog, and lightning behind the dashboard without obscuring readability.
+</p>
+
+<section class="preview-grid">
+  <article class="preview-card preview-card--portrait">
+    <div class="preview-head">
+      <span class="preview-kicker">Portrait</span>
+      <p class="preview-note">Idle particles and weather effects behind the speed readout.</p>
+    </div>
+
+    <div class="device-shell device-shell--portrait" id="device-portrait">
+      <div class="device-notch"></div>
+      <div class="dash-bg">
+        <canvas class="animation-canvas" id="canvas-portrait"></canvas>
+        <div class="weather-label" id="weather-label-p"></div>
+        <div class="bg-speed" id="speed-p">0</div>
+        <div class="bg-unit">km/h</div>
+        <div class="bg-waveform" id="wave-p"></div>
+      </div>
+      <div class="bottom-bar">
+        <span id="gear-p">D3</span>
+        <span>⛽ 72% · 340 km</span>
+        <span>12.4 km trip</span>
+      </div>
+    </div>
+  </article>
+
+  <article class="preview-card preview-card--landscape">
+    <div class="preview-head">
+      <span class="preview-kicker">Landscape</span>
+      <p class="preview-note">Same animation layer scales to the wider 480 × 320 dash format.</p>
+    </div>
+
+    <div class="device-shell device-shell--landscape" id="device-landscape">
+      <div class="dash-bg">
+        <canvas class="animation-canvas" id="canvas-landscape"></canvas>
+        <div class="weather-label" id="weather-label-l"></div>
+        <div class="bg-speed" id="speed-l">0</div>
+        <div class="bg-unit">km/h</div>
+        <div class="bg-waveform" id="wave-l"></div>
+      </div>
+      <div class="bottom-bar">
+        <span id="gear-l">D3</span>
+        <span>⛽ 72% · 340 km</span>
+        <span>12.4 km trip</span>
+      </div>
+    </div>
+  </article>
+</section>
+
+<div class="controls">
+  <button class="ctrl-btn active" data-weather="-1" type="button">Idle (parked)</button>
+  <button class="ctrl-btn" data-weather="0" type="button">Clear Sky</button>
+  <button class="ctrl-btn" data-weather="2" type="button">Cloudy</button>
+  <button class="ctrl-btn" data-weather="45" type="button">Fog</button>
+  <button class="ctrl-btn" data-weather="61" type="button">Rain</button>
+  <button class="ctrl-btn" data-weather="73" type="button">Snow</button>
+  <button class="ctrl-btn" data-weather="95" type="button">Thunderstorm</button>
+</div>
+
+<p class="caption">
+  Click a weather condition to preview the effect. "Idle" shows the breathing particle field at 0 km/h. All weather effects render at ≤ 30% opacity to preserve dashboard readability. Lightning flashes are randomized 8–15s apart.
+</p>
+
+<script>
+/* ── Waveform builder ── */
+function buildWaveform(el, count) {
+  for (let i = 0; i < count; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const f = 0.15 + 0.55 * Math.abs(Math.sin(i * 0.43 + 1.2));
+    bar.style.height = Math.round(2 + f * 28) + 'px';
+    bar.style.opacity = 0.3 + f * 0.7;
+    el.appendChild(bar);
+  }
+}
+buildWaveform(document.getElementById('wave-p'), 40);
+buildWaveform(document.getElementById('wave-l'), 52);
+
+/* ── Weather labels ── */
+const WEATHER_NAMES = {
+  '-1': 'Idle (parked)',
+  '0': 'Clear sky',
+  '2': 'Partly cloudy',
+  '45': 'Fog',
+  '61': 'Rain',
+  '73': 'Snow fall',
+  '95': 'Thunderstorm'
+};
+
+/* ── Animation engine ── */
+class AmbientAnimation {
+  constructor(canvasId, labelId) {
+    this.canvas = document.getElementById(canvasId);
+    this.ctx = this.canvas.getContext('2d');
+    this.labelEl = document.getElementById(labelId);
+    this.particles = [];
+    this.weatherCode = -1;
+    this.time = 0;
+    this.lastFlash = 0;
+    this.nextFlashInterval = 10000;
+    this.flashAlpha = 0;
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  resize() {
+    const rect = this.canvas.parentElement.getBoundingClientRect();
+    this.canvas.width = rect.width * devicePixelRatio;
+    this.canvas.height = rect.height * devicePixelRatio;
+    this.W = this.canvas.width;
+    this.H = this.canvas.height;
+    this.ctx.scale(devicePixelRatio, devicePixelRatio);
+    this.wLogical = rect.width;
+    this.hLogical = rect.height;
+  }
+
+  setWeather(code) {
+    this.weatherCode = code;
+    this.particles = [];
+    this.flashAlpha = 0;
+    this.labelEl.textContent = WEATHER_NAMES[String(code)] || '';
+    this.initParticles();
+  }
+
+  initParticles() {
+    const c = this.weatherCode;
+    this.particles = [];
+
+    if (c === -1) {
+      /* idle breathing particles */
+      for (let i = 0; i < 28; i++) {
+        this.particles.push({
+          type: 'idle',
+          x: Math.random() * this.wLogical,
+          y: this.hLogical * 0.5 + Math.random() * this.hLogical * 0.5,
+          size: 1 + Math.random() * 2.5,
+          speed: 8 + Math.random() * 18,
+          baseOpacity: 0.1 + Math.random() * 0.25,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    } else if (c >= 1 && c <= 3) {
+      /* clouds — slow wisps */
+      for (let i = 0; i < 6; i++) {
+        this.particles.push({
+          type: 'cloud',
+          x: Math.random() * this.wLogical * 1.4 - this.wLogical * 0.2,
+          y: 30 + Math.random() * this.hLogical * 0.3,
+          w: 80 + Math.random() * 120,
+          h: 20 + Math.random() * 30,
+          speed: 4 + Math.random() * 8,
+          opacity: 0.04 + Math.random() * 0.06
+        });
+      }
+    } else if (c === 45 || c === 48) {
+      /* fog — single overlay */
+      this.particles.push({ type: 'fog', phase: 0 });
+    } else if (c >= 51 && c <= 55) {
+      /* drizzle */
+      for (let i = 0; i < 35; i++) {
+        this.particles.push(this.makeRainDrop(true));
+      }
+    } else if (c >= 61 && c <= 65) {
+      /* rain */
+      for (let i = 0; i < 80; i++) {
+        this.particles.push(this.makeRainDrop(false));
+      }
+    } else if (c >= 71 && c <= 75) {
+      /* snow */
+      for (let i = 0; i < 50; i++) {
+        this.particles.push({
+          type: 'snow',
+          x: Math.random() * this.wLogical,
+          y: Math.random() * this.hLogical,
+          size: 1.5 + Math.random() * 2.5,
+          speed: 15 + Math.random() * 25,
+          wobbleAmp: 10 + Math.random() * 20,
+          wobbleFreq: 0.5 + Math.random() * 1.5,
+          phase: Math.random() * Math.PI * 2,
+          opacity: 0.12 + Math.random() * 0.18
+        });
+      }
+    } else if (c >= 80 && c <= 82) {
+      /* rain showers — bursts */
+      for (let i = 0; i < 60; i++) {
+        this.particles.push(this.makeRainDrop(false));
+      }
+    } else if (c >= 95) {
+      /* thunderstorm — rain + flashes */
+      for (let i = 0; i < 70; i++) {
+        this.particles.push(this.makeRainDrop(false));
+      }
+      this.lastFlash = this.time;
+      this.nextFlashInterval = 8000 + Math.random() * 7000;
+    }
+  }
+
+  makeRainDrop(light) {
+    return {
+      type: 'rain',
+      x: Math.random() * this.wLogical * 1.2 - this.wLogical * 0.1,
+      y: -10 - Math.random() * this.hLogical * 0.3,
+      len: light ? (8 + Math.random() * 10) : (12 + Math.random() * 14),
+      speed: light ? (120 + Math.random() * 80) : (200 + Math.random() * 200),
+      opacity: light ? (0.06 + Math.random() * 0.08) : (0.08 + Math.random() * 0.14),
+      angle: (65 + Math.random() * 15) * Math.PI / 180
+    };
+  }
+
+  update(dt) {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.wLogical, this.hLogical);
+
+    this.time += dt;
+
+    for (const p of this.particles) {
+      if (p.type === 'idle') this.drawIdle(ctx, p, dt);
+      else if (p.type === 'cloud') this.drawCloud(ctx, p, dt);
+      else if (p.type === 'fog') this.drawFog(ctx, p);
+      else if (p.type === 'rain') this.drawRain(ctx, p, dt);
+      else if (p.type === 'snow') this.drawSnow(ctx, p, dt);
+    }
+
+    /* lightning flash */
+    if (this.weatherCode >= 95 && this.flashAlpha > 0) {
+      ctx.fillStyle = `rgba(200,220,255,${this.flashAlpha})`;
+      ctx.fillRect(0, 0, this.wLogical, this.hLogical * 0.15);
+      this.flashAlpha = Math.max(0, this.flashAlpha - dt * 5);
+    }
+    if (this.weatherCode >= 95 && this.time - this.lastFlash > this.nextFlashInterval / 1000) {
+      this.flashAlpha = 0.25;
+      this.lastFlash = this.time;
+      this.nextFlashInterval = 8000 + Math.random() * 7000;
+    }
+  }
+
+  drawIdle(ctx, p, dt) {
+    p.y -= p.speed * dt;
+    if (p.y < -10) {
+      p.y = this.hLogical + 10;
+      p.x = Math.random() * this.wLogical;
+    }
+    const breathe = 0.15 + 0.2 * (0.5 + 0.5 * Math.sin(this.time * 1.57 + p.phase));
+    const alpha = p.baseOpacity * breathe / 0.35;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(45,212,191,${alpha.toFixed(3)})`;
+    ctx.fill();
+    /* glow */
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(45,212,191,${(alpha * 0.2).toFixed(3)})`;
+    ctx.fill();
+  }
+
+  drawCloud(ctx, p, dt) {
+    p.x += p.speed * dt;
+    if (p.x > this.wLogical + p.w) {
+      p.x = -p.w - 20;
+      p.y = 30 + Math.random() * this.hLogical * 0.3;
+    }
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, p.w / 2, p.h / 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200,220,240,${p.opacity})`;
+    ctx.fill();
+  }
+
+  drawFog(ctx, p) {
+    const pulse = 0.05 + 0.1 * (0.5 + 0.5 * Math.sin(this.time * 1.047));
+    const grad = ctx.createRadialGradient(this.wLogical / 2, this.hLogical / 2, 0, this.wLogical / 2, this.hLogical / 2, this.wLogical * 0.6);
+    grad.addColorStop(0, `rgba(180,200,220,${pulse})`);
+    grad.addColorStop(1, 'rgba(180,200,220,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, this.wLogical, this.hLogical);
+  }
+
+  drawRain(ctx, p, dt) {
+    p.y += p.speed * dt;
+    p.x += Math.cos(p.angle) * p.speed * dt * 0.3;
+    if (p.y > this.hLogical + 20) {
+      p.y = -10 - Math.random() * 40;
+      p.x = Math.random() * this.wLogical * 1.2 - this.wLogical * 0.1;
+    }
+    const dx = Math.cos(p.angle) * p.len * 0.3;
+    const dy = Math.sin(p.angle) * p.len;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + dx, p.y + dy);
+    ctx.strokeStyle = `rgba(160,200,255,${p.opacity})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  drawSnow(ctx, p, dt) {
+    p.y += p.speed * dt;
+    p.x += Math.sin(this.time * p.wobbleFreq + p.phase) * p.wobbleAmp * dt;
+    if (p.y > this.hLogical + 10) {
+      p.y = -10;
+      p.x = Math.random() * this.wLogical;
+    }
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(240,245,255,${p.opacity})`;
+    ctx.fill();
+  }
+}
+
+/* ── Create two animation instances ── */
+const animP = new AmbientAnimation('canvas-portrait', 'weather-label-p');
+const animL = new AmbientAnimation('canvas-landscape', 'weather-label-l');
+
+/* ── Simulated telemetry for speed display ── */
+let simSpeed = 0;
+let simIncreasing = false;
+let currentWeather = -1;
+
+function updateSpeed() {
+  if (currentWeather === -1) {
+    simSpeed = 0; /* idle = parked */
+  } else {
+    if (simIncreasing) {
+      simSpeed += 2;
+      if (simSpeed >= 88) simIncreasing = false;
+    } else {
+      simSpeed -= 1;
+      if (simSpeed <= 22) simIncreasing = true;
+    }
+  }
+  document.getElementById('speed-p').textContent = simSpeed;
+  document.getElementById('speed-l').textContent = simSpeed;
+}
+
+/* ── Animation loop ── */
+let lastTime = performance.now();
+function animate(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+  animP.update(dt);
+  animL.update(dt);
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+setInterval(updateSpeed, 100);
+
+/* ── Set initial state ── */
+animP.setWeather(-1);
+animL.setWeather(-1);
+
+/* ── Controls ── */
+document.querySelector('.controls').addEventListener('click', (e) => {
+  const btn = e.target.closest('.ctrl-btn');
+  if (!btn) return;
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const code = parseInt(btn.dataset.weather, 10);
+  currentWeather = code;
+  animP.setWeather(code);
+  animL.setWeather(code);
+  /* reset speed for idle */
+  if (code === -1) { simSpeed = 0; simIncreasing = false; }
+  else { simSpeed = 40; simIncreasing = true; }
+});
+</script>
+</body>
+</html>

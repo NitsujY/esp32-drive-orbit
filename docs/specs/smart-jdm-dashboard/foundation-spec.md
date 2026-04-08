@@ -58,11 +58,26 @@ After hardware verification, UI preview should happen before deeper firmware int
 
 - Hardware: Waveshare ESP32-Touch-LCD-3.5
 - MCU: Classic ESP32 with 16MB flash and 2MB PSRAM
+- Role: **Headless telemetry gateway** — no local TFT rendering
 - Responsibilities:
-  - Initialize display-side platform services and PSRAM
-  - Serve as the main compute node for telemetry, state management, and future connectivity
-  - Simulate telemetry values in place of real OBD2 input during early bring-up
+  - OBD2 polling via Bluetooth Classic
+  - Wi-Fi hotspot connection (iPhone personal hotspot)
+  - mDNS advertisement (`carconsole.local`)
+  - AsyncWebServer serving the dashboard web app via LittleFS
+  - WebSocket broadcast of telemetry JSON at 10 Hz
   - Remain ready for future Bluetooth integration
+
+### Primary Dashboard UI: iPhone (Capacitor iOS app)
+
+- Device: iPhone 15 (or any supported iOS device)
+- Display: 852 × 393 CSS points in landscape (2556 × 1179 @3x)
+- Framework: Capacitor 8.x wrapping a vanilla JS web app
+- Orientation: Landscape-first layout, portrait fallback
+- Responsibilities:
+  - Full dashboard rendering (speed, RPM, gauges, trip sheet)
+  - WebSocket client connection to `dash_35` gateway
+  - All visual design, animation, and interaction
+  - Simulation mode for development without live gateway
 
 ### Slave Board: `companion_orb`
 

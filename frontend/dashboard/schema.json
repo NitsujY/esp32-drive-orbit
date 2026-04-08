@@ -8,7 +8,7 @@
     "rpm": "engine rpm",
     "clt": "coolant temperature celsius",
     "wt": "weather temperature celsius",
-    "wc": "weather code",
+    "wc": "weather code (WMO)",
     "bat": "battery millivolts",
     "fuel": "fuel level percent",
     "rng": "estimated range km",
@@ -16,6 +16,13 @@
     "wifi": "wifi connected flag 0 or 1",
     "hl": "headlights flag 0 or 1",
     "obd": "obd link live flag 0 or 1",
-    "fresh": "fresh telemetry flag 0 or 1"
+    "fresh": "fresh telemetry flag 0 or 1",
+    "el": "engine load percent (OBD PID 0x04)",
+    "map": "manifold absolute pressure kPa (OBD PID 0x0B)",
+    "baro": "barometric pressure kPa (OBD PID 0x33)",
+    "boost": "turbo boost bar (computed: (map-baro)/100)",
+    "lat_g": "lateral g-force",
+    "lon_g": "longitudinal g-force",
+    "fr": "fuel rate litres per hour (OBD PID 0x5E)"
   }
 }

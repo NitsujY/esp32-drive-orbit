@@ -11,10 +11,20 @@
   </head>
   <body>
     <main class="shell">
+      <!-- Shift light bar -->
+      <div class="shift-bar" id="shift-bar">
+        <span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
+        <span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
+        <span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
+        <span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
+      </div>
+
       <div class="speed-zone">
+        <canvas id="ambient-canvas" class="ambient-canvas"></canvas>
         <div class="speed-num" id="speed-value">0</div>
         <div class="divider"></div>
         <div class="speed-unit">km/h</div>
+        <span class="clock" id="clock-value">--:--</span>
       </div>
 
       <section class="aux-panel" aria-label="Drive details">
@@ -23,6 +33,29 @@
           <div class="rpm-readout">
             <span class="rpm-val" id="rpm-value">0</span>
             <span class="rpm-label">rpm</span>
+          </div>
+        </div>
+
+        <div class="info-divider"></div>
+
+        <div class="gauge-row">
+          <div class="gauge-cell">
+            <span class="gauge-lbl">LOAD</span>
+            <div class="gauge-micro-bar"><div class="gauge-micro-fill" id="load-fill"></div></div>
+            <span class="gauge-val" id="load-value">0%</span>
+          </div>
+          <div class="gauge-cell">
+            <span class="gauge-lbl">BOOST</span>
+            <div class="gauge-micro-bar"><div class="gauge-micro-fill gauge-boost" id="boost-fill"></div></div>
+            <span class="gauge-val" id="boost-value">0.0</span>
+          </div>
+          <div class="gauge-cell">
+            <span class="gauge-lbl">L/100</span>
+            <span class="gauge-val" id="eff-value">—</span>
+          </div>
+          <div class="gauge-cell gauge-cell-gforce">
+            <canvas id="gforce-canvas" class="gforce-canvas" width="28" height="28"></canvas>
+            <span class="gauge-val" id="gforce-value">0.0</span>
           </div>
         </div>
 

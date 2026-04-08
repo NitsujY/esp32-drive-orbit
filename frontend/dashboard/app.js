@@ -36,6 +36,17 @@ const el = {
   tsEvAccel: document.getElementById('ts-ev-accel'),
   tsEvBrake: document.getElementById('ts-ev-brake'),
   tsEvOverspeed: document.getElementById('ts-ev-overspeed'),
+  // New feature elements
+  shiftBar: document.getElementById('shift-bar'),
+  ambientCanvas: document.getElementById('ambient-canvas'),
+  clockValue: document.getElementById('clock-value'),
+  loadFill: document.getElementById('load-fill'),
+  loadValue: document.getElementById('load-value'),
+  boostFill: document.getElementById('boost-fill'),
+  boostValue: document.getElementById('boost-value'),
+  effValue: document.getElementById('eff-value'),
+  gforceCanvas: document.getElementById('gforce-canvas'),
+  gforceValue: document.getElementById('gforce-value'),
 };
 
 // ── Constants ──
@@ -98,6 +109,278 @@ function clamp(v, lo, hi) {
 function isNativeShell() {
   return typeof window.Capacitor?.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
 }
+
+// ── Clock ──
+
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  el.clockValue.textContent = h + ':' + m;
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// ── Shift Lights ──
+
+const shiftLeds = [...el.shiftBar.querySelectorAll('.shift-led')];
+const SHIFT_LED_COUNT = shiftLeds.length;
+const SHIFT_START_RPM = 1500; // LEDs start illuminating
+const SHIFT_FLASH_RPM = 2200; // all flash at redline
+
+function updateShiftLights(rpm) {
+  if (rpm < SHIFT_START_RPM) {
+    for (const led of shiftLeds) led.className = 'shift-led';
+    return;
+  }
+  const frac = clamp((rpm - SHIFT_START_RPM) / (SHIFT_FLASH_RPM - SHIFT_START_RPM), 0, 1);
+  const lit = Math.ceil(frac * SHIFT_LED_COUNT);
+  const flash = rpm >= SHIFT_FLASH_RPM;
+
+  for (let i = 0; i < SHIFT_LED_COUNT; i++) {
+    if (i >= lit) {
+      shiftLeds[i].className = 'shift-led';
+    } else if (flash) {
+      shiftLeds[i].className = 'shift-led on-red on-flash';
+    } else {
+      const zone = i / SHIFT_LED_COUNT;
+      const cls = zone < 0.33 ? 'on-green' : zone < 0.66 ? 'on-yellow' : 'on-red';
+      shiftLeds[i].className = 'shift-led ' + cls;
+    }
+  }
+}
+
+// ── Fuel Efficiency ──
+
+const effSamples = [];
+const EFF_WINDOW = 5;
+
+function estimateFuelFlow(rpm) {
+  // Simplified: idle ~0.8 L/h, scales with RPM
+  return 0.8 + (rpm / 6000) * 8;
+}
+
+function computeL100(flowLph, speedKph) {
+  if (speedKph < 3) return 0;
+  return (flowLph / speedKph) * 100;
+}
+
+function updateFuelEfficiency(rpm, speed) {
+  if (speed < 3) {
+    el.effValue.textContent = '—';
+    return;
+  }
+  const flow = estimateFuelFlow(rpm);
+  const l100 = computeL100(flow, speed);
+  effSamples.push(l100);
+  if (effSamples.length > EFF_WINDOW) effSamples.shift();
+  const avg = effSamples.reduce((a, b) => a + b, 0) / effSamples.length;
+  el.effValue.textContent = avg.toFixed(1);
+  // Color: efficient < 6 teal, moderate 6-10 amber, heavy >10 rose
+  if (avg < 6) el.effValue.style.color = '#2dd4bf';
+  else if (avg < 10) el.effValue.style.color = '#fbbf24';
+  else el.effValue.style.color = '#fb7185';
+}
+
+// ── Engine Load & Boost ──
+
+function updateEngineLoad(load) {
+  const pct = clamp(load, 0, 100);
+  el.loadValue.textContent = pct + '%';
+  el.loadFill.style.width = pct + '%';
+  if (pct < 50) el.loadFill.style.background = '#2dd4bf';
+  else if (pct < 80) el.loadFill.style.background = '#fbbf24';
+  else el.loadFill.style.background = '#fb7185';
+}
+
+function updateBoost(boostBar) {
+  const clamped = clamp(boostBar, -1, 2);
+  el.boostValue.textContent = clamped.toFixed(1);
+  // Fill: map -1..2 bar range, typical 0-1.5 is normal turbo
+  const fillPct = clamp(((clamped + 0.2) / 1.8) * 100, 0, 100);
+  el.boostFill.style.width = fillPct + '%';
+  if (clamped > 1.4) {
+    el.boostFill.style.background = '#fb7185';
+    el.boostValue.style.color = '#fb7185';
+  } else if (clamped > 0.8) {
+    el.boostFill.style.background = '#fbbf24';
+    el.boostValue.style.color = '#fbbf24';
+  } else {
+    el.boostFill.style.background = '#2dd4bf';
+    el.boostValue.style.color = '';
+  }
+}
+
+// ── G-Force Crosshair ──
+
+const gforceCtx = el.gforceCanvas.getContext('2d');
+
+function drawGForce(lat, lon) {
+  const w = el.gforceCanvas.width;
+  const h = el.gforceCanvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const maxG = 1.5;
+  const r = (w / 2) - 2;
+
+  gforceCtx.clearRect(0, 0, w, h);
+
+  // Circle outline
+  gforceCtx.beginPath();
+  gforceCtx.arc(cx, cy, r, 0, Math.PI * 2);
+  gforceCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+  gforceCtx.lineWidth = 1;
+  gforceCtx.stroke();
+
+  // Crosshair lines
+  gforceCtx.beginPath();
+  gforceCtx.moveTo(cx, cy - r);
+  gforceCtx.lineTo(cx, cy + r);
+  gforceCtx.moveTo(cx - r, cy);
+  gforceCtx.lineTo(cx + r, cy);
+  gforceCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+  gforceCtx.stroke();
+
+  // G-force dot
+  const dx = clamp(lat / maxG, -1, 1) * r;
+  const dy = clamp(-lon / maxG, -1, 1) * r;
+  const totalG = Math.sqrt(lat * lat + lon * lon);
+
+  let dotColor = '#2dd4bf';
+  if (totalG > 0.8) dotColor = '#fb7185';
+  else if (totalG > 0.4) dotColor = '#fbbf24';
+
+  gforceCtx.beginPath();
+  gforceCtx.arc(cx + dx, cy + dy, 2.5, 0, Math.PI * 2);
+  gforceCtx.fillStyle = dotColor;
+  gforceCtx.fill();
+
+  // Total G readout
+  el.gforceValue.textContent = totalG.toFixed(1);
+}
+
+drawGForce(0, 0);
+
+// ── Ambient Animation (Weather + Idle) ──
+
+const ambientCtx = el.ambientCanvas.getContext('2d');
+let ambientParticles = [];
+let ambientAnimFrame = null;
+let ambientMode = 'idle'; // 'idle' | 'rain' | 'snow' | 'clear'
+let idleTimer = 0;
+const IDLE_TRIGGER_MS = 3000;
+
+function resizeAmbientCanvas() {
+  const rect = el.ambientCanvas.parentElement.getBoundingClientRect();
+  el.ambientCanvas.width = rect.width * (window.devicePixelRatio || 1);
+  el.ambientCanvas.height = rect.height * (window.devicePixelRatio || 1);
+  ambientCtx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+}
+resizeAmbientCanvas();
+window.addEventListener('resize', resizeAmbientCanvas);
+
+function spawnIdleParticle() {
+  const rect = el.ambientCanvas.parentElement.getBoundingClientRect();
+  return {
+    x: Math.random() * rect.width,
+    y: Math.random() * rect.height,
+    r: 1 + Math.random() * 2,
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.3 + Math.random() * 0.4,
+    drift: (Math.random() - 0.5) * 0.3,
+  };
+}
+
+function spawnRainParticle() {
+  const rect = el.ambientCanvas.parentElement.getBoundingClientRect();
+  return {
+    x: Math.random() * rect.width,
+    y: -5,
+    len: 6 + Math.random() * 10,
+    speed: 3 + Math.random() * 4,
+    alpha: 0.15 + Math.random() * 0.2,
+  };
+}
+
+function spawnSnowParticle() {
+  const rect = el.ambientCanvas.parentElement.getBoundingClientRect();
+  return {
+    x: Math.random() * rect.width,
+    y: -3,
+    r: 1 + Math.random() * 2,
+    speed: 0.5 + Math.random() * 1,
+    drift: (Math.random() - 0.5) * 0.5,
+    alpha: 0.2 + Math.random() * 0.2,
+  };
+}
+
+function tickAmbient() {
+  const rect = el.ambientCanvas.parentElement.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height;
+  ambientCtx.clearRect(0, 0, w, h);
+
+  if (ambientMode === 'idle') {
+    // Breathing particles
+    while (ambientParticles.length < 20) ambientParticles.push(spawnIdleParticle());
+    const t = performance.now() / 1000;
+    for (const p of ambientParticles) {
+      const breath = 0.3 + 0.7 * ((Math.sin(t * p.speed + p.phase) + 1) / 2);
+      ambientCtx.beginPath();
+      ambientCtx.arc(p.x + Math.sin(t * 0.5 + p.phase) * 8, p.y, p.r, 0, Math.PI * 2);
+      ambientCtx.fillStyle = `rgba(45,212,191,${0.15 * breath})`;
+      ambientCtx.fill();
+    }
+  } else if (ambientMode === 'rain') {
+    if (Math.random() < 0.4) ambientParticles.push(spawnRainParticle());
+    for (let i = ambientParticles.length - 1; i >= 0; i--) {
+      const p = ambientParticles[i];
+      p.y += p.speed;
+      ambientCtx.beginPath();
+      ambientCtx.moveTo(p.x, p.y);
+      ambientCtx.lineTo(p.x - 0.5, p.y - p.len);
+      ambientCtx.strokeStyle = `rgba(147,197,253,${p.alpha})`;
+      ambientCtx.lineWidth = 1;
+      ambientCtx.stroke();
+      if (p.y > h + 10) ambientParticles.splice(i, 1);
+    }
+  } else if (ambientMode === 'snow') {
+    if (Math.random() < 0.15) ambientParticles.push(spawnSnowParticle());
+    for (let i = ambientParticles.length - 1; i >= 0; i--) {
+      const p = ambientParticles[i];
+      p.y += p.speed;
+      p.x += p.drift + Math.sin(p.y * 0.02) * 0.3;
+      ambientCtx.beginPath();
+      ambientCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ambientCtx.fillStyle = `rgba(255,255,255,${p.alpha})`;
+      ambientCtx.fill();
+      if (p.y > h + 5) ambientParticles.splice(i, 1);
+    }
+  }
+  // 'clear' = no particles
+
+  ambientAnimFrame = requestAnimationFrame(tickAmbient);
+}
+
+function setAmbientMode(mode) {
+  if (mode === ambientMode) return;
+  ambientMode = mode;
+  ambientParticles = [];
+}
+
+// Determine weather mode from WMO weather code
+function weatherCodeToMode(wc) {
+  if (wc == null || wc === 0 || wc === 1) return 'clear';
+  if (wc >= 51 && wc <= 67) return 'rain';  // drizzle/rain
+  if (wc >= 71 && wc <= 77) return 'snow';  // snow
+  if (wc >= 80 && wc <= 82) return 'rain';  // showers
+  if (wc >= 85 && wc <= 86) return 'snow';  // snow showers
+  if (wc >= 95) return 'rain';              // thunderstorm
+  return 'clear';
+}
+
+// Start ambient animation loop
+tickAmbient();
 
 function resolveDefaultSocketUrl() {
   if (isNativeShell()) {
@@ -298,8 +581,9 @@ function applyTelemetry(data) {
     const h = 2 + frac * 30;
     const bar = waveformBars[i];
     bar.style.height = h + 'px';
-    if (frac < 0.5) bar.style.background = '#2dd4bf';
-    else if (frac < 0.75) bar.style.background = '#fbbf24';
+    const rpmVal = rpmHistory[i];
+    if (rpmVal < 1500) bar.style.background = '#2dd4bf';
+    else if (rpmVal < 2000) bar.style.background = '#fbbf24';
     else bar.style.background = '#fb7185';
   }
 
@@ -327,6 +611,37 @@ function applyTelemetry(data) {
 
   // Live-update sheet if open
   if (tripSheetOpen) populateTripSheet();
+
+  // ─── New Features ───
+
+  // Shift lights
+  updateShiftLights(rpm);
+
+  // Engine load
+  const engineLoad = data.el ?? simulateEngineLoad(rpm, speed);
+  updateEngineLoad(engineLoad);
+
+  // Turbo boost
+  const boostBar = data.boost ?? simulateBoost(rpm, speed);
+  updateBoost(boostBar);
+
+  // Fuel efficiency
+  updateFuelEfficiency(rpm, speed);
+
+  // G-force
+  const latG = (data.lat_g ?? simulateLatG(speed)) ;
+  const lonG = (data.lon_g ?? simulateLonG(data.acc)) ;
+  drawGForce(latG, lonG);
+
+  // Ambient weather/idle
+  if (speed === 0) {
+    idleTimer += 100;
+    if (idleTimer >= IDLE_TRIGGER_MS) setAmbientMode('idle');
+  } else {
+    idleTimer = 0;
+    const wc = data.wc ?? 0;
+    setAmbientMode(weatherCodeToMode(wc));
+  }
 }
 
 // ── WebSocket ──
@@ -382,6 +697,34 @@ function connectSocket() {
     if (socket !== next) return;
     setStatusDot('error', 'Connection error');
   });
+}
+
+// ── Simulation Helpers for New Gauges ──
+
+function simulateEngineLoad(rpm, speed) {
+  // Rough estimate: idle ~20%, scales with RPM and speed
+  const rpmFactor = clamp(rpm / MAX_RPM, 0, 1);
+  const spdFactor = clamp(speed / 120, 0, 1);
+  return Math.round(15 + rpmFactor * 55 + spdFactor * 20 + Math.sin(performance.now() / 800) * 3);
+}
+
+function simulateBoost(rpm, speed) {
+  // No boost at low RPM, builds with RPM
+  if (rpm < 1800) return -0.1 + Math.random() * 0.05;
+  const rpmFrac = clamp((rpm - 1800) / 4200, 0, 1);
+  return rpmFrac * 1.2 + Math.sin(performance.now() / 600) * 0.05;
+}
+
+function simulateLatG(speed) {
+  if (speed < 5) return 0;
+  // Simulate gentle cornering from steering
+  return Math.sin(performance.now() / 2400) * clamp(speed / 100, 0, 1) * 0.3;
+}
+
+function simulateLonG(acc) {
+  // Use acceleration data if available, otherwise simulate
+  if (acc != null) return clamp(acc / 1000, -1.5, 1.5);
+  return Math.sin(performance.now() / 1800) * 0.15;
 }
 
 // ── Simulation ──

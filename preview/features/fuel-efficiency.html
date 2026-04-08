@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Drive Orbit — Fuel Efficiency Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#040404;color:#fafafa;font-family:'Helvetica Neue','Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 20px 48px;min-height:100vh}
+
+.page-top,.intro,.preview-grid,.caption{width:min(1180px,100%)}
+.page-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.back-link{display:inline-flex;align-items:center;min-height:34px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);text-decoration:none;font-size:13px;transition:border-color .2s,color .2s}
+.back-link:hover{border-color:rgba(45,212,191,.4);color:#fff}
+.eyebrow{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:rgba(45,212,191,.6);flex:1;text-align:right}
+.intro{max-width:760px;margin-bottom:28px;font-size:14px;line-height:1.7;color:#666}
+
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:28px;align-items:start}
+.preview-card{display:flex;flex-direction:column;gap:12px}
+.preview-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.preview-kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#2dd4bf}
+.preview-note{font-size:12px;line-height:1.55;color:#555;max-width:360px;text-align:right}
+
+.device-shell{position:relative;overflow:hidden;background:#0c0c0c;border:1px solid rgba(255,255,255,.08);box-shadow:0 32px 90px rgba(0,0,0,.58)}
+.device-shell--portrait{width:100%;max-width:390px;height:min(720px,80vh);border-radius:48px}
+.device-shell--landscape{width:100%;max-width:760px;aspect-ratio:16/9;border-radius:30px}
+.device-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#040404;border-radius:0 0 18px 18px;z-index:20}
+.caption{max-width:760px;margin-top:16px;font-size:12px;color:#444;line-height:1.7;letter-spacing:.02em}
+
+/* ── Fuel Efficiency Panel ── */
+.fuel-eff{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px}
+.fuel-eff-title{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:#444;margin-bottom:24px}
+.fuel-eff-hero{font-size:96px;font-weight:200;line-height:1;letter-spacing:-4px;font-variant-numeric:tabular-nums;transition:color .3s}
+.fuel-eff-unit{font-size:12px;letter-spacing:.4em;text-transform:uppercase;color:#555;margin-top:4px}
+.fuel-eff-rating{font-size:12px;letter-spacing:.12em;margin-top:12px;font-weight:500;transition:color .3s}
+
+.bars-section{width:100%;max-width:280px;margin-top:28px}
+.bar-group{margin-bottom:14px}
+.bar-header{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em;color:#555;margin-bottom:5px}
+.bar-header .bar-val{font-variant-numeric:tabular-nums;color:#888}
+.bar-track{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.2,.8,.2,1),background .3s}
+
+.fuel-trip-summary{display:flex;gap:20px;margin-top:24px;font-size:11px;color:#555;letter-spacing:.04em}
+.fuel-trip-summary span{display:flex;flex-direction:column;align-items:center;gap:2px}
+.fuel-trip-summary .fts-val{font-size:16px;font-weight:500;color:#888;font-variant-numeric:tabular-nums}
+
+/* ── Landscape Arc Gauge ── */
+.fuel-eff-arc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.arc-wrap{position:relative;width:320px;height:200px}
+.arc-wrap canvas{width:100%;height:100%}
+.arc-center{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);text-align:center}
+.arc-val{font-size:52px;font-weight:200;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.arc-unit{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#555}
+.arc-bottom{display:flex;gap:28px;margin-top:16px;font-size:11px;color:#555;letter-spacing:.06em}
+.arc-bottom span{display:flex;flex-direction:column;align-items:center;gap:2px}
+.arc-bottom .ab-val{font-size:18px;font-weight:500;color:#aaa;font-variant-numeric:tabular-nums}
+
+@media (max-width:720px){
+  .preview-head{flex-direction:column;align-items:flex-start}
+  .preview-note{text-align:left;max-width:none}
+}
+</style>
+</head>
+<body>
+
+<div class="page-top">
+  <a class="back-link" href="../">← Hub</a>
+  <span class="eyebrow">Fuel Efficiency Preview</span>
+</div>
+
+<p class="intro">
+  Real-time fuel efficiency gauge showing instantaneous L/100km with a trip average comparison. Color shifts from teal (efficient) to amber (normal) to rose (heavy) based on current consumption.
+</p>
+
+<section class="preview-grid">
+
+  <!-- Portrait — numeric + bars -->
+  <article class="preview-card preview-card--portrait">
+    <div class="preview-head">
+      <span class="preview-kicker">Portrait — Numeric</span>
+      <p class="preview-note">Large readout with instant vs. average comparison bars and trip fuel summary.</p>
+    </div>
+
+    <div class="device-shell device-shell--portrait" id="device-portrait">
+      <div class="device-notch"></div>
+      <div class="fuel-eff">
+        <div class="fuel-eff-title">⛽ Fuel Efficiency</div>
+        <div class="fuel-eff-hero" id="eff-hero">--.-</div>
+        <div class="fuel-eff-unit">L / 100 km</div>
+        <div class="fuel-eff-rating" id="eff-rating">—</div>
+
+        <div class="bars-section">
+          <div class="bar-group">
+            <div class="bar-header"><span>Instant</span><span class="bar-val" id="bar-instant-val">--.-</span></div>
+            <div class="bar-track"><div class="bar-fill" id="bar-instant" style="width:0"></div></div>
+          </div>
+          <div class="bar-group">
+            <div class="bar-header"><span>Trip Average</span><span class="bar-val" id="bar-avg-val">--.-</span></div>
+            <div class="bar-track"><div class="bar-fill" id="bar-avg" style="width:0"></div></div>
+          </div>
+        </div>
+
+        <div class="fuel-trip-summary">
+          <span><span class="fts-val" id="fts-used">0.0</span>Litres used</span>
+          <span><span class="fts-val" id="fts-dist">0.0</span>km driven</span>
+          <span><span class="fts-val" id="fts-rpm">0</span>RPM</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Landscape — arc gauge -->
+  <article class="preview-card preview-card--landscape">
+    <div class="preview-head">
+      <span class="preview-kicker">Landscape — Arc Gauge</span>
+      <p class="preview-note">Compact arc visualization for the 480 × 320 dashboard. Green zone at left, red at right.</p>
+    </div>
+
+    <div class="device-shell device-shell--landscape" id="device-landscape">
+      <div class="fuel-eff-arc">
+        <div class="arc-wrap">
+          <canvas id="arc-canvas" width="640" height="400"></canvas>
+          <div class="arc-center">
+            <div class="arc-val" id="arc-val">--.-</div>
+            <div class="arc-unit">L / 100 km</div>
+          </div>
+        </div>
+        <div class="arc-bottom">
+          <span><span class="ab-val" id="arc-avg">--.-</span>Trip avg</span>
+          <span><span class="ab-val" id="arc-speed">0</span>km/h</span>
+          <span><span class="ab-val" id="arc-fuel">0%</span>Tank</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+</section>
+
+<p class="caption">
+  Instantaneous L/100km is computed from simulated fuel flow (RPM-based model). Values below 5.0 show teal, 5–8 show amber, above 8 show rose. At idle (speed &lt; 3 km/h), the readout shows "--.-" to avoid divide-by-zero spikes.
+</p>
+
+<script type="module">
+import { startTelemetryStream } from '../shared/telemetry.js';
+
+/* ── Fuel simulation ── */
+function estimateFuelFlow(rpm) {
+  const idleFlow = 0.8;
+  const loadFactor = rpm / 6000;
+  return idleFlow + loadFactor * 6.5;
+}
+
+function computeL100(flowLph, speedKph) {
+  if (speedKph < 3) return null;
+  return flowLph / (speedKph / 100);
+}
+
+function effColor(l100) {
+  if (l100 === null) return '#555';
+  if (l100 < 5) return '#2dd4bf';
+  if (l100 <= 8) return '#fbbf24';
+  return '#fb7185';
+}
+
+function effRating(l100) {
+  if (l100 === null) return '—';
+  if (l100 < 4) return 'Excellent';
+  if (l100 < 5) return 'Very good';
+  if (l100 < 6.5) return 'Good';
+  if (l100 < 8) return 'Normal';
+  return 'Heavy';
+}
+
+/* ── Rolling average ── */
+const samples = [];
+const SMOOTH_SIZE = 5;
+function smooth(val) {
+  if (val === null) { samples.length = 0; return null; }
+  samples.push(val);
+  if (samples.length > SMOOTH_SIZE) samples.shift();
+  return samples.reduce((a, b) => a + b, 0) / samples.length;
+}
+
+/* ── Trip accumulator ── */
+let tripFuelL = 0;
+let tripDistKm = 0;
+
+/* ── Arc gauge drawing ── */
+const arcCanvas = document.getElementById('arc-canvas');
+const arcCtx = arcCanvas.getContext('2d');
+const AW = 640, AH = 400, ACX = AW / 2, ACY = AH - 40;
+const ARC_R = 160;
+const ARC_START = Math.PI;
+const ARC_END = Math.PI * 2;
+const L100_MAX = 15;
+
+function drawArc(l100) {
+  arcCtx.clearRect(0, 0, AW, AH);
+  const frac = l100 !== null ? Math.min(l100 / L100_MAX, 1) : 0;
+
+  /* background track */
+  arcCtx.beginPath();
+  arcCtx.arc(ACX, ACY, ARC_R, ARC_START, ARC_END);
+  arcCtx.lineWidth = 20;
+  arcCtx.strokeStyle = 'rgba(255,255,255,0.04)';
+  arcCtx.lineCap = 'round';
+  arcCtx.stroke();
+
+  /* colored zone segments */
+  const zones = [
+    { end: 5 / L100_MAX, color: 'rgba(45,212,191,0.15)' },
+    { end: 8 / L100_MAX, color: 'rgba(251,191,36,0.15)' },
+    { end: 1, color: 'rgba(251,113,133,0.15)' },
+  ];
+  let prev = 0;
+  for (const z of zones) {
+    arcCtx.beginPath();
+    arcCtx.arc(ACX, ACY, ARC_R, ARC_START + prev * Math.PI, ARC_START + Math.min(z.end, 1) * Math.PI);
+    arcCtx.lineWidth = 20;
+    arcCtx.strokeStyle = z.color;
+    arcCtx.lineCap = 'butt';
+    arcCtx.stroke();
+    prev = z.end;
+  }
+
+  /* tick marks */
+  for (let v = 0; v <= L100_MAX; v += 5) {
+    const a = ARC_START + (v / L100_MAX) * Math.PI;
+    const cos = Math.cos(a), sin = Math.sin(a);
+    arcCtx.beginPath();
+    arcCtx.moveTo(ACX + cos * (ARC_R + 14), ACY + sin * (ARC_R + 14));
+    arcCtx.lineTo(ACX + cos * (ARC_R + 24), ACY + sin * (ARC_R + 24));
+    arcCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+    arcCtx.lineWidth = 1.5;
+    arcCtx.stroke();
+    arcCtx.font = '11px sans-serif';
+    arcCtx.fillStyle = 'rgba(255,255,255,0.25)';
+    arcCtx.textAlign = 'center';
+    arcCtx.fillText(v.toString(), ACX + cos * (ARC_R + 34), ACY + sin * (ARC_R + 34) + 4);
+  }
+
+  /* needle */
+  if (l100 !== null) {
+    const needleAngle = ARC_START + frac * Math.PI;
+    const nx = ACX + Math.cos(needleAngle) * (ARC_R - 20);
+    const ny = ACY + Math.sin(needleAngle) * (ARC_R - 20);
+    arcCtx.beginPath();
+    arcCtx.moveTo(ACX, ACY);
+    arcCtx.lineTo(nx, ny);
+    arcCtx.strokeStyle = effColor(l100);
+    arcCtx.lineWidth = 2.5;
+    arcCtx.lineCap = 'round';
+    arcCtx.stroke();
+
+    /* needle tip dot */
+    const tipX = ACX + Math.cos(needleAngle) * ARC_R;
+    const tipY = ACY + Math.sin(needleAngle) * ARC_R;
+    arcCtx.beginPath();
+    arcCtx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+    arcCtx.fillStyle = effColor(l100);
+    arcCtx.fill();
+  }
+
+  /* center dot */
+  arcCtx.beginPath();
+  arcCtx.arc(ACX, ACY, 6, 0, Math.PI * 2);
+  arcCtx.fillStyle = '#333';
+  arcCtx.fill();
+}
+
+/* ── Telemetry ── */
+startTelemetryStream((t) => {
+  const flowLph = estimateFuelFlow(t.rpm);
+  const rawL100 = computeL100(flowLph, t.speedKph);
+  const l100 = smooth(rawL100);
+
+  /* accumulate trip */
+  tripFuelL += flowLph / 36000; /* per 100ms tick */
+  tripDistKm += t.speedKph / 36000;
+
+  const tripAvg = tripDistKm > 0.01 ? (tripFuelL / tripDistKm) * 100 : null;
+  const display = l100 !== null ? l100.toFixed(1) : '--.-';
+  const avgDisplay = tripAvg !== null ? tripAvg.toFixed(1) : '--.-';
+  const color = effColor(l100);
+
+  /* Portrait */
+  const hero = document.getElementById('eff-hero');
+  hero.textContent = display;
+  hero.style.color = color;
+  document.getElementById('eff-rating').textContent = effRating(l100);
+  document.getElementById('eff-rating').style.color = color;
+
+  document.getElementById('bar-instant-val').textContent = display;
+  const barInst = document.getElementById('bar-instant');
+  barInst.style.width = l100 !== null ? Math.min(l100 / L100_MAX * 100, 100) + '%' : '0';
+  barInst.style.background = color;
+
+  document.getElementById('bar-avg-val').textContent = avgDisplay;
+  const barAvg = document.getElementById('bar-avg');
+  barAvg.style.width = tripAvg !== null ? Math.min(tripAvg / L100_MAX * 100, 100) + '%' : '0';
+  barAvg.style.background = effColor(tripAvg);
+
+  document.getElementById('fts-used').textContent = tripFuelL.toFixed(2);
+  document.getElementById('fts-dist').textContent = tripDistKm.toFixed(1);
+  document.getElementById('fts-rpm').textContent = t.rpm;
+
+  /* Landscape arc */
+  drawArc(l100);
+  document.getElementById('arc-val').textContent = display;
+  document.getElementById('arc-val').style.color = color;
+  document.getElementById('arc-avg').textContent = avgDisplay;
+  document.getElementById('arc-speed').textContent = t.speedKph;
+  document.getElementById('arc-fuel').textContent = t.fuelPct + '%';
+});
+</script>
+</body>
+</html>

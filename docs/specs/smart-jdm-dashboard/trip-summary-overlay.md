@@ -27,19 +27,19 @@ The overlay is a **bottom sheet** that slides up over the main dashboard. The da
 
 ### Orientation Behavior
 
-#### Portrait / phone shell preview
+#### Landscape (primary — iPhone in car mount)
+
+- Overlay covers approximately 72% to 78% of screen height.
+- The sheet rises from the bottom and the body reorganizes into **two columns**.
+- Left column: four key stats (`duration`, `distance`, `avg speed`, `max speed`).
+- Right column: score, progress bars, and event rows.
+- Safe area insets respected for Dynamic Island and home indicator.
+
+#### Portrait (fallback)
 
 - Overlay covers approximately 85% of screen height.
 - Content stays stacked vertically: stats first, then score, then event rows.
 - Feels like a full trip card pulled over the live dashboard.
-
-#### Landscape / dash_35
-
-- Overlay covers approximately 72% to 78% of screen height.
-- The sheet still rises from the bottom, but the body reorganizes into **two columns**.
-- Left column: four key stats (`duration`, `distance`, `avg speed`, `max speed`).
-- Right column: score, progress bars, and event rows.
-- This keeps the summary readable on the 480 × 320 dashboard without turning it into a full-screen takeover.
 
 ### Sheet Anatomy
 
@@ -133,14 +133,14 @@ const smoothnessScore = computeSmoothnessScore(tripStats);
 
 ---
 
-## Hardware (ESP32 dash_35)
+## Device Notes
 
-- Trigger: bottom-zone touch gesture (see `touch-screen-navigation.md`)  
-  - Swipe-up detected when touch-down Y > 252 and touch-up Y < 200 with ΔY > 60px
-- Rendering: new `TripSummaryScreen` view that replaces the main `DashboardScreen` temporarily
-- Dismiss: tap anywhere on screen or swipe down
-- The sheet is rendered as a full overlay frame drawn over the live dashboard without clearing the background (`pushMatrix` / drawing order)
-- In landscape, the same sheet animation is used, but the render layout switches to a two-column composition instead of a single vertical stack.
+The trip summary overlay runs on the **iPhone (Capacitor iOS app)**, not on the ESP32 TFT.
+
+- The `dash_35` ESP32 is a headless telemetry gateway — it has no local UI rendering.
+- All trip sheet rendering, gestures, and animations are handled by the web frontend on the iPhone.
+- In landscape (primary orientation), the sheet body reorganizes into two columns for readability.
+- In portrait (fallback), the content stays stacked vertically.
 
 ---
 

@@ -32,6 +32,16 @@ This repository uses a lightweight spec-driven development structure.
 - Stage 4: interaction validation complete
 - Stage 5: implementation active
 
+## Device Architecture
+
+| Device | Role | Display |
+| ------ | ---- | ------- |
+| iPhone 15 (Capacitor iOS app) | Primary dashboard UI | 852 × 393 CSS pts landscape |
+| ESP32 `dash_35` | Headless telemetry gateway | No local rendering |
+| ESP32-C3 `companion_orb` | Ambient companion display | 240 × 240 round (deferred) |
+
+The **iPhone** is the dashboard. The **ESP32** is a headless gateway that polls OBD2, connects to the iPhone hotspot, and broadcasts telemetry via WebSocket. All UI rendering happens on the phone.
+
 Current Stage 5 slice:
 
 - `dash_35`-first standalone implementation
