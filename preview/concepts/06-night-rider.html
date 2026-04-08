@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 6 — Night Rider</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#040404;color:rgba(255,255,255,.85);
+  font-family:'Avenir Next','Segoe UI',sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.frame{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.scanner-wrap{width:100%;max-width:440px;margin-bottom:28px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.scanner-label{font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:rgba(255,50,20,.5)}
+.scanner-track{width:80%;height:10px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;position:relative}
+.scanner-bar{
+  height:100%;border-radius:2px;position:absolute;top:0;
+  background:linear-gradient(90deg,transparent,#ff3c1e 30%,#ff6040 50%,#ff3c1e 70%,transparent);
+  box-shadow:0 0 18px rgba(255,60,30,.8),0 0 6px rgba(255,60,30,1);
+  transition:none;
+}
+.scanner-glow{
+  position:absolute;top:-12px;left:-10%;width:120%;height:34px;
+  background:radial-gradient(ellipse at center,rgba(255,60,30,.2),transparent 70%);
+  filter:blur(4px);
+}
+.speed-num{
+  font-size:min(42vw,48vh,200px);font-weight:100;line-height:1;
+  letter-spacing:-0.06em;color:rgba(255,255,255,.9);
+  font-variant-numeric:tabular-nums;
+  font-family:'Helvetica Neue','Inter',sans-serif;
+}
+.unit{font-size:11px;letter-spacing:.5em;text-transform:uppercase;color:rgba(255,50,20,.6);margin-top:8px}
+.bottom-row{
+  position:absolute;bottom:0;left:0;right:0;
+  display:flex;justify-content:space-around;padding:14px 24px;
+  border-top:1px solid rgba(255,50,20,.12);
+  font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.3);
+}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(255,50,20,.4);
+  text-decoration:none;font-size:13px;z-index:10;font-family:sans-serif}
+.back-link:hover{color:rgba(255,50,20,.8)}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="frame">
+  <div class="scanner-wrap">
+    <div class="scanner-label">Engine</div>
+    <div class="scanner-track">
+      <div class="scanner-bar" id="scanner"><div class="scanner-glow"></div></div>
+    </div>
+  </div>
+  <div class="speed-num" id="speed">0</div>
+  <div class="unit">km / h</div>
+  <div class="bottom-row">
+    <span>G <span id="gear">P</span></span>
+    <span><span id="rpm">0</span> rpm</span>
+    <span>FUEL <span id="fuel">0</span>%</span>
+    <span>RNG <span id="range">0</span> km</span>
+  </div>
+</div>
+<script type="module">
+import { startTelemetryStream } from '../shared/telemetry.js';
+let scanPos = 0;
+let scanDir = 1;
+let scanSpeedPx = 0.5;
+startTelemetryStream(d => {
+  document.getElementById('speed').textContent = d.speedKph;
+  document.getElementById('rpm').textContent = d.rpm.toLocaleString();
+  document.getElementById('gear').textContent = d.gear;
+  document.getElementById('fuel').textContent = d.fuelPct;
+  document.getElementById('range').textContent = d.rangeKm;
+  // Scanner bar: width and speed driven by RPM fraction
+  const rpmFrac = Math.min(d.rpm / 6000, 1);
+  scanSpeedPx = 0.5 + rpmFrac * 3.5;
+  const barW = 15 + rpmFrac * 35;
+  scanPos += scanDir * scanSpeedPx;
+  if (scanPos + barW >= 100) { scanPos = 100 - barW; scanDir = -1; }
+  if (scanPos <= 0) { scanPos = 0; scanDir = 1; }
+  const el = document.getElementById('scanner');
+  el.style.width = barW + '%';
+  el.style.left = scanPos + '%';
+});
+</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode')||localStorage.getItem('conceptMode')||'dark';if(m==='black'){var s=document.createElement('style');s.textContent='body,.frame{background:#000!important;background-image:none!important}';document.head.appendChild(s);}})();</script>
+</body>
+</html>

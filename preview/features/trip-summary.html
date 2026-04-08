@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Drive Orbit — Trip Summary Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#040404;color:#fafafa;font-family:'Helvetica Neue','Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 20px 48px;min-height:100vh}
+
+.page-top,.intro,.preview-grid,.controls,.caption{width:min(1180px,100%)}
+.page-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.back-link{display:inline-flex;align-items:center;min-height:34px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);text-decoration:none;font-size:13px;transition:border-color .2s,color .2s}
+.back-link:hover{border-color:rgba(45,212,191,.4);color:#fff}
+.eyebrow{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:rgba(45,212,191,.6);flex:1;text-align:right}
+.intro{max-width:760px;margin-bottom:28px;font-size:14px;line-height:1.7;color:#666}
+
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:28px;align-items:start}
+.preview-card{display:flex;flex-direction:column;gap:12px}
+.preview-card--landscape{grid-column:span 1}
+.preview-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.preview-kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#2dd4bf}
+.preview-note{font-size:12px;line-height:1.55;color:#555;max-width:360px;text-align:right}
+
+.device-shell{
+  position:relative;overflow:hidden;background:#0c0c0c;
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 32px 90px rgba(0,0,0,.58);
+}
+.device-shell--portrait{width:100%;max-width:390px;height:min(820px,90vh);border-radius:48px}
+.device-shell--landscape{width:100%;max-width:760px;aspect-ratio:3/2;border-radius:30px}
+.device-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#040404;border-radius:0 0 18px 18px;z-index:20}
+
+.dash-bg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0c0c0c;filter:brightness(.35);transition:filter .4s ease}
+.dash-bg.dim{filter:brightness(.2)}
+.bg-speed{font-size:160px;font-weight:200;line-height:1;letter-spacing:-8px;color:#fafafa;font-variant-numeric:tabular-nums}
+.bg-unit{font-size:11px;letter-spacing:.5em;text-transform:uppercase;color:#555;margin-top:8px}
+.bg-waveform{display:flex;align-items:flex-end;gap:1px;height:32px;width:220px;margin-top:32px}
+.bg-waveform .bar{flex:1;min-width:2px;border-radius:1px 1px 0 0;background:#2dd4bf}
+
+.device-shell--landscape .dash-bg{align-items:flex-start;padding-left:42px}
+.device-shell--landscape .bg-speed{font-size:132px;letter-spacing:-6px}
+.device-shell--landscape .bg-waveform{width:280px;height:28px;margin-top:20px}
+
+.overlay{position:absolute;left:0;right:0;bottom:0;background:#131313;border-radius:24px 24px 0 0;padding:12px 24px 28px;transform:translateY(100%);transition:transform .45s cubic-bezier(0.2,0.82,0.18,1);z-index:10}
+.overlay.visible{transform:translateY(0)}
+.drag-handle{width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);margin:0 auto 18px}
+.sheet-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.sheet-title{font-size:17px;font-weight:600;letter-spacing:.01em}
+.reset-btn{font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:6px 14px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);cursor:pointer;transition:background .2s,color .2s}
+.reset-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+.sheet-layout{display:block}
+.sheet-side{margin-top:14px}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.stat-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 14px}
+.stat-val{font-size:22px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-bottom:2px}
+.stat-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#555}
+
+.section-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#444;margin-bottom:10px;padding-top:4px;border-top:1px solid rgba(255,255,255,.05)}
+.score-row{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.score-val{font-size:32px;font-weight:200;letter-spacing:-.04em;color:#2dd4bf}
+.score-grade{font-size:20px;font-weight:600;color:#2dd4bf}
+.score-label{font-size:13px;color:#777}
+.bar-row{margin-bottom:8px}
+.bar-label-row{display:flex;justify-content:space-between;font-size:10px;color:#555;letter-spacing:.06em;margin-bottom:4px}
+.prog-track{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;transition:width 1s cubic-bezier(0.2,0.8,0.2,1)}
+.fill-teal{background:#2dd4bf}
+.fill-amber{background:#fbbf24}
+
+.events{margin-top:14px}
+.event-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:#888}
+.event-row:last-child{border-bottom:none}
+.event-icon{font-size:15px;width:22px;text-align:center}
+.event-count{margin-left:auto;font-size:12px;font-variant-numeric:tabular-nums;color:#555}
+.event-row.warn{color:#fb7185}
+.event-row.good{color:#2dd4bf}
+
+.device-shell--landscape .overlay{padding:12px 18px 20px}
+.device-shell--landscape .drag-handle{margin-bottom:14px}
+.device-shell--landscape .sheet-header{margin-bottom:14px}
+.device-shell--landscape .sheet-layout{display:grid;grid-template-columns:1.06fr .94fr;gap:14px;align-items:start}
+.device-shell--landscape .sheet-side{margin-top:0}
+.device-shell--landscape .stat-grid{margin-bottom:0}
+.device-shell--landscape .stat-val{font-size:18px}
+.device-shell--landscape .stat-label{font-size:9px}
+.device-shell--landscape .score-val{font-size:28px}
+.device-shell--landscape .score-grade{font-size:18px}
+.device-shell--landscape .score-label{font-size:12px}
+.device-shell--landscape .bar-row{margin-bottom:6px}
+.device-shell--landscape .section-label{margin-bottom:8px}
+.device-shell--landscape .events{margin-top:10px}
+.device-shell--landscape .event-row{padding:6px 0;font-size:12px}
+
+.controls{max-width:520px;margin-top:24px;display:flex;gap:10px}
+.ctrl-btn{flex:1;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:500;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fafafa;cursor:pointer;transition:background .2s,border-color .2s;letter-spacing:.04em}
+.ctrl-btn:hover{background:rgba(255,255,255,.1)}
+.ctrl-btn.primary{background:rgba(45,212,191,.12);border-color:rgba(45,212,191,.3);color:#2dd4bf}
+.ctrl-btn.primary:hover{background:rgba(45,212,191,.2)}
+.caption{max-width:760px;margin-top:16px;font-size:12px;color:#444;line-height:1.7;letter-spacing:.02em}
+
+@media (min-width:1120px){
+  .preview-grid{grid-template-columns:minmax(320px,420px) minmax(520px,760px)}
+}
+
+@media (max-width:720px){
+  .preview-head{flex-direction:column;align-items:flex-start}
+  .preview-note{text-align:left;max-width:none}
+  .device-shell--landscape .sheet-layout{display:block}
+  .device-shell--landscape .sheet-side{margin-top:14px}
+}
+</style>
+</head>
+<body>
+
+<div class="page-top">
+  <a class="back-link" href="../">← Hub</a>
+  <span class="eyebrow">Trip Summary Preview</span>
+</div>
+
+<p class="intro">
+  Compare the trip summary overlay in portrait and landscape. Portrait keeps the sheet stacked and immersive. Landscape compresses the content into a wider two-column bottom sheet so it stays readable on the 480 × 320 dash.
+</p>
+
+<section class="preview-grid">
+  <article class="preview-card preview-card--portrait">
+    <div class="preview-head">
+      <span class="preview-kicker">Portrait</span>
+      <p class="preview-note">Full-height bottom sheet with stacked stats, score, and event rows.</p>
+    </div>
+
+    <div class="device-shell device-shell--portrait preview-device" data-orientation="portrait">
+      <div class="device-notch"></div>
+      <div class="dash-bg">
+        <div class="bg-speed">38</div>
+        <div class="bg-unit">km/h</div>
+        <div class="bg-waveform"></div>
+      </div>
+
+      <div class="overlay">
+        <div class="drag-handle"></div>
+        <div class="sheet-header">
+          <span class="sheet-title">Trip Summary</span>
+          <button class="reset-btn" type="button">Reset Trip</button>
+        </div>
+
+        <div class="sheet-layout">
+          <div class="sheet-main">
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="stat-val">0:47</div>
+                <div class="stat-label">Duration</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val">12.4 km</div>
+                <div class="stat-label">Distance</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val">38 km/h</div>
+                <div class="stat-label">Avg Speed</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val">72 km/h</div>
+                <div class="stat-label">Max Speed</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet-side">
+            <div class="section-label">Score</div>
+            <div class="score-row">
+              <span class="score-val">82</span>
+              <span class="score-grade">A</span>
+              <span class="score-label">Solid Driver</span>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label-row"><span>Smoothness</span><span>82%</span></div>
+              <div class="prog-track"><div class="prog-fill fill-teal" data-value="82"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label-row"><span>Speed consistency</span><span>76%</span></div>
+              <div class="prog-track"><div class="prog-fill fill-amber" data-value="76"></div></div>
+            </div>
+
+            <div class="events section-label">Events</div>
+            <div class="events">
+              <div class="event-row warn">
+                <span class="event-icon">⚡</span>
+                <span>Harsh acceleration</span>
+                <span class="event-count">2</span>
+              </div>
+              <div class="event-row warn">
+                <span class="event-icon">🛑</span>
+                <span>Harsh braking</span>
+                <span class="event-count">1</span>
+              </div>
+              <div class="event-row good">
+                <span class="event-icon">✓</span>
+                <span>Over-speed events</span>
+                <span class="event-count">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article class="preview-card preview-card--landscape">
+    <div class="preview-head">
+      <span class="preview-kicker">Landscape</span>
+      <p class="preview-note">Same swipe-up gesture, but the sheet reorganizes into a wider two-column body for the dash.</p>
+    </div>
+
+    <div class="device-shell device-shell--landscape preview-device" data-orientation="landscape">
+      <div class="dash-bg">
+        <div class="bg-speed">38</div>
+        <div class="bg-unit">km/h</div>
+        <div class="bg-waveform"></div>
+      </div>
+
+      <div class="overlay">
+        <div class="drag-handle"></div>
+        <div class="sheet-header">
+          <span class="sheet-title">Trip Summary</span>
+          <button class="reset-btn" type="button">Reset Trip</button>
+        </div>
+
+        <div class="sheet-layout">
+          <div class="sheet-main">
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="stat-val">0:47</div>
+                <div class="stat-label">Duration</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val">12.4 km</div>
+                <div class="stat-label">Distance</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val">38 km/h</div>
+                <div class="stat-label">Avg Speed</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val">72 km/h</div>
+                <div class="stat-label">Max Speed</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet-side">
+            <div class="section-label">Score</div>
+            <div class="score-row">
+              <span class="score-val">82</span>
+              <span class="score-grade">A</span>
+              <span class="score-label">Solid Driver</span>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label-row"><span>Smoothness</span><span>82%</span></div>
+              <div class="prog-track"><div class="prog-fill fill-teal" data-value="82"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label-row"><span>Speed consistency</span><span>76%</span></div>
+              <div class="prog-track"><div class="prog-fill fill-amber" data-value="76"></div></div>
+            </div>
+
+            <div class="events section-label">Events</div>
+            <div class="events">
+              <div class="event-row warn">
+                <span class="event-icon">⚡</span>
+                <span>Harsh acceleration</span>
+                <span class="event-count">2</span>
+              </div>
+              <div class="event-row warn">
+                <span class="event-icon">🛑</span>
+                <span>Harsh braking</span>
+                <span class="event-count">1</span>
+              </div>
+              <div class="event-row good">
+                <span class="event-icon">✓</span>
+                <span>Over-speed events</span>
+                <span class="event-count">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+</section>
+
+<div class="controls">
+  <button class="ctrl-btn primary" id="show-all" type="button">Show Both</button>
+  <button class="ctrl-btn" id="dismiss-all" type="button">Dismiss Both</button>
+</div>
+
+<p class="caption">
+  Swipe up on either mockup to reveal the overlay. Portrait prioritizes immersion. Landscape keeps the same motion but redistributes content into two columns so the dashboard remains readable in the horizontal 480 × 320 format.
+</p>
+
+<script>
+const devices = [...document.querySelectorAll('.preview-device')];
+
+function buildWaveform(waveEl, count) {
+  for (let i = 0; i < count; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const frac = 0.15 + 0.55 * Math.abs(Math.sin(i * 0.43 + 1.2));
+    bar.style.height = Math.round(2 + frac * 28) + 'px';
+    bar.style.opacity = 0.3 + frac * 0.7;
+    waveEl.appendChild(bar);
+  }
+}
+
+function openDevice(device) {
+  device.querySelector('.overlay').classList.add('visible');
+  device.querySelector('.dash-bg').classList.add('dim');
+  window.setTimeout(() => {
+    device.querySelectorAll('.prog-fill').forEach((fill) => {
+      fill.style.width = fill.dataset.value + '%';
+    });
+  }, 180);
+}
+
+function closeDevice(device) {
+  device.querySelector('.overlay').classList.remove('visible');
+  device.querySelector('.dash-bg').classList.remove('dim');
+  device.querySelectorAll('.prog-fill').forEach((fill) => {
+    fill.style.width = '0%';
+  });
+}
+
+devices.forEach((device) => {
+  const waveEl = device.querySelector('.bg-waveform');
+  buildWaveform(waveEl, device.dataset.orientation === 'landscape' ? 52 : 40);
+
+  device.querySelector('.reset-btn').addEventListener('click', () => {
+    closeDevice(device);
+    device.querySelector('.bg-speed').textContent = '0';
+  });
+
+  let touchStartY = null;
+  device.addEventListener('touchstart', (event) => {
+    touchStartY = event.touches[0].clientY;
+  }, { passive: true });
+
+  device.addEventListener('touchend', (event) => {
+    if (touchStartY === null) return;
+    const dy = touchStartY - event.changedTouches[0].clientY;
+    const isOpen = device.querySelector('.overlay').classList.contains('visible');
+    if (dy > 40 && !isOpen) openDevice(device);
+    if (dy < -40 && isOpen) closeDevice(device);
+    touchStartY = null;
+  }, { passive: true });
+});
+
+document.getElementById('show-all').addEventListener('click', () => {
+  devices.forEach(openDevice);
+});
+
+document.getElementById('dismiss-all').addEventListener('click', () => {
+  devices.forEach(closeDevice);
+});
+
+window.setTimeout(() => {
+  devices.forEach(openDevice);
+}, 500);
+</script>
+</body>
+</html>

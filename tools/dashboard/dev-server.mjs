@@ -8,6 +8,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
+const previewDir = path.join(repoRoot, 'preview');
 const sourceDir = path.join(repoRoot, 'frontend', 'dashboard');
 
 const cliArgs = process.argv.slice(2);
@@ -31,7 +32,21 @@ const contentTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.js', 'application/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
+  ['.svg', 'image/svg+xml'],
 ]);
+
+const mounts = [
+  {
+    prefix: '/dashboard',
+    dir: sourceDir,
+    fallback: path.join(sourceDir, 'index.html'),
+  },
+  {
+    prefix: '/',
+    dir: previewDir,
+    fallback: null,
+  },
+];
 
 const telemetry = {
   sequence: 0,
@@ -110,35 +125,82 @@ function nextSnapshot() {
   };
 }
 
-async function resolveFile(requestPath) {
-  const normalizedPath = requestPath === '/' ? '/index.html' : requestPath;
-  const decodedPath = decodeURIComponent(normalizedPath.split('?')[0]);
-  const absolutePath = path.join(sourceDir, decodedPath);
+function getMount(pathname) {
+  for (const mount of mounts) {
+    if (mount.prefix === '/') {
+      return mount;
+    }
+
+    if (pathname === mount.prefix || pathname.startsWith(`${mount.prefix}/`)) {
+      return mount;
+    }
+  }
+
+  return null;
+}
+
+async function resolveFile(requestUrl) {
+  const url = new URL(requestUrl ?? '/', 'http://localhost');
+  const decodedPath = decodeURIComponent(url.pathname);
+  const mount = getMount(decodedPath);
+
+  if (!mount) {
+    return null;
+  }
+
+  if (mount.prefix !== '/' && decodedPath === mount.prefix) {
+    return { redirect: `${mount.prefix}/${url.search}` };
+  }
+
+  let relativePath = '/index.html';
+  if (mount.prefix === '/') {
+    relativePath = decodedPath === '/' ? '/index.html' : decodedPath;
+  } else if (decodedPath !== `${mount.prefix}/`) {
+    relativePath = decodedPath.slice(mount.prefix.length) || '/index.html';
+  }
+
+  const absolutePath = path.join(mount.dir, relativePath);
   const resolvedPath = path.resolve(absolutePath);
-  if (!resolvedPath.startsWith(sourceDir)) {
+  if (!resolvedPath.startsWith(mount.dir)) {
     return null;
   }
 
   if (!existsSync(resolvedPath)) {
-    return path.join(sourceDir, 'index.html');
+    if (!mount.fallback) {
+      return null;
+    }
+
+    return { filePath: mount.fallback };
   }
 
   const fileStat = await stat(resolvedPath);
   if (fileStat.isDirectory()) {
-    return path.join(resolvedPath, 'index.html');
+    if (!url.pathname.endsWith('/')) {
+      return { redirect: `${url.pathname}/${url.search}` };
+    }
+
+    return { filePath: path.join(resolvedPath, 'index.html') };
   }
 
-  return resolvedPath;
+  return { filePath: resolvedPath };
 }
 
 const server = createServer(async (request, response) => {
   try {
-    const filePath = await resolveFile(request.url ?? '/');
-    if (!filePath) {
-      response.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end('Forbidden');
+    const resolved = await resolveFile(request.url ?? '/');
+    if (!resolved) {
+      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Not found');
       return;
     }
+
+    if ('redirect' in resolved) {
+      response.writeHead(302, { Location: resolved.redirect });
+      response.end();
+      return;
+    }
+
+    const { filePath } = resolved;
 
     const extension = path.extname(filePath);
     const contentType = contentTypes.get(extension) ?? 'application/octet-stream';
@@ -266,22 +328,24 @@ server.listen(port, host, () => {
       if (address.family !== 'IPv4' || address.internal) {
         continue;
       }
-      networkLines.push(`  ${name}: http://${address.address}:${port}/`);
+      networkLines.push({ name, address: address.address });
     }
   }
 
+  console.log(`[dev] Preview root: ${previewDir}`);
   console.log(`[dev] Dashboard source: ${sourceDir}`);
-  console.log(`[dev] Static server: http://${host}:${port}/`);
+  console.log(`[dev] Preview hub: http://${host}:${port}/`);
+  console.log(`[dev] Live dashboard: http://${host}:${port}/dashboard/`);
   console.log(`[dev] Mock WebSocket: ws://${host === '0.0.0.0' ? '127.0.0.1' : host}:${port}${wsPath}`);
   if (hasWsProxy) {
     console.log(`[dev] WebSocket proxy: ${wsPath} -> ${proxyWsTarget}`);
   } else {
-    console.log('[dev] This mode serves source files with mock telemetry; use `npm run build:web` and `node tools/dashboard/release-server.mjs` for built-asset parity with ESP32.');
+    console.log('[dev] This mode serves the preview hub plus the source dashboard with mock telemetry; use `npm run build:web` and `node tools/dashboard/release-server.mjs` for built-asset parity with ESP32.');
   }
   if (networkLines.length > 0) {
     console.log('[dev] LAN URLs:');
     for (const line of networkLines) {
-      console.log(line);
+      console.log(`  ${line.name}: http://${line.address}:${port}/  dashboard: http://${line.address}:${port}/dashboard/`);
     }
   }
 });

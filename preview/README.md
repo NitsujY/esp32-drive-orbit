@@ -10,6 +10,7 @@ The active dashboard flow is HTTP-first and matches the direct ESP32 use case.
 - `tools/dashboard/build.mjs`: builds and gzips the frontend into `data/` for LittleFS upload
 - `tools/dashboard/build-native.mjs`: builds the same frontend into `build/capacitor/` for native shells
 - `tools/dashboard/release-server.mjs`: serves the packaged `data/` assets for sign-off on the built bundle
+- `preview/dashboard-themes/`: three-look theme lab that compares the same dashboard source with different preset queries
 - `preview/companion/`: host-side orb companion prototype
 - `preview/features/`: host-side feature concept board
 - `data/`: generated deployment assets served by the ESP32 through AsyncWebServer
@@ -24,10 +25,19 @@ Install the Node tooling once from the repository root:
 npm install
 ```
 
-Start the local source preview with mock telemetry:
+Start the merged local preview with mock telemetry:
 
 ```sh
 npm run dev
+```
+
+- preview hub: `http://127.0.0.1:8123/`
+- live source dashboard: `http://127.0.0.1:8123/dashboard/`
+
+If you want the same merged preview server on a second port, use:
+
+```sh
+npm run dev:dashboard-preview
 ```
 
 This mode is fast for iteration, but it is not the exact ESP32 packaging path:
@@ -103,10 +113,29 @@ The dashboard reads its WebSocket endpoint from:
 2. saved `localStorage` override
 3. same-origin `/ws` by default
 
+The dashboard style preset reads from:
+
+1. `?style=neo-oem|midnight-jdm|aero-hud`
+2. saved `localStorage` preview choice
+3. the default `data-style-preset` in `frontend/dashboard/index.html`
+
+The gauge arc profile reads from:
+
+1. `?arc=auto|ribbon|sweep|orbit`
+2. saved `localStorage` preview choice
+3. `auto`, which uses the recommended arc for the active style
+
+The cleaner style-entry preview can also use:
+
+1. `?clean=1`
+2. `?preview=clean`
+
 Examples:
 
 - local mock preview: `http://127.0.0.1:8123/`
-- direct live preview to ESP32: `http://127.0.0.1:8123/?ws=ws://192.168.1.52/ws`
+- local live dashboard: `http://127.0.0.1:8123/dashboard/`
+- direct live preview to ESP32: `http://127.0.0.1:8123/dashboard/?ws=ws://192.168.1.52/ws`
+- style lab source preview: `http://127.0.0.1:8123/dashboard-themes/`
 
 The preview servers also support a same-origin proxy mode, which is useful when you want the preview page to stay on one origin while forwarding `/ws` to the ESP32:
 

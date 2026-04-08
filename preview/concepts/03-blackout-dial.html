@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 3 — Blackout Dial</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#000;color:#fff;font-family:'DIN Alternate','Barlow','Segoe UI',sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.frame{position:relative;width:100vw;height:100vh;overflow:hidden;background:#000}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.center-readout{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.speed-digital{font-size:64px;font-weight:600;letter-spacing:-2px;line-height:1;color:#fff}
+.speed-unit-d{font-size:12px;letter-spacing:.3em;text-transform:uppercase;opacity:.4;margin-top:2px}
+.bottom-info{position:absolute;bottom:14px;left:0;width:100%;display:flex;justify-content:center;gap:20px;font-size:12px;opacity:.45;pointer-events:none;letter-spacing:.06em}
+.gear-badge{font-weight:700;opacity:.7;background:rgba(255,255,255,.08);padding:2px 8px;border-radius:4px}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(255,255,255,.3);text-decoration:none;font-size:13px;z-index:10}
+.back-link:hover{color:#fff}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="frame">
+  <canvas id="dial" width="960" height="640"></canvas>
+  <div class="center-readout">
+    <div class="speed-digital" id="speed">0</div>
+    <div class="speed-unit-d">km/h</div>
+  </div>
+  <div class="bottom-info">
+    <span class="gear-badge" id="gear">D</span>
+    <span>●</span>
+    <span id="fuel">0%</span>
+    <span>—</span>
+    <span id="range">0 km</span>
+    <span>●</span>
+    <span id="trip">0.0 km trip</span>
+  </div>
+</div>
+<script type="module">
+import{startTelemetryStream}from'../shared/telemetry.js';
+const cvs=document.getElementById('dial');
+const ctx=cvs.getContext('2d');
+const W=960,H=640,CX=W/2,CY=H/2-16;
+const R=220;
+const START=-Math.PI*0.8,END=Math.PI*0.8;
+const MAX_SPEED=220,MAX_RPM=6000;
+let needleAngle=START,smoothRpm=0;
+
+function drawDial(speed,rpm){
+  ctx.clearRect(0,0,W,H);
+  smoothRpm+=(rpm-smoothRpm)*.12;
+  const targetAngle=START+(END-START)*Math.min(speed/MAX_SPEED,1);
+  needleAngle+=(targetAngle-needleAngle)*.08; // inertia
+  // overshoot
+  const diff=targetAngle-needleAngle;
+  needleAngle+=diff*.03;
+
+  // dial face - subtle brushed metal radial
+  const bg=ctx.createRadialGradient(CX,CY,R*.2,CX,CY,R+20);
+  bg.addColorStop(0,'#0d0d0d');bg.addColorStop(1,'#080808');
+  ctx.beginPath();ctx.arc(CX,CY,R+18,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+
+  // tick marks
+  for(let i=0;i<=22;i++){
+    const a=START+(END-START)*(i/22);
+    const cos=Math.cos(a),sin=Math.sin(a);
+    const major=i%2===0;
+    const r1=R-(major?0:4),r2=R-(major?18:10);
+    ctx.beginPath();
+    ctx.moveTo(CX+cos*r1,CY+sin*r1);
+    ctx.lineTo(CX+cos*r2,CY+sin*r2);
+    ctx.strokeStyle=major?'rgba(255,255,255,.35)':'rgba(255,255,255,.15)';
+    ctx.lineWidth=major?2:1;ctx.stroke();
+    // numbers on major
+    if(major){
+      const v=Math.round(i/22*MAX_SPEED);
+      ctx.font='16px sans-serif';ctx.fillStyle='rgba(255,255,255,.3)';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(v,CX+cos*(R-32),CY+sin*(R-32));
+    }
+  }
+
+  // RPM outer ring
+  const rpmFrac=Math.min(smoothRpm/MAX_RPM,1);
+  const rpmEnd=START+(END-START)*rpmFrac;
+  // track
+  ctx.beginPath();ctx.arc(CX,CY,R+10,START,END);ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=6;ctx.lineCap='round';ctx.stroke();
+  // fill
+  if(rpmFrac>0){
+    const rg=ctx.createConicGradient(START,CX,CY);
+    rg.addColorStop(0,'rgba(255,255,255,.6)');rg.addColorStop(.5,'rgba(255,180,50,.8)');rg.addColorStop(1,'rgba(255,40,40,.9)');
+    ctx.beginPath();ctx.arc(CX,CY,R+10,START,rpmEnd);ctx.strokeStyle=rg;ctx.lineWidth=6;ctx.lineCap='round';ctx.stroke();
+  }
+
+  // needle
+  const nx=CX+Math.cos(needleAngle)*(R-40);
+  const ny=CY+Math.sin(needleAngle)*(R-40);
+  // shadow
+  ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(nx,ny);ctx.strokeStyle='rgba(255,0,0,.15)';ctx.lineWidth=6;ctx.stroke();
+  // needle body
+  ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(nx,ny);ctx.strokeStyle='#ff1a1a';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke();
+  // center cap
+  ctx.beginPath();ctx.arc(CX,CY,8,0,Math.PI*2);ctx.fillStyle='#ff1a1a';ctx.fill();
+  ctx.beginPath();ctx.arc(CX,CY,4,0,Math.PI*2);ctx.fillStyle='#333';ctx.fill();
+}
+
+let tripKm=0;
+startTelemetryStream(d=>{
+  document.getElementById('speed').textContent=d.speedKph;
+  document.getElementById('gear').textContent=d.gear;
+  document.getElementById('fuel').textContent=d.fuelPct+'%';
+  document.getElementById('range').textContent=d.rangeKm+' km';
+  tripKm+=(d.speedKph/36000);
+  document.getElementById('trip').textContent=tripKm.toFixed(1)+' km trip';
+  drawDial(d.speedKph,d.rpm);
+});
+</script>
+</body>
+</html>

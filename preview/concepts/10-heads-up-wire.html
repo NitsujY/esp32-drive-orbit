@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 10 — Heads-Up Wire</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#000;font-family:'JetBrains Mono','Fira Code','Courier New',monospace}
+body{display:flex;align-items:center;justify-content:center}
+:root{--hud:#00ffcc}
+.frame{position:relative;width:100vw;height:100vh;overflow:hidden;background:#000;animation:flicker 2s infinite}
+@keyframes flicker{0%,100%{opacity:1}50%{opacity:.97}}
+/* scanlines */
+.frame::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(0,0,0,.05) 1px,rgba(0,0,0,.05) 2px);pointer-events:none;z-index:10}
+.speed-box{position:absolute;top:32px;left:50%;transform:translateX(-50%);width:260px;height:160px;border:1px dashed rgba(var(--hud-rgb,0,255,204),.18);display:flex;flex-direction:column;align-items:center;justify-content:center}
+/* rotating sweep on border */
+.speed-box::before{content:'';position:absolute;inset:-1px;border:1px dashed transparent;border-top-color:var(--hud);animation:sweep 4s linear infinite;border-radius:0}
+@keyframes sweep{0%{clip-path:polygon(0 0,15% 0,15% 100%,0 100%)}25%{clip-path:polygon(85% 0,100% 0,100% 15%,85% 15%)}50%{clip-path:polygon(85% 85%,100% 85%,100% 100%,85% 100%)}75%{clip-path:polygon(0 85%,15% 85%,15% 100%,0 100%)}100%{clip-path:polygon(0 0,15% 0,15% 100%,0 100%)}}
+.hud-speed{font-size:80px;font-weight:400;color:var(--hud);line-height:1;letter-spacing:-2px}
+.hud-unit{font-size:12px;letter-spacing:.4em;color:var(--hud);opacity:.4;margin-top:2px}
+.rpm-wire{position:absolute;bottom:72px;left:28px;right:28px;height:40px}
+.rpm-track{position:absolute;bottom:0;left:0;right:0;height:20px;border:1px solid rgba(var(--hud-rgb,0,255,204),.12);border-radius:2px}
+.rpm-ticks{position:absolute;bottom:22px;left:0;right:0;display:flex;justify-content:space-between;font-size:9px;color:var(--hud);opacity:.3}
+.rpm-needle{position:absolute;bottom:0;width:2px;height:20px;background:var(--hud);box-shadow:0 0 8px var(--hud);transition:left .1s;border-radius:1px}
+.rpm-ghost{position:absolute;bottom:0;width:2px;height:20px;background:var(--hud);opacity:.2;transition:left .5s;border-radius:1px}
+.info-nodes{position:absolute;bottom:20px;left:0;width:100%;display:flex;justify-content:center;gap:32px;font-size:11px;color:var(--hud);opacity:.4;letter-spacing:.06em}
+.info-nodes span{position:relative}
+.info-nodes span::before{content:'';position:absolute;top:-8px;left:50%;width:1px;height:6px;background:var(--hud);opacity:.2}
+.gear-hud{font-weight:700;opacity:.7!important}
+.color-pick{position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:20}
+.color-pick button{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,.15);cursor:pointer;transition:border-color .2s}
+.color-pick button:hover{border-color:rgba(255,255,255,.5)}
+.color-pick button.active{border-color:#fff}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(0,255,204,.3);text-decoration:none;font-size:13px;z-index:20}
+.back-link:hover{color:var(--hud)}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="color-pick">
+  <button style="background:#00ffcc" data-color="#00ffcc" class="active" title="Cyan"></button>
+  <button style="background:#33ff33" data-color="#33ff33" title="Green"></button>
+  <button style="background:#ffaa00" data-color="#ffaa00" title="Amber"></button>
+</div>
+<div class="frame">
+  <div class="speed-box">
+    <div class="hud-speed" id="speed">0</div>
+    <div class="hud-unit">km/h</div>
+  </div>
+  <div class="rpm-wire">
+    <div class="rpm-ticks">
+      <span>0</span><span>1k</span><span>2k</span><span>3k</span><span>4k</span><span>5k</span><span>6k</span>
+    </div>
+    <div class="rpm-track">
+      <div class="rpm-ghost" id="rpm-ghost"></div>
+      <div class="rpm-needle" id="rpm-needle"></div>
+    </div>
+  </div>
+  <div class="info-nodes">
+    <span class="gear-hud" id="gear">D</span>
+    <span id="fuel">0%</span>
+    <span id="range">0 km</span>
+    <span id="trip">0.0 km</span>
+  </div>
+</div>
+<script type="module">
+import{startTelemetryStream}from'../shared/telemetry.js';
+const needle=document.getElementById('rpm-needle');
+const ghost=document.getElementById('rpm-ghost');
+const MAX_RPM=6000;
+let prevPct=0,tripKm=0;
+
+// color picker
+document.querySelectorAll('.color-pick button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.color-pick button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.documentElement.style.setProperty('--hud',btn.dataset.color);
+  });
+});
+
+startTelemetryStream(d=>{
+  document.getElementById('speed').textContent=d.speedKph;
+  const pct=Math.min(d.rpm/MAX_RPM*100,100);
+  needle.style.left=`calc(${pct}% - 1px)`;
+  // ghost trails behind
+  setTimeout(()=>{ghost.style.left=`calc(${pct}% - 1px)`},500);
+  document.getElementById('gear').textContent=d.gear;
+  document.getElementById('fuel').textContent=d.fuelPct+'%';
+  document.getElementById('range').textContent=d.rangeKm+' km';
+  tripKm+=(d.speedKph/36000);
+  document.getElementById('trip').textContent=tripKm.toFixed(1)+' km';
+  prevPct=pct;
+});
+</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode')||localStorage.getItem('conceptMode')||'dark';if(m==='black'){var s=document.createElement('style');s.textContent='body,.frame,html{background:#000!important}';document.head.appendChild(s);}})();</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 4 — Typeface Only</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#000;color:#f0f0f0;font-family:'Inter','Helvetica Neue','Segoe UI',sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.frame{position:relative;width:100vw;height:100vh;overflow:hidden;background:#000;padding:28px 36px 20px;display:flex;flex-direction:column;justify-content:center}
+.speed-row{display:flex;align-items:baseline;gap:0}
+.speed-val{font-size:180px;font-weight:100;line-height:.85;letter-spacing:-8px;font-variant-numeric:tabular-nums;transition:color .3s}
+.speed-val .digit{display:inline-block;overflow:hidden;height:153px;position:relative}
+.speed-val .digit span{display:block;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.meta-row{display:flex;align-items:baseline;justify-content:space-between;margin-top:6px}
+.unit{font-size:13px;letter-spacing:.4em;text-transform:uppercase;color:#555;font-weight:300}
+.rpm-text{font-size:36px;font-weight:400;color:#666;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.rpm-label{font-size:12px;letter-spacing:.2em;color:#444;margin-left:6px}
+.info-row{display:flex;justify-content:space-between;margin-top:auto;padding-top:8px}
+.info-left,.info-right{display:flex;flex-direction:column;gap:3px;font-size:13px;color:#444;letter-spacing:.04em}
+.info-left .gear{font-weight:700;color:#666;font-size:15px}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(255,255,255,.3);text-decoration:none;font-size:13px;z-index:10}
+.back-link:hover{color:#fff}
+.mode-toggle{position:fixed;top:16px;right:16px;color:rgba(255,255,255,.3);background:none;border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 14px;font-size:12px;cursor:pointer;z-index:10}
+.mode-toggle:hover{color:#fff;border-color:rgba(255,255,255,.4)}
+body.light{background:#fff;color:#111}
+body.light .unit{color:#bbb}
+body.light .rpm-text{color:#888}
+body.light .rpm-label{color:#aaa}
+body.light .info-left,body.light .info-right{color:#bbb}
+body.light .info-left .gear{color:#999}
+body.light .back-link{color:rgba(0,0,0,.3)}
+body.light .mode-toggle{color:rgba(0,0,0,.3);border-color:rgba(0,0,0,.15)}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<button class="mode-toggle" id="mode-btn">Light Mode</button>
+<div class="frame">
+  <div class="speed-row">
+    <div class="speed-val" id="speed">0</div>
+  </div>
+  <div class="meta-row">
+    <span class="unit">km/h</span>
+    <span><span class="rpm-text" id="rpm">0</span><span class="rpm-label">rpm</span></span>
+  </div>
+  <div class="info-row">
+    <div class="info-left">
+      <span class="gear" id="gear">D</span>
+      <span id="fuel">0% fuel</span>
+    </div>
+    <div class="info-right">
+      <span id="range">0 km range</span>
+      <span id="trip">0.0 km trip</span>
+    </div>
+  </div>
+</div>
+<script type="module">
+import{startTelemetryStream}from'../shared/telemetry.js';
+const modeBtn=document.getElementById('mode-btn');
+let light=false;
+modeBtn.addEventListener('click',()=>{
+  light=!light;
+  document.body.classList.toggle('light',light);
+  modeBtn.textContent=light?'Dark Mode':'Light Mode';
+});
+let tripKm=0;
+startTelemetryStream(d=>{
+  document.getElementById('speed').textContent=d.speedKph;
+  document.getElementById('rpm').textContent=d.rpm.toLocaleString();
+  document.getElementById('gear').textContent=d.gear;
+  document.getElementById('fuel').textContent=d.fuelPct+'% fuel';
+  document.getElementById('range').textContent=d.rangeKm+' km range';
+  tripKm+=(d.speedKph/36000);
+  document.getElementById('trip').textContent=tripKm.toFixed(1)+' km trip';
+});
+</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode')||localStorage.getItem('conceptMode')||'dark';if(m==='black'){var s=document.createElement('style');s.textContent='body,.frame,html{background:#000!important}body.light{background:#fff!important}';document.head.appendChild(s);}})();</script>
+</body>
+</html>

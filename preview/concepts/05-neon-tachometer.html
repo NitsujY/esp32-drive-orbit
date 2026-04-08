@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 5 — Neon Tachometer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#000;color:#fff;font-family:'IBM Plex Mono','Courier New',monospace}
+body{display:flex;align-items:center;justify-content:center}
+.frame{position:relative;width:100vw;height:100vh;overflow:hidden;background:#000;display:flex;flex-direction:column}
+/* scanlines */
+.frame::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);pointer-events:none;z-index:5}
+.tach-zone{padding:10px 16px 6px;flex:0 0 auto}
+.tach-labels{display:flex;justify-content:space-between;font-size:11px;color:rgba(0,255,65,.5);margin-bottom:4px;padding:0 2px}
+.tach-bar{display:flex;gap:2px;height:52px;align-items:flex-end}
+.tach-block{flex:1;border-radius:2px;transition:opacity .08s;opacity:.12;min-width:0}
+.tach-block.on{opacity:1;box-shadow:0 0 8px currentColor}
+.tach-block.peak{opacity:.7;box-shadow:0 0 12px currentColor}
+.speed-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.speed-val{font-size:100px;font-weight:700;line-height:1;letter-spacing:-2px;text-shadow:0 0 20px currentColor;transition:text-shadow .3s}
+.speed-unit{font-size:12px;letter-spacing:.3em;opacity:.4;margin-top:2px}
+.bottom-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 12px;font-size:12px;color:rgba(0,255,65,.4)}
+.gear-badge{font-weight:700;font-size:16px;background:rgba(0,255,65,.15);color:#00ff41;padding:2px 10px;border-radius:3px}
+.fuel-track{width:70px;height:3px;background:rgba(0,255,65,.1);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle;margin:0 6px}
+.fuel-fill{height:100%;border-radius:2px;transition:width .3s}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(0,255,65,.3);text-decoration:none;font-size:13px;z-index:10}
+.back-link:hover{color:#00ff41}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="frame">
+  <div class="tach-zone">
+    <div class="tach-labels">
+      <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>RPM×1000</span>
+    </div>
+    <div class="tach-bar" id="tach-bar"></div>
+  </div>
+  <div class="speed-zone">
+    <div class="speed-val" id="speed" style="color:#00ff41">0</div>
+    <div class="speed-unit">km/h</div>
+  </div>
+  <div class="bottom-bar">
+    <span class="gear-badge" id="gear">D</span>
+    <span><span id="fuel-pct">0</span>%<span class="fuel-track"><span class="fuel-fill" id="fuel-fill" style="background:#00ff41"></span></span><span id="range">0</span> km</span>
+    <span>TRIP <span id="trip">0.0</span> km</span>
+  </div>
+</div>
+<script type="module">
+import{startTelemetryStream}from'../shared/telemetry.js';
+const BLOCKS=40;
+const MAX_RPM=6000;
+const bar=document.getElementById('tach-bar');
+const speedEl=document.getElementById('speed');
+// create blocks
+for(let i=0;i<BLOCKS;i++){
+  const b=document.createElement('div');
+  b.className='tach-block';
+  const frac=i/BLOCKS;
+  if(frac<.67) b.style.color=b.style.background='#00ff41';
+  else if(frac<.83) b.style.color=b.style.background='#ffe400';
+  else b.style.color=b.style.background='#ff0040';
+  bar.appendChild(b);
+}
+const blocks=[...bar.children];
+let peakIdx=-1,peakTimer=0;
+let tripKm=0;
+
+startTelemetryStream(d=>{
+  const frac=Math.min(d.rpm/MAX_RPM,1);
+  const activeCount=Math.round(frac*BLOCKS);
+  // update peak
+  if(activeCount>peakIdx){peakIdx=activeCount;peakTimer=15}
+  if(peakTimer>0)peakTimer--;
+  else if(peakIdx>activeCount)peakIdx--;
+
+  blocks.forEach((b,i)=>{
+    b.classList.toggle('on',i<activeCount);
+    b.classList.toggle('peak',i===peakIdx&&i>=activeCount);
+    if(i<activeCount)b.style.height='100%';
+    else b.style.height='30%';
+  });
+
+  // flash at redline
+  if(frac>.92){
+    bar.style.animation='none';
+    requestAnimationFrame(()=>bar.style.animation='');
+  }
+
+  // speed glow color based on RPM zone
+  let glowColor='#00ff41';
+  if(frac>.83)glowColor='#ff0040';
+  else if(frac>.67)glowColor='#ffe400';
+  speedEl.style.color=glowColor;
+  speedEl.style.textShadow=`0 0 24px ${glowColor}`;
+
+  speedEl.textContent=d.speedKph;
+  document.getElementById('gear').textContent=d.gear;
+  document.getElementById('fuel-pct').textContent=d.fuelPct;
+  document.getElementById('fuel-fill').style.width=d.fuelPct+'%';
+  document.getElementById('fuel-fill').style.background=glowColor;
+  document.getElementById('range').textContent=d.rangeKm;
+  tripKm+=(d.speedKph/36000);
+  document.getElementById('trip').textContent=tripKm.toFixed(1);
+});
+</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode')||localStorage.getItem('conceptMode')||'dark';if(m==='black'){var s=document.createElement('style');s.textContent='body,.frame,html{background:#000!important}';document.head.appendChild(s);}})();</script>
+</body>
+</html>

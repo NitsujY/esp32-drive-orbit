@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Drive Orbit — Dashboard Design Concepts</title>
+<style>
+:root{--bg-0:#04080e;--bg-1:#0a1420;--bg-2:#122234;--text:#eef6ff;--muted:#7a99ad;--line:rgba(140,210,255,.14);--accent:#7df9c6;--accent-2:#ff7eb3}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:'Avenir Next','Segoe UI',sans-serif;color:var(--text);background:radial-gradient(circle at 20% 8%,rgba(125,249,198,.1),transparent 28%),radial-gradient(circle at 80% 12%,rgba(255,126,179,.08),transparent 26%),linear-gradient(170deg,var(--bg-0),var(--bg-1) 40%,var(--bg-2));padding:36px 20px 56px}
+main{max-width:1200px;margin:0 auto}
+.topline{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.back-link{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);color:inherit;text-decoration:none;font-size:13px;background:rgba(255,255,255,.03);transition:border-color .2s,transform .2s}
+.back-link:hover{border-color:rgba(125,249,198,.4);transform:translateY(-1px)}
+.eyebrow{letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-size:11px}
+h1{font-size:clamp(32px,6vw,60px);line-height:.95;margin:8px 0 14px;max-width:800px}
+.subtitle{max-width:680px;color:var(--muted);font-size:16px;line-height:1.55;margin-bottom:32px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+a.card{display:block;border:1px solid var(--line);border-radius:20px;overflow:hidden;color:inherit;text-decoration:none;background:rgba(6,12,20,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:transform .2s,border-color .2s,box-shadow .2s}
+a.card:hover{transform:translateY(-4px);border-color:rgba(125,249,198,.4);box-shadow:0 16px 48px rgba(0,0,0,.3)}
+.card-preview{height:160px;background:#0a0a0a;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.card-preview iframe{width:480px;height:320px;border:none;transform:scale(.33);transform-origin:center center;pointer-events:none;border-radius:0}
+.card-body{padding:16px 18px 18px}
+.card-num{display:inline-block;width:28px;height:28px;border-radius:50%;background:rgba(125,249,198,.12);color:var(--accent);font-size:12px;font-weight:700;line-height:28px;text-align:center;margin-bottom:8px}
+.card-title{font-size:20px;font-weight:600;margin:0 0 6px}
+.card-desc{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid rgba(255,255,255,.06)}
+.card-preferred{border-color:rgba(45,212,191,.35)!important;position:relative}
+.card-preferred .card-body::before{content:'★ Production';display:inline-block;font-size:9px;letter-spacing:.15em;text-transform:uppercase;padding:2px 10px;border-radius:999px;background:rgba(45,212,191,.12);color:#2dd4bf;border:1px solid rgba(45,212,191,.25);margin-bottom:8px}
+.mode-bar{display:flex;align-items:center;gap:8px;margin-bottom:24px}
+.mode-bar span{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.mode-btn{padding:6px 18px;border-radius:999px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+.mode-btn:hover{border-color:rgba(125,249,198,.35);color:var(--text)}
+.mode-btn.active{background:rgba(125,249,198,.12);border-color:rgba(125,249,198,.4);color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <div class="topline">
+    <a class="back-link" href="../">&larr; Preview Hub</a>
+  </div>
+  <div class="eyebrow">Design Exploration</div>
+  <h1>10 Dashboard Concepts</h1>
+  <p class="subtitle">Each concept strips the dashboard to its core — Speed and RPM as heroes, with minimal fuel, trip, and gear info. All driven by live simulated telemetry. Click any card to launch the interactive preview.</p>
+
+  <div class="mode-bar">
+    <span>Display</span>
+    <button class="mode-btn" data-mode="dark">Dark</button>
+    <button class="mode-btn" data-mode="black">Black</button>
+  </div>
+
+  <div class="grid">
+    <a class="card" href="./01-ambient-speed.html">
+      <div class="card-preview"><iframe src="./01-ambient-speed.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">1</span>
+        <h2 class="card-title">Ambient Speed</h2>
+        <p class="card-desc">Full-screen radial gradient that shifts from deep navy at rest to red-orange at high speed. Pure atmospheric color language.</p>
+        <div class="card-tags"><span class="tag">Immersive</span><span class="tag">Color</span><span class="tag">Zen</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="./02-split-horizon.html">
+      <div class="card-preview"><iframe src="./02-split-horizon.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">2</span>
+        <h2 class="card-title">Split Horizon</h2>
+        <p class="card-desc">Screen cut 50/50 — speed owns the left, RPM owns the right. The RPM half color-washes with engine load.</p>
+        <div class="card-tags"><span class="tag">Bipartite</span><span class="tag">Brutalist</span><span class="tag">Motorsport</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="./03-carbon-digital.html">
+      <div class="card-preview"><iframe src="./03-carbon-digital.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">3</span>
+        <h2 class="card-title">Carbon Digital</h2>
+        <p class="card-desc">Carbon fiber texture background with military-spec monospace numbers, corner brackets, and a horizontal RPM fill bar. Tactical motorsport aesthetic.</p>
+        <div class="card-tags"><span class="tag">Motorsport</span><span class="tag">Military</span><span class="tag">Monospace</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="./04-typeface-only.html">
+      <div class="card-preview"><iframe src="./04-typeface-only.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">4</span>
+        <h2 class="card-title">Typeface Only</h2>
+        <p class="card-desc">Zero graphics — one massive speed number fills 60% of the screen. Pure typographic hierarchy with light/dark toggle.</p>
+        <div class="card-tags"><span class="tag">Typography</span><span class="tag">Minimal</span><span class="tag">Light+Dark</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="./05-neon-tachometer.html">
+      <div class="card-preview"><iframe src="./05-neon-tachometer.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">5</span>
+        <h2 class="card-title">Neon Tachometer</h2>
+        <p class="card-desc">Full-width LED-segment RPM bar across the top with peak-hold marker. CRT scan-lines and neon glow.</p>
+        <div class="card-tags"><span class="tag">JDM</span><span class="tag">Retro-digital</span><span class="tag">LED segments</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="./06-night-rider.html">
+      <div class="card-preview"><iframe src="./06-night-rider.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">6</span>
+        <h2 class="card-title">Night Rider</h2>
+        <p class="card-desc">KITT-style horizontal red scanner bar that sweeps and pulses width with engine RPM. Minimal monochrome with a fierce red accent.</p>
+        <div class="card-tags"><span class="tag">Retro-futuristic</span><span class="tag">80s</span><span class="tag">Scanner</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="./07-radial-twin.html">
+      <div class="card-preview"><iframe src="./07-radial-twin.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">7</span>
+        <h2 class="card-title">Radial Twin</h2>
+        <p class="card-desc">Twin circular gauges side by side — speed left (blue), RPM right (amber). Connected by a unifying band. Arcs breathe.</p>
+        <div class="card-tags"><span class="tag">Twin dials</span><span class="tag">Classic sport</span><span class="tag">Canvas</span></div>
+      </div>
+    </a>
+
+    <a class="card card-preferred" href="./08-vertical-stack.html">
+      <div class="card-preview"><iframe src="./08-vertical-stack.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">8</span>
+        <h2 class="card-title">Vertical Stack</h2>
+        <p class="card-desc">Speed dominates top, RPM shown as a scrolling histogram waveform. You can literally see the driving rhythm.</p>
+        <div class="card-tags"><span class="tag">Editorial</span><span class="tag">Waveform</span><span class="tag">Infographic</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="./09-spectrum-eq.html">
+      <div class="card-preview"><iframe src="./09-spectrum-eq.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">9</span>
+        <h2 class="card-title">Spectrum EQ</h2>
+        <p class="card-desc">RPM history rendered as a full-width EQ frequency visualizer — green to red spectrum. Speed floats above like a stage headline.</p>
+        <div class="card-tags"><span class="tag">EQ Visualizer</span><span class="tag">Spectrum</span><span class="tag">Music-infused</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="./10-heads-up-wire.html">
+      <div class="card-preview"><iframe src="./10-heads-up-wire.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">10</span>
+        <h2 class="card-title">Heads-Up Wire</h2>
+        <p class="card-desc">Monochrome wireframe HUD — dashed borders, single phosphor color, scan-line flicker. Color-selectable: cyan, green, amber.</p>
+        <div class="card-tags"><span class="tag">HUD</span><span class="tag">Wireframe</span><span class="tag">Monochrome</span></div>
+      </div>
+    </a>
+  </div>
+</main>
+<script>
+(function(){
+  var mode = localStorage.getItem('conceptMode') || 'dark';
+  function applyMode(m) {
+    mode = m;
+    localStorage.setItem('conceptMode', m);
+    document.querySelectorAll('.mode-btn').forEach(function(b){
+      b.classList.toggle('active', b.dataset.mode === m);
+    });
+    document.querySelectorAll('.card-preview iframe').forEach(function(iframe){
+      var base = iframe.src.split('?')[0];
+      iframe.src = m === 'black' ? base + '?mode=black' : base;
+    });
+    document.querySelectorAll('a.card[href^="./"]').forEach(function(a){
+      var base = a.getAttribute('href').split('?')[0];
+      a.setAttribute('href', m === 'black' ? base + '?mode=black' : base);
+    });
+  }
+  document.querySelectorAll('.mode-btn').forEach(function(b){
+    b.addEventListener('click', function(){ applyMode(b.dataset.mode); });
+  });
+  applyMode(mode);
+})();
+</script>
+</body>
+</html>

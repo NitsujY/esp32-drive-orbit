@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node tools/dashboard/dev-server.mjs",
+    "dev:dashboard-preview": "node tools/dashboard/dev-server.mjs --port=8124",
     "build:web": "node tools/dashboard/build.mjs",
     "cap:run:ios": "node tools/capacitor/run-ios-device.mjs"
   },

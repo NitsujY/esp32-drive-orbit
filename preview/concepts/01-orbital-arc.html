@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 1 — Orbital Arc</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#05091a;color:#fff;font-family:'Avenir Next','Segoe UI',sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.frame{position:relative;width:100vw;height:100vh;overflow:hidden;background:radial-gradient(circle at 50% 40%,rgba(80,180,255,.08),transparent 60%),#05091a}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.speed-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-56%);text-align:center;pointer-events:none}
+.speed-val{font-size:96px;font-weight:200;letter-spacing:-4px;line-height:1;text-shadow:0 0 30px rgba(120,200,255,.25)}
+.speed-unit{font-size:13px;letter-spacing:.3em;text-transform:uppercase;opacity:.5;margin-top:2px}
+.bottom-bar{position:absolute;bottom:14px;left:0;width:100%;display:flex;align-items:center;justify-content:center;gap:28px;font-size:12px;letter-spacing:.08em;opacity:.55;pointer-events:none}
+.gear{font-weight:700;opacity:.7;font-size:14px;letter-spacing:.04em}
+.fuel-wrap{display:flex;align-items:center;gap:8px}
+.fuel-track{width:80px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.fuel-fill{height:100%;background:linear-gradient(90deg,#4facfe,#00f2fe);border-radius:2px;transition:width .3s}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(255,255,255,.4);text-decoration:none;font-size:13px;z-index:10}
+.back-link:hover{color:#fff}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="frame">
+  <canvas id="gauge" width="960" height="640"></canvas>
+  <div class="speed-center">
+    <div class="speed-val" id="speed">0</div>
+    <div class="speed-unit">km/h</div>
+  </div>
+  <div class="bottom-bar">
+    <span class="gear" id="gear">D</span>
+    <div class="fuel-wrap">
+      <span id="fuel-pct">0%</span>
+      <div class="fuel-track"><div class="fuel-fill" id="fuel-fill"></div></div>
+      <span id="range">0 km</span>
+    </div>
+    <span id="trip">0.0 km trip</span>
+  </div>
+</div>
+<script type="module">
+import{startTelemetryStream}from'../shared/telemetry.js';
+const canvas=document.getElementById('gauge');
+const ctx=canvas.getContext('2d');
+const W=960,H=640,CX=W/2,CY=H/2-30;
+const R_OUTER=230,R_INNER=195;
+const START_ANGLE=Math.PI*.75,END_ANGLE=Math.PI*2.25;
+const MAX_RPM=6000;
+let cometAngle=START_ANGLE;
+
+function lerpAngle(a,b,t){return a+(b-a)*t}
+function drawArc(rpm){
+  ctx.clearRect(0,0,W,H);
+  const frac=Math.min(rpm/MAX_RPM,1);
+  const endA=START_ANGLE+(END_ANGLE-START_ANGLE)*frac;
+  cometAngle=lerpAngle(cometAngle,endA,.15);
+  // track
+  ctx.beginPath();ctx.arc(CX,CY,R_OUTER,START_ANGLE,END_ANGLE);
+  ctx.arc(CX,CY,R_INNER,END_ANGLE,START_ANGLE,true);ctx.closePath();
+  ctx.fillStyle='rgba(255,255,255,.04)';ctx.fill();
+  // ticks
+  for(let i=0;i<=6;i++){
+    const a=START_ANGLE+(END_ANGLE-START_ANGLE)*(i/6);
+    const cos=Math.cos(a),sin=Math.sin(a);
+    ctx.beginPath();
+    ctx.moveTo(CX+cos*(R_OUTER+4),CY+sin*(R_OUTER+4));
+    ctx.lineTo(CX+cos*(R_OUTER+14),CY+sin*(R_OUTER+14));
+    ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1.5;ctx.stroke();
+  }
+  // fill arc
+  if(frac>0){
+    const grad=ctx.createConicGradient(START_ANGLE,CX,CY);
+    grad.addColorStop(0,'#4facfe');
+    grad.addColorStop(.4,'#00f2fe');
+    grad.addColorStop(.75,'#f953c6');
+    grad.addColorStop(1,'#f953c6');
+    ctx.beginPath();ctx.arc(CX,CY,R_OUTER,START_ANGLE,cometAngle);
+    ctx.arc(CX,CY,R_INNER,cometAngle,START_ANGLE,true);ctx.closePath();
+    ctx.fillStyle=grad;ctx.fill();
+    // comet glow
+    const gx=CX+Math.cos(cometAngle)*((R_OUTER+R_INNER)/2);
+    const gy=CY+Math.sin(cometAngle)*((R_OUTER+R_INNER)/2);
+    const gd=ctx.createRadialGradient(gx,gy,0,gx,gy,38);
+    gd.addColorStop(0,'rgba(255,255,255,.7)');
+    gd.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=gd;ctx.fillRect(gx-40,gy-40,80,80);
+  }
+}
+
+let tripKm=0;
+startTelemetryStream(d=>{
+  document.getElementById('speed').textContent=d.speedKph;
+  document.getElementById('gear').textContent=d.gear;
+  document.getElementById('fuel-pct').textContent=d.fuelPct+'%';
+  document.getElementById('fuel-fill').style.width=d.fuelPct+'%';
+  document.getElementById('range').textContent=d.rangeKm+' km';
+  tripKm+=(d.speedKph/36000);
+  document.getElementById('trip').textContent=tripKm.toFixed(1)+' km trip';
+  drawArc(d.rpm);
+});
+</script>
+</body>
+</html>

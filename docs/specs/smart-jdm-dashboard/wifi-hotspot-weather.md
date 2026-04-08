@@ -1,10 +1,14 @@
-# Wi-Fi Hotspot & Weather Display Spec
+# Wi-Fi Hotspot & Weather Spec
 
-## Status: Planned
+## Status: Partially Implemented (Wi-Fi + weather fetch on ESP32 gateway)
+
+> **Design note:** Companion orb weather display and ESP-NOW transport have been removed.
+> The companion_orb is deferred. Weather data now flows from the ESP32 gateway to the
+> web dashboard via WebSocket JSON, not via ESP-NOW to the orb's GC9A01.
 
 ## Objective
 
-Connect the dash_35 to an iPhone personal hotspot for internet access. Fetch live weather data and display it on the companion_orb as an ambient weather indicator integrated with the companion face.
+Connect `dash_35` to an iPhone personal hotspot. Fetch weather data and include it in the WebSocket telemetry broadcast so the web dashboard can display ambient conditions.
 
 ## Architecture
 
@@ -12,38 +16,31 @@ Connect the dash_35 to an iPhone personal hotspot for internet access. Fetch liv
 iPhone Hotspot (Wi-Fi AP)
     |
     v
-dash_35 (Wi-Fi STA + ESP-NOW TX)
-    |  fetches weather via HTTPS
-    |  adds weather to telemetry
-    |  broadcasts via ESP-NOW
+dash_35 (Wi-Fi STA + WebSocket broadcast)
+    |  fetches weather via HTTPS every 10 min
+    |  includes weather fields in JSON broadcast
     v
-companion_orb (ESP-NOW RX)
-    |  displays weather on GC9A01
+Web dashboard (browser on phone)
+    |  displays weather in info bar or future weather panel
 ```
-
-- Wi-Fi STA and ESP-NOW coexist on the same ESP32 radio.
-- OBD Bluetooth Classic also coexists (separate radio).
-- All three links (OBD BT, ESP-NOW, Wi-Fi) run simultaneously.
 
 ## Wi-Fi Connection
 
 ### Credentials
 
-- Phase 1: hardcoded SSID/password in a config header (e.g. `include/wifi_config.h`).
-- Phase 2 (future): captive portal or BLE provisioning for dynamic credentials.
-- The config header should be `.gitignore`d to avoid committing personal credentials.
+- Phase 1: hardcoded SSID/password in `include/wifi_config.h` (gitignored).
+- Phase 2 (future): BLE provisioning for dynamic credentials.
 
 ### Connection Behavior
 
 - Attempt Wi-Fi connection during `setup()` with a 10-second timeout.
-- If connection fails, continue without internet (offline mode).
-- Retry connection every 60 seconds in the background.
+- If connection fails, continue in offline mode.
+- Retry every 60 seconds in the background.
 - iPhone hotspot sleeps when idle — handle disconnection gracefully.
-- Log Wi-Fi status to Serial: connected, disconnected, reconnecting.
 
 ### mDNS
 
-- Register `dash.local` via mDNS for easy browser access (future web dashboard).
+- Register `carconsole.local` (or `dash.local`) via mDNS for browser access.
 
 ## Weather API
 
@@ -52,99 +49,44 @@ companion_orb (ESP-NOW RX)
 - Free, no API key required.
 - Endpoint: `https://api.open-meteo.com/v1/forecast`
 - Parameters: `latitude`, `longitude`, `current_weather=true`
-- Response: JSON with `temperature`, `weathercode`, `windspeed`, `winddirection`
+- Response: JSON with `temperature`, `weathercode`
 
 ### Location
 
-- Phase 1: hardcoded lat/lon in `wifi_config.h` (your home/city coordinates). This is sufficient for the weather display; no GPS hardware is required.
+- Hardcoded lat/lon in `wifi_config.h`.
 
 ### Fetch Cadence
 
-- Fetch weather every 10 minutes (weather doesn't change fast).
+- Every 10 minutes while Wi-Fi is connected.
 - First fetch 5 seconds after Wi-Fi connects.
-- Cache last successful response — display cached data if fetch fails.
-- Use `HTTPClient` from the Arduino ESP32 framework (no extra lib_deps).
+- Cache last result.
 
-### Response Parsing
+### WMO Weather Codes (subset)
 
-- Parse JSON using `ArduinoJson` library (add to `lib_deps`).
-- Extract: `temperature` (float °C), `weathercode` (int, WMO code).
+| Code | Condition |
+|------|-----------|
+| 0 | Clear sky |
+| 1–3 | Partly cloudy |
+| 45, 48 | Fog |
+| 51–55 | Drizzle |
+| 61–65 | Rain |
+| 71–75 | Snow |
+| 80–82 | Rain showers |
+| 95–99 | Thunderstorm |
 
-### WMO Weather Codes (subset for display)
+## WebSocket Payload Extension
 
-| Code | Condition | Orb Icon |
-|------|-----------|----------|
-| 0 | Clear sky | ☀ sun |
-| 1-3 | Partly cloudy | ⛅ cloud-sun |
-| 45, 48 | Fog | 🌫 fog |
-| 51-55 | Drizzle | 🌧 light rain |
-| 61-65 | Rain | 🌧 rain |
-| 71-75 | Snow | ❄ snow |
-| 80-82 | Rain showers | 🌧 heavy rain |
-| 95-99 | Thunderstorm | ⛈ storm |
+Include weather fields in the JSON telemetry broadcast:
 
-## Telemetry Extension
-
-### New Fields in DashboardTelemetry
-
-```cpp
-// Weather data (from internet, updated every 10 min)
-int8_t weather_temp_c;        // outdoor temperature, -128 = unknown
-uint8_t weather_code;         // WMO weather code, 255 = unknown
-bool wifi_connected;          // true when hotspot link is active
+```json
+{ "spd": 42, "rpm": 2100, "wt": 24, "wc": 0, "wifi": 1, ... }
 ```
 
-### Transport
-
-- Add weather fields to `StatusTelemetryPayload` (slow-refresh, fits naturally).
-- Update `StatusTelemetryPayload` struct, static_assert, encoder, and parser.
-
-## Orb Weather Display
-
-### Integration with Companion Face
-
-When weather data is available (weather_code != 255):
-
-**Chill mode**: show a small weather icon + temperature below the coaching score.
-
-```
-    [face]
-     82
-   smooth
-   ☀ 24°C
-```
-
-**Sport mode**: weather is hidden (gear + RPM take priority).
-
-**Sleep mode**: show weather prominently since there's nothing else to display.
-
-```
-   z z
-  [closed eyes]
-   ☀ 24°C
-```
-
-### Weather Icons (pixel art on 240x240)
-
-- Draw simple geometric shapes — no bitmaps needed.
-- Sun: filled circle with short radiating lines.
-- Cloud: two overlapping filled circles.
-- Rain: cloud + vertical line drops below.
-- Snow: cloud + small dots below.
-- Storm: cloud + zigzag lightning line.
-
-### Face Mood Integration
-
-- Rain/storm: face looks slightly worried (eyebrows angle down).
-- Clear/sunny: face is slightly happier (wider smile).
-- This is a subtle overlay on top of the existing speed-based mood system.
-
-## Offline Behavior
-
-- If Wi-Fi never connects: weather fields stay at unknown (255/-128).
-- Orb skips weather display entirely when data is unknown.
-- No error messages on screen — just absence of weather info.
-- All other features (OBD, ESP-NOW, face, coaching) work normally.
+| Field | Type | Description |
+|-------|------|-------------|
+| `wt` | int | Weather temperature °C, absent when unknown |
+| `wc` | int | WMO weather code, absent when unknown |
+| `wifi` | bool | 1 when hotspot link is active |
 
 ## File Structure
 
@@ -153,22 +95,18 @@ include/
   wifi_config.h          # SSID, password, lat/lon (gitignored)
   wifi_config.example.h  # template with placeholder values (committed)
 src/dash_35/app/
-  wifi_manager.h         # Wi-Fi connection + reconnection logic
-  wifi_manager.cpp
-  weather_client.h       # HTTP fetch + JSON parse
-  weather_client.cpp
+  wifi_manager.h / .cpp  # Wi-Fi connection + reconnection logic
+  weather_client.h / .cpp # HTTP fetch + JSON parse
 ```
 
 ## Dependencies
 
-- `ArduinoJson` — add to `[env:dash_35]` lib_deps.
-- `HTTPClient` — built into Arduino ESP32 framework.
-- `WiFi` — built into Arduino ESP32 framework.
+- `ArduinoJson` — in `[env:dash_35]` lib_deps.
+- `HTTPClient` / `WiFi` — built into Arduino ESP32 framework.
 
 ## Out Of Scope
 
-- Dynamic location updates (no externally-provided GPS in scope)
-- Weather alerts/notifications
-- Multi-day forecast
-- Phone companion app
-- Web dashboard served from ESP32 (separate future spec)
+- companion_orb weather display (orb deferred)
+- ESP-NOW weather transport
+- Dynamic location updates (no GPS in scope)
+- Weather alerts / multi-day forecast

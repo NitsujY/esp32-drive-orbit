@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 9 — Spectrum EQ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#060606;color:#fff;
+  font-family:'Avenir Next','Segoe UI',sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.frame{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.speed-num{
+  font-size:min(40vw,46vh,190px);font-weight:200;line-height:1;
+  letter-spacing:-0.04em;color:#fff;
+  font-variant-numeric:tabular-nums;
+  font-family:'Helvetica Neue','Inter',sans-serif;
+}
+.unit{font-size:11px;letter-spacing:.5em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:8px;margin-bottom:24px}
+.eq-wrap{width:90%;max-width:400px}
+.eq-label{font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:6px;text-align:center}
+.eq-bars{display:flex;align-items:flex-end;gap:2px;height:60px}
+.eq-bar{flex:1;min-width:3px;border-radius:2px 2px 0 0;transition:height .07s linear}
+.info-row{
+  position:absolute;bottom:0;left:0;right:0;
+  display:flex;justify-content:space-around;padding:14px 24px;
+  border-top:1px solid rgba(255,255,255,.06);
+  font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.3);
+}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(255,255,255,.3);
+  text-decoration:none;font-size:13px;z-index:10;font-family:sans-serif}
+.back-link:hover{color:rgba(255,255,255,.7)}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="frame">
+  <div class="speed-num" id="speed">0</div>
+  <div class="unit">km / h</div>
+  <div class="eq-wrap">
+    <div class="eq-label">RPM</div>
+    <div class="eq-bars" id="eq-bars"></div>
+  </div>
+  <div class="info-row">
+    <span>G <span id="gear">P</span></span>
+    <span><span id="rpm">0</span> rpm</span>
+    <span>FUEL <span id="fuel">0</span>%</span>
+    <span>RNG <span id="range">0</span> km</span>
+  </div>
+</div>
+<script type="module">
+import { startTelemetryStream } from '../shared/telemetry.js';
+const BAR_COUNT = 48;
+const eqBars = document.getElementById('eq-bars');
+const bars = [];
+for (let i = 0; i < BAR_COUNT; i++) {
+  const b = document.createElement('div');
+  b.className = 'eq-bar';
+  b.style.height = '2px';
+  // Color spectrum: green (left/low) → yellow → red (right/high history)
+  const hue = Math.round(130 - (i / BAR_COUNT) * 120);
+  b.style.background = `hsl(${hue},88%,52%)`;
+  eqBars.appendChild(b);
+  bars.push(b);
+}
+const history = new Array(BAR_COUNT).fill(0);
+startTelemetryStream(d => {
+  document.getElementById('speed').textContent = d.speedKph;
+  document.getElementById('rpm').textContent = d.rpm.toLocaleString();
+  document.getElementById('gear').textContent = d.gear;
+  document.getElementById('fuel').textContent = d.fuelPct;
+  document.getElementById('range').textContent = d.rangeKm;
+  history.push(d.rpm);
+  if (history.length > BAR_COUNT) history.shift();
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const frac = Math.min(history[i] / 6000, 1);
+    bars[i].style.height = Math.max(2, Math.round(frac * 60)) + 'px';
+  }
+});
+</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode')||localStorage.getItem('conceptMode')||'dark';if(m==='black'){var s=document.createElement('style');s.textContent='body,.frame,html{background:#000!important}';document.head.appendChild(s);}})();</script>
+</body>
+</html>

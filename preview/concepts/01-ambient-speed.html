@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 1 — Ambient Speed</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.frame{
+  position:relative;width:100vw;height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,#0d1a3a,#050812);
+  transition:background 1.2s ease;
+}
+.speed-num{
+  font-size:min(38vw,44vh,190px);
+  font-weight:100;line-height:1;letter-spacing:-0.05em;
+  font-family:'Helvetica Neue','Inter',sans-serif;
+  color:rgba(255,255,255,0.92);
+  text-shadow:0 0 80px rgba(255,255,255,0.15);
+  font-variant-numeric:tabular-nums;
+}
+.unit{
+  font-size:12px;letter-spacing:.5em;text-transform:uppercase;
+  color:rgba(255,255,255,0.3);margin-top:10px;
+  font-family:'Avenir Next',sans-serif;
+}
+.bottom{
+  position:absolute;bottom:0;left:0;right:0;
+  display:flex;justify-content:space-around;
+  padding:16px 24px;
+  font-family:'Avenir Next','Segoe UI',sans-serif;
+  font-size:12px;letter-spacing:.08em;color:rgba(255,255,255,0.3);
+  border-top:1px solid rgba(255,255,255,0.07);
+}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(255,255,255,.3);
+  text-decoration:none;font-size:13px;z-index:10;font-family:sans-serif}
+.back-link:hover{color:rgba(255,255,255,.7)}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="frame" id="frame">
+  <div class="speed-num" id="speed">0</div>
+  <div class="unit">km / h</div>
+  <div class="bottom">
+    <span>G <span id="gear">P</span></span>
+    <span><span id="rpm">0</span> rpm</span>
+    <span>FUEL <span id="fuel">0</span>%</span>
+    <span>RNG <span id="range">0</span> km</span>
+  </div>
+</div>
+<script type="module">
+import { startTelemetryStream } from '../shared/telemetry.js';
+const frame = document.getElementById('frame');
+const _isBlack = new URLSearchParams(location.search).get('mode') === 'black' || localStorage.getItem('conceptMode') === 'black';
+startTelemetryStream(d => {
+  document.getElementById('speed').textContent = d.speedKph;
+  document.getElementById('rpm').textContent = d.rpm.toLocaleString();
+  document.getElementById('gear').textContent = d.gear;
+  document.getElementById('fuel').textContent = d.fuelPct;
+  document.getElementById('range').textContent = d.rangeKm;
+  if (!_isBlack) {
+    // Background hue: 240 (deep blue) at 0 km/h → 10 (red-orange) at 120+ km/h
+    const t = Math.min(d.speedKph / 120, 1);
+    const hue = Math.round(240 - t * 230);
+    const sat = Math.round(55 + t * 20);
+    const cL = Math.round(10 + t * 10);
+    frame.style.background =
+      `radial-gradient(ellipse at center,hsl(${hue},${sat}%,${cL + 4}%),hsl(${hue + 10},${sat - 10}%,3%))`;
+  }
+});
+</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode')||localStorage.getItem('conceptMode')||'dark';if(m==='black'){var s=document.createElement('style');s.textContent='body,.frame,html{background:#000!important;background-image:none!important}';document.head.appendChild(s);}})();</script>
+</body>
+</html>

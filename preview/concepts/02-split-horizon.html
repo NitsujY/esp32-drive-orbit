@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 2 — Split Horizon</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0a0a0a;color:#fff;font-family:'Bebas Neue','Impact','Arial Narrow',sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.frame{position:relative;width:100vw;height:100vh;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr auto;overflow:hidden}
+.half{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.half--speed{background:#0a0a0a}
+.half--rpm{background:#111;transition:background .5s}
+.divider{position:absolute;top:0;left:50%;width:2px;height:calc(100% - 54px);background:linear-gradient(180deg,transparent,#39ff14 20%,#39ff14 80%,transparent);box-shadow:0 0 12px rgba(57,255,20,.3);z-index:2}
+.val{font-size:100px;line-height:1;letter-spacing:-2px;font-weight:700}
+.half--speed .val{color:#fff}
+.half--rpm .val{color:#39ff14;font-size:80px}
+.unit{font-size:14px;letter-spacing:.25em;text-transform:uppercase;opacity:.4;font-weight:400;font-family:'Avenir Next','Segoe UI',sans-serif}
+.bottom{grid-column:1/3;display:grid;grid-template-columns:1fr 1fr;height:54px;border-top:1px solid rgba(57,255,20,.12);font-family:'Avenir Next','Segoe UI',sans-serif}
+.bot-left,.bot-right{display:flex;align-items:center;gap:12px;padding:0 20px;font-size:12px;letter-spacing:.06em;opacity:.6}
+.bot-right{justify-content:flex-end}
+.gear{font-weight:700;font-size:16px;opacity:.8;color:#39ff14}
+.fuel-track{width:60px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.fuel-fill{height:100%;background:#39ff14;border-radius:2px;transition:width .3s}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(255,255,255,.4);text-decoration:none;font-size:13px;z-index:10;font-family:sans-serif}
+.back-link:hover{color:#fff}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="frame">
+  <div class="half half--speed">
+    <div class="val" id="speed">0</div>
+    <div class="unit">km/h</div>
+  </div>
+  <div class="half half--rpm" id="rpm-half">
+    <div class="val" id="rpm">0</div>
+    <div class="unit">rpm</div>
+  </div>
+  <div class="divider"></div>
+  <div class="bottom">
+    <div class="bot-left">
+      <span class="gear" id="gear">D</span>
+      <span>FUEL <span id="fuel-pct">0</span>%</span>
+      <div class="fuel-track"><div class="fuel-fill" id="fuel-fill"></div></div>
+    </div>
+    <div class="bot-right">
+      <span>TRIP <span id="trip">0.0</span> km</span>
+      <span>RNG <span id="range">0</span> km</span>
+    </div>
+  </div>
+</div>
+<script type="module">
+import{startTelemetryStream}from'../shared/telemetry.js';
+let tripKm=0;
+const rpmHalf=document.getElementById('rpm-half');
+startTelemetryStream(d=>{
+  document.getElementById('speed').textContent=d.speedKph;
+  document.getElementById('rpm').textContent=d.rpm.toLocaleString();
+  document.getElementById('gear').textContent=d.gear;
+  document.getElementById('fuel-pct').textContent=d.fuelPct;
+  document.getElementById('fuel-fill').style.width=d.fuelPct+'%';
+  document.getElementById('range').textContent=d.rangeKm;
+  tripKm+=(d.speedKph/36000);
+  document.getElementById('trip').textContent=tripKm.toFixed(1);
+  // RPM color wash
+  const frac=Math.min(d.rpm/6000,1);
+  let r,g,b;
+  if(frac<.6){r=17;g=17+Math.round(frac*40);b=17}
+  else if(frac<.85){const t=(frac-.6)/.25;r=17+Math.round(t*60);g=17+24-Math.round(t*20);b=17}
+  else{const t=(frac-.85)/.15;r=77+Math.round(t*100);g=21-Math.round(t*10);b=17-Math.round(t*5)}
+  rpmHalf.style.background=`rgb(${r},${g},${b})`;
+});
+</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode')||localStorage.getItem('conceptMode')||'dark';if(m==='black'){var s=document.createElement('style');s.textContent='body,.frame,.half,.half--rpm,.half--speed,.bottom{background:#000!important;background-image:none!important}';document.head.appendChild(s);}})();</script>
+</body>
+</html>

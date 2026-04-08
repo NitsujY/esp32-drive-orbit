@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Concept 8 — Vertical Stack</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0c0c0c;color:#fafafa;font-family:'Helvetica Neue','Inter','Segoe UI',sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.frame{width:100vw;height:100vh;overflow:hidden;display:flex;flex-direction:column;background:#0c0c0c}
+.speed-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.aux-panel{display:flex;flex-direction:column;flex-shrink:0;min-width:0}
+.speed-num{font-size:130px;font-weight:200;line-height:.9;letter-spacing:-6px;font-variant-numeric:tabular-nums}
+.divider{width:60%;height:1px;background:rgba(255,255,255,.08);margin:4px auto}
+.speed-unit{font-size:11px;letter-spacing:.5em;text-transform:uppercase;color:#555;margin-top:4px}
+.rpm-zone{display:flex;align-items:center;gap:10px;padding:0 24px 6px;height:44px}
+.waveform{flex:1;display:flex;align-items:flex-end;gap:1px;height:32px;overflow:hidden}
+.waveform .bar{width:100%;min-width:2px;border-radius:1px 1px 0 0;transition:height .08s,background .15s}
+.rpm-val{font-size:16px;font-weight:400;color:#9ca3af;white-space:nowrap;font-variant-numeric:tabular-nums;min-width:80px;text-align:right}
+.rpm-label{font-size:10px;letter-spacing:.12em;color:#555;margin-left:2px}
+.info-divider{width:calc(100% - 48px);height:1px;background:rgba(255,255,255,.06);margin:0 auto}
+.info-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 24px 14px;font-size:12px;color:#555;letter-spacing:.04em}
+.gear-tag{font-weight:700;color:#777;font-size:14px}
+.fuel-track{width:50px;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle;margin:0 4px}
+.fuel-fill{height:100%;background:#2dd4bf;border-radius:2px;transition:width .3s}
+.back-link{position:fixed;top:16px;left:16px;color:rgba(255,255,255,.3);text-decoration:none;font-size:13px;z-index:10}
+.back-link:hover{color:#fff}
+@media (orientation:landscape) and (max-height:500px){
+  .frame{width:100vw;height:100vh;padding:0 20px 12px}
+  .speed-zone{justify-content:center}
+  .speed-num{font-size:min(30vw,34vh,148px)}
+  .divider{width:min(60%,220px);margin:4px auto}
+  .speed-unit{letter-spacing:.42em}
+  .aux-panel{gap:0;padding-top:0}
+  .rpm-zone{height:40px;padding:0 20px 6px;gap:10px}
+  .waveform{height:28px}
+  .info-divider{width:calc(100% - 40px)}
+  .info-bar{padding:8px 20px 12px}
+}
+</style>
+</head>
+<body>
+<a class="back-link" href="./index.html">&larr; All Concepts</a>
+<div class="frame">
+  <div class="speed-zone">
+    <div class="speed-num" id="speed">0</div>
+    <div class="divider"></div>
+    <div class="speed-unit">km/h</div>
+  </div>
+  <div class="aux-panel">
+    <div class="rpm-zone">
+      <div class="waveform" id="waveform"></div>
+      <div>
+        <span class="rpm-val" id="rpm-val">0</span>
+        <span class="rpm-label">rpm</span>
+      </div>
+    </div>
+    <div class="info-divider"></div>
+    <div class="info-bar">
+      <span class="gear-tag" id="gear">D</span>
+      <span><span id="fuel-pct">0</span>%<span class="fuel-track"><span class="fuel-fill" id="fuel-fill"></span></span><span id="range">0</span> km</span>
+      <span id="trip">0.0 km trip</span>
+    </div>
+  </div>
+</div>
+<script type="module">
+import{startTelemetryStream}from'../shared/telemetry.js';
+const BARS=60;
+const MAX_RPM=6000;
+const waveform=document.getElementById('waveform');
+const history=new Array(BARS).fill(0);
+// create bars
+for(let i=0;i<BARS;i++){
+  const b=document.createElement('div');
+  b.className='bar';
+  b.style.height='2px';
+  b.style.background='#2dd4bf';
+  waveform.appendChild(b);
+}
+const bars=[...waveform.children];
+let tripKm=0;
+
+startTelemetryStream(d=>{
+  // push new RPM to history, shift old
+  history.push(d.rpm);
+  if(history.length>BARS)history.shift();
+
+  bars.forEach((b,i)=>{
+    const frac=Math.min(history[i]/MAX_RPM,1);
+    const h=2+frac*28;
+    b.style.height=h+'px';
+    // color gradient idle→redline
+    if(frac<.5) b.style.background='#2dd4bf';
+    else if(frac<.75) b.style.background='#fbbf24';
+    else b.style.background='#fb7185';
+  });
+
+  document.getElementById('speed').textContent=d.speedKph;
+  document.getElementById('rpm-val').textContent=d.rpm.toLocaleString();
+  document.getElementById('gear').textContent=d.gear;
+  document.getElementById('fuel-pct').textContent=d.fuelPct;
+  document.getElementById('fuel-fill').style.width=d.fuelPct+'%';
+  document.getElementById('range').textContent=d.rangeKm;
+  tripKm+=(d.speedKph/36000);
+  document.getElementById('trip').textContent=tripKm.toFixed(1)+' km trip';
+});
+</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode')||localStorage.getItem('conceptMode')||'dark';if(m==='black'){var s=document.createElement('style');s.textContent='body,.frame,html{background:#000!important}';document.head.appendChild(s);}})();</script>
+</body>
+</html>

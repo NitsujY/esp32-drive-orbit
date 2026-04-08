@@ -2,7 +2,11 @@
 
 ## Status: Ideas — not yet specced or scheduled
 
-This document collects feature ideas grouped by what connectivity they require. All GPS-dependent features are excluded from this project (no GPS hardware in scope). Location-aware features use a hardcoded pre-config coordinate in `wifi_config.h`.
+> **Design context:** dash_35 is now a headless OBD telemetry gateway. The web dashboard (browser/iOS)
+> is the primary UI. companion_orb is deferred. Features below target the **web dashboard** unless
+> noted as firmware-side.
+
+All GPS-dependent features are excluded from this project (no GPS hardware in scope). Location-aware features use a hardcoded pre-config coordinate in `wifi_config.h`.
 
 ---
 
@@ -10,21 +14,24 @@ This document collects feature ideas grouped by what connectivity they require. 
 
 These features run entirely from OBD data and NVS. They work with the iPhone hotspot off.
 
-### 1. Driver Behavior Scoring + Orb Emotions
+### 1. Driver Behavior Scoring (web dashboard)
 
-Compute a 0–100 trip score from harsh events, smooth holds, and RPM discipline. The orb reacts with distinct faces (wince, shocked, happy, celebrating). Full spec written in `driver-behavior-scoring.md`.
+~~Driver Behavior Scoring + Orb Emotions~~ — Orb emotions removed (companion_orb deferred).
+
+Scoring is **now implemented** in the web dashboard trip-summary-overlay.
+See `specs/driver-behavior-scoring.md`.
 
 ### 2. Fuel Efficiency Tracker (km/L per trip)
 
-Derive fuel burn from the delta between `fuel_level_pct` at trip start and end, divided by `trip_distance_km`. Display instant km/L on dash and lifetime average in detail view. Store `best_efficiency` in NVS. No internet needed.
+Derive fuel burn from the delta between `fuel_level_pct` at trip start and end, divided by `trip_distance_km`. Display instant km/L in the trip summary sheet. Store `best_efficiency` in NVS. No internet needed.
 
 ### 3. Maintenance Reminder by Odometer
 
-Accumulate total km from all trips in NVS (`total_distance_km`). Prompt the driver at configurable intervals (e.g. every 5000 km for oil, 10000 km for tires). Display a small banner: `OIL DUE 320km`. Thresholds configured in profile header. No internet needed.
+Accumulate total km from all trips in NVS (`total_distance_km`). Prompt the driver at configurable intervals (e.g. every 5000 km for oil, 10000 km for tires). Display a notification in the web dashboard. Thresholds configured in vehicle profile. No internet needed.
 
 ### 4. Cold-Start Protection Reminder
 
-When coolant temp < 60°C, display a "LET IT WARM" banner on dash and hold the orb in WORRIED mode. Orb transitions to NORMAL only once coolant is warm. Prevents the driver from flooring it on a cold engine.
+When coolant temp < 60°C, display a "LET IT WARM" banner on the web dashboard. ~~Orb WORRIED mode removed.~~ Prevents the driver from flooring it on a cold engine.
 
 ### 5. Battery Voltage Trend Alert + SoC Algorithm
 
@@ -89,11 +96,11 @@ Generate a local daily challenge based on the current date (seeded RNG from epoc
 - "Keep RPM under 2500 for the whole trip"
 - "Zero over-speed events"
 
-Badge shown on dash if the challenge is met at trip end. No internet needed.
+Badge shown in the web dashboard trip summary if the challenge is met at trip end. No internet needed.
 
 ### 7. Engine Idle Time Budget
 
-Track total idle time per trip (speed == 0, engine on). Show a small idle time counter in detail view. If idle exceeds 5 minutes in one session, orb goes BORED and dash shows `IDLE 6:12`. Encourages engine-off when parked.
+Track total idle time per trip (speed == 0, engine on). Show a small idle counter in the trip summary sheet. If idle exceeds 5 minutes in one session, show `IDLE 6:12` in the web dashboard. ~~Orb BORED reaction removed.~~
 
 ---
 
@@ -108,8 +115,7 @@ These features use the existing Wi-Fi + iPhone hotspot path. Location is pre-con
 - Parameters: `latitude`, `longitude`, `current=pm10,pm2_5,european_aqi`
 - Free, no API key.
 - Fetch every 30 minutes.
-- Display AQI badge on dash detail view: `AQI 42 GOOD`.
-- Orb can show a small haze icon in chill mode when AQI > 100.
+- Display AQI in the web dashboard info area: `AQI 42 GOOD`.
 - Pre-configured lat/lon, no GPS needed.
 
 ### 9. UV Index Display
@@ -117,16 +123,15 @@ These features use the existing Wi-Fi + iPhone hotspot path. Location is pre-con
 **API:** Open-Meteo Forecast (same fetch as weather, add `hourly=uv_index`).
 
 - Zero extra fetch cost — piggyback on existing weather call.
-- Display UV level in detail view: `UV 7 HIGH`.
-- Useful for drivers with long commutes or convertibles.
+- Display UV level in the web dashboard: `UV 7 HIGH`.
 
-### 10. Fuel Price "Good Day to Fill" Signal
+### 10. ~~Fuel Price "Good Day to Fill"~~ (spec removed)
 
-Already specced in `fuel-price-lookup.md`. Compares today's fetched price to a 14-day NVS rolling history and displays `GOOD DAY ↓`, `NORMAL`, or `HIGH TODAY ↑`. No GPS needed.
+~~`fuel-price-lookup.md` has been removed~~ — spec was written for the physical dash_35 detail view which no longer exists. Can be re-specced for the web dashboard if needed.
 
-### 11. Speed Camera Database Refresh
+### 11. ~~Speed Camera Database~~  (spec removed)
 
-Already specced in `speed-camera-alerts.md`. Fetches fixed camera coordinates from OpenStreetMap Overpass API around a pre-configured point. Scheduled every 5 minutes while connected. No GPS needed for Phase 1.
+~~`speed-camera-alerts.md` has been removed~~ — spec targeted orb alert display and physical TFT top bar. Can be re-specced as a web dashboard notification if needed.
 
 ### 12. Vehicle Recall Check
 
@@ -134,8 +139,8 @@ Already specced in `speed-camera-alerts.md`. Fetches fixed camera coordinates fr
 
 - Parameters: `make`, `model`, `modelYear` (sourced from vehicle profile).
 - Free, no API key.
-- Fetch once per day (or on demand via touch long-press).
-- If open recalls exist, show `RECALL!` badge in detail view with count.
+- Fetch once per day.
+- If open recalls exist, show `RECALL!` badge in the web dashboard with count.
 - Cache result in NVS for 24 hours.
 
 ### 13. Weather-Based Driving Advisory
@@ -149,17 +154,15 @@ Extend the existing weather display with a context-aware advisory:
 | Heavy wind (> 50 km/h) | `STRONG WIND` |
 | Clear + hot (> 35°C) | `TYRE PRESSURE CHECK` |
 
-Message shown as a one-line banner below the weather icon on the orb in chill mode.
+Message shown as a one-line banner in the web dashboard. ~~Orb chill mode message removed.~~
 
 ### 14. Local Sunrise / Sunset for Auto Dark Mode
 
 **API:** Open-Meteo Forecast (add `daily=sunrise,sunset`).
 
 - Zero extra fetch cost — extend existing weather call.
-- Auto-switch to dark mode when current time is after sunset or before sunrise, regardless of headlight PID.
-- Fallback when the Toyota headlight PID is not yet discovered.
-- Use the same sunset window to trigger a headlight reminder when the vehicle is moving and `headlights_on` is still false.
-- Reminder text should live in the dash top-center status lane first, then escalate to the full-width alert banner if ignored.
+- Auto-switch to dark mode on the web dashboard when current time is after sunset or before sunrise.
+- Trigger a headlight reminder when the vehicle is moving and `headlights_on` is still false.
 
 ---
 
@@ -168,3 +171,4 @@ Message shown as a one-line banner below the weather icon on the orb in chill mo
 - All "hardware GPS" ideas (turn-by-turn navigation, live speed camera distance, live traffic) are out of scope — this project has no GPS module.
 - Hotspot-dependent features degrade gracefully: they simply hide their UI element when Wi-Fi is disconnected.
 - Features 8–14 share the same Wi-Fi event loop and can be batched into one HTTP task without adding new connection logic.
+- companion_orb emotion features have been removed from all entries above.
