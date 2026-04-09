@@ -87,6 +87,9 @@ class Elm327Client {
   QueryKind active_query_ = QueryKind::None;
   QueryKind next_query_ = QueryKind::Rpm;
   FuelSequenceStep fuel_sequence_step_ = FuelSequenceStep::Idle;
+  bool prompt_received_ = false;
+  uint32_t last_coolant_query_ms_ = 0;
+  uint32_t last_voltage_query_ms_ = 0;
   size_t line_length_ = 0;
   char line_buffer_[96] = {0};
   float smoothed_fuel_pct_ = -1.0f;  // <0 means uninitialized

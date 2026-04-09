@@ -10,6 +10,8 @@ class OrbDisplay {
  public:
   void begin(Print &log);
   void render(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms);
+  // Called from the main loop when no gateway signal is available.
+  void renderNoSignal(uint32_t now_ms);
 
  private:
   void drawFullScene(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms);
@@ -59,6 +61,10 @@ class OrbDisplay {
   // Backlight.
   uint8_t backlight_level_ = 255;
   uint32_t last_backlight_ms_ = 0;
+
+  // No-signal state (display before/after gateway connection).
+  bool in_no_signal_ = false;
+  uint32_t last_no_signal_render_ms_ = 0;
 };
 
 }  // namespace orb

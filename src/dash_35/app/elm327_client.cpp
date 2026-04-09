@@ -16,7 +16,9 @@ namespace {
 constexpr char kBluetoothClientName[] = "DriveOrbitDash";
 constexpr uint32_t kConnectRetryMs = 6000;
 constexpr uint32_t kInitCommandDelayMs = 320;
-constexpr uint32_t kQueryIntervalMs = 180;
+constexpr uint32_t kQueryIntervalMs = 60;
+constexpr uint32_t kQueryFallbackIntervalMs = 180;
+constexpr uint32_t kQueryResponseTimeoutMs = 2000;
 constexpr uint32_t kFuelQueryIntervalMs = 5000;
 constexpr uint32_t kToyotaFuelFallbackDelayMs = 12000;
 constexpr uint32_t kFreshTelemetryTimeoutMs = 1800;
@@ -489,6 +491,9 @@ void Elm327Client::updateConnection(uint32_t now_ms) {
       last_speed_update_ms_ = 0;
       last_rpm_update_ms_ = 0;
       elm_busy_until_ms_ = 0;
+      prompt_received_ = false;
+      last_coolant_query_ms_ = 0;
+      last_voltage_query_ms_ = 0;
       line_length_ = 0;
       resetBleTransport();
       if (log_output_) {
@@ -520,6 +525,9 @@ void Elm327Client::updateConnection(uint32_t now_ms) {
       last_speed_update_ms_ = 0;
       last_rpm_update_ms_ = 0;
       elm_busy_until_ms_ = 0;
+      prompt_received_ = false;
+      last_coolant_query_ms_ = 0;
+      last_voltage_query_ms_ = 0;
       line_length_ = 0;
       if (log_output_) {
         log_output_->println("[ELM327] Connected.");
@@ -586,8 +594,17 @@ void Elm327Client::updateInitialization(uint32_t now_ms) {
 }
 
 void Elm327Client::updatePolling(uint32_t now_ms) {
+  // Guard against lost/garbled BLE responses: if a query was sent and no
+  // response has arrived within the timeout, abandon it so polling resumes.
   if (active_query_ != QueryKind::None) {
-    return;
+    if (now_ms - last_command_ms_ > kQueryResponseTimeoutMs) {
+      if (log_output_) {
+        log_output_->println("[ELM327] Query response timeout, resuming.");
+      }
+      active_query_ = QueryKind::None;
+    } else {
+      return;
+    }
   }
 
   if (fuel_sequence_step_ != FuelSequenceStep::Idle) {
@@ -595,7 +612,11 @@ void Elm327Client::updatePolling(uint32_t now_ms) {
     return;
   }
 
-  if (now_ms - last_command_ms_ < kQueryIntervalMs) {
+  // Prompt-based pacing: if ELM327 sent '>' we can fire immediately;
+  // otherwise fall back to the longer polling interval.
+  const uint32_t pacing_interval =
+      prompt_received_ ? kQueryIntervalMs : kQueryFallbackIntervalMs;
+  if (now_ms - last_command_ms_ < pacing_interval) {
     return;
   }
 
@@ -623,6 +644,9 @@ void Elm327Client::updatePolling(uint32_t now_ms) {
 void Elm327Client::processIncoming(uint32_t now_ms, telemetry::CarTelemetry &telemetry) {
   char ch = 0;
   while (dequeueBleByte(ch)) {
+    if (ch == '>') {
+      prompt_received_ = true;
+    }
     if (ch == '\r' || ch == '\n' || ch == '>') {
       if (line_length_ > 0) {
         line_buffer_[line_length_] = '\0';
@@ -772,6 +796,7 @@ void Elm327Client::sendCommand(const char *command) {
     return;
   }
 
+  prompt_received_ = false;
   char payload[32] = {0};
   snprintf(payload, sizeof(payload), "%s\r", command);
   const size_t payload_length = strlen(payload);
@@ -781,25 +806,29 @@ void Elm327Client::sendCommand(const char *command) {
 }
 
 void Elm327Client::advanceQuery() {
-  switch (next_query_) {
-    case QueryKind::Rpm:
-      next_query_ = QueryKind::Speed;
-      break;
-    case QueryKind::Speed:
-      next_query_ = QueryKind::Coolant;
-      break;
-    case QueryKind::Coolant:
-      next_query_ = QueryKind::Voltage;
-      break;
-    case QueryKind::Voltage:
-      next_query_ = QueryKind::Rpm;
-      break;
-    case QueryKind::FuelStandard:
-    case QueryKind::FuelToyota:
-    case QueryKind::None:
-      next_query_ = QueryKind::Rpm;
-      break;
+  // Time-interval scheduling: RPM/Speed alternate every cycle.
+  // Coolant and Voltage are interleaved only when their interval has elapsed.
+  // This keeps motion data updating sub-second while slow-changing values
+  // refresh on the order of minutes.
+  constexpr uint32_t kCoolantIntervalMs = 30000;   // every 30s
+  constexpr uint32_t kVoltageIntervalMs = 60000;   // every 60s
+
+  const uint32_t now = millis();
+
+  // Check if a slow channel is due — insert it once, then resume fast cycling.
+  if (now - last_coolant_query_ms_ >= kCoolantIntervalMs) {
+    next_query_ = QueryKind::Coolant;
+    last_coolant_query_ms_ = now;
+    return;
   }
+  if (now - last_voltage_query_ms_ >= kVoltageIntervalMs) {
+    next_query_ = QueryKind::Voltage;
+    last_voltage_query_ms_ = now;
+    return;
+  }
+
+  // Default: alternate RPM ↔ Speed.
+  next_query_ = (next_query_ == QueryKind::Rpm) ? QueryKind::Speed : QueryKind::Rpm;
 }
 
 void Elm327Client::startFuelSequence() {

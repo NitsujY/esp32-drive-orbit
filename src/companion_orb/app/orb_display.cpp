@@ -137,8 +137,55 @@ void OrbDisplay::updateBacklight(uint8_t drive_mode, int16_t speed_kph, uint32_t
   analogWrite(kPinBl, backlight_level_);
 }
 
+void OrbDisplay::renderNoSignal(uint32_t now_ms) {
+  if (!initialized_) return;
+  if (now_ms - last_no_signal_render_ms_ < 33) return;
+  last_no_signal_render_ms_ = now_ms;
+
+  const uint16_t bg = theme::chill::bg();
+
+  if (!in_no_signal_) {
+    // First frame after losing signal: clear the screen.
+    gfx->fillScreen(bg);
+    in_no_signal_ = true;
+  }
+
+  // Advance breathing phase for the sleep face animation.
+  breath_phase_ += kBreathSpeed * 33.0f;
+  if (breath_phase_ > 6.2832f) breath_phase_ -= 6.2832f;
+
+  // Slow pulsing mood ring (dim glow while searching).
+  const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(now_ms) * 0.0008f);
+  const uint16_t ring_color = blend565(bg, theme::chill::moodRing(), 0.1f + 0.25f * pulse);
+  drawArc(kCx, kCy, 119, 113, 0, 360, ring_color);
+
+  // Sleeping/idle face.
+  drawSleepFace(0);
+
+  // "NO SIG" label below face (clear the rect before redrawing to avoid ghosting).
+  gfx->fillRect(kCx - 26, kCy + 14, 52, 20, bg);
+  gfx->setTextColor(theme::chill::accentDim());
+  gfx->setTextSize(1);
+  gfx->setCursor(kCx - 20, kCy + 18);
+  gfx->print("NO SIG");
+
+  // Dim backlight, breathing slightly.
+  const uint8_t bl_target = 50 + static_cast<uint8_t>(30.0f * pulse);
+  if (backlight_level_ != bl_target) {
+    backlight_level_ = bl_target;
+    analogWrite(kPinBl, backlight_level_);
+  }
+
+  // Ensure a full redraw the first time real telemetry arrives.
+  needs_full_redraw_ = true;
+}
+
 void OrbDisplay::render(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms) {
   if (!initialized_) return;
+
+  // Coming back from no-signal state: needs_full_redraw_ is already set by
+  // renderNoSignal(); just clear the flag so we don't loop back in.
+  in_no_signal_ = false;
 
   const uint8_t dm = static_cast<uint8_t>(telemetry.drive_mode);
   const uint8_t mood = static_cast<uint8_t>(telemetry.companion_mood);

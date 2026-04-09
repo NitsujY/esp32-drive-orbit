@@ -68,11 +68,18 @@ void setup() {
 void loop() {
   const uint32_t now = millis();
 
+  // A live signal means we've received a packet recently (within stale threshold).
+  const bool has_signal = (last_receive_ms != 0) && (now - last_receive_ms <= kStaleThresholdMs);
+
   if (parser.hasFreshTelemetry()) {
     const telemetry::DashboardTelemetry snapshot = parser.takeTelemetry();
     theme::darkMode() = snapshot.headlights_on;
     logParsedTelemetry(snapshot);
     display.render(snapshot, now);
+  } else if (!has_signal) {
+    // No connection to the gateway (never connected, or stream went stale):
+    // keep the display alive with a waiting animation.
+    display.renderNoSignal(now);
   }
 
   if (now - last_heartbeat_ms >= kHeartbeatIntervalMs) {

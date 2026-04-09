@@ -875,43 +875,10 @@ document.addEventListener('visibilitychange', () => {
 
 // ── Trip Sheet Gestures ──
 
-// Swipe-up on info bar to open sheet
-{
-  let touchStartY = 0;
-  let touchStartX = 0;
-
-  el.infoBar.addEventListener('touchstart', (e) => {
-    touchStartY = e.touches[0].clientY;
-    touchStartX = e.touches[0].clientX;
-  }, { passive: true });
-
-  el.infoBar.addEventListener('touchend', (e) => {
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
-    if (dy < -30 && dx < 60) openTripSheet();
-  }, { passive: true });
-}
-
-// Long-press on trip value to open sheet
-{
-  let longPressTimer = null;
-
-  function startLongPress() {
-    longPressTimer = window.setTimeout(openTripSheet, 600);
-  }
-  function cancelLongPress() {
-    window.clearTimeout(longPressTimer);
-  }
-
-  el.tripValue.addEventListener('mousedown', startLongPress);
-  el.tripValue.addEventListener('touchstart', startLongPress, { passive: true });
-  el.tripValue.addEventListener('mouseup', cancelLongPress);
-  el.tripValue.addEventListener('mouseleave', cancelLongPress);
-  el.tripValue.addEventListener('touchend', cancelLongPress);
-  el.tripValue.addEventListener('touchcancel', cancelLongPress);
-  el.tripValue.style.cursor = 'pointer';
-  el.tripValue.style.userSelect = 'none';
-}
+// Tap the trip odometer chip to open the sheet.
+// Swipe-up from the info bar is intentionally avoided — on iPhone it conflicts
+// with the system home-indicator gesture at the bottom of the screen.
+el.tripValue.addEventListener('click', openTripSheet);
 
 // Swipe-down on the sheet to dismiss
 {
@@ -931,6 +898,12 @@ document.addEventListener('visibilitychange', () => {
 
 el.wsUrl.value = currentSocketUrl;
 updateSimulationUi();
+
+// Brief pulse on the trip chip to hint it's tappable
+window.setTimeout(() => {
+  el.tripValue.classList.add('tap-hint');
+  el.tripValue.addEventListener('animationend', () => el.tripValue.classList.remove('tap-hint'), { once: true });
+}, 1200);
 
 // Auto-start simulation if served from preview (no gateway)
 const params = new URLSearchParams(window.location.search);
