@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Companion Orb — Web Preview</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h2>Companion Orb — Interactive Preview</h2>
+  <div class="wrap">
+    <canvas id="orb" width="240" height="240" aria-label="Orb preview"></canvas>
+    <div class="controls">
+      <label>Drive Mode
+        <select id="driveMode">
+          <option value="chill">Chill</option>
+          <option value="sport">Sport</option>
+        </select>
+      </label>
+
+      <label>Mood
+        <select id="mood">
+          <option value="0">Neutral</option>
+          <option value="1">Warm</option>
+          <option value="2">Alert</option>
+          <option value="3">Happy</option>
+          <option value="4">Sad</option>
+          <option value="5">Excited</option>
+        </select>
+      </label>
+
+      <label>RPM <input id="rpm" type="range" min="0" max="6000" value="0"></label>
+
+      <label><input id="sleep" type="checkbox"> Sleeping</label>
+
+      <label>Reaction
+        <select id="reaction">
+          <option value="none">None</option>
+          <option value="hearts">Hearts</option>
+          <option value="startled">Startled</option>
+          <option value="stars">Stars</option>
+        </select>
+      </label>
+
+      <label>XP Progress <input id="progress" type="range" min="0" max="100" value="30"></label>
+
+      <div class="note">Tip: change RPM and mood to preview animations.</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
