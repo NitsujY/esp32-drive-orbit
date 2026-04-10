@@ -9,7 +9,6 @@ namespace orb {
 
 namespace {
 
-// GC9A01 pin mapping (from NitsujY/esp32carconsole reference).
 constexpr int kPinSclk = 6;
 constexpr int kPinMosi = 7;
 constexpr int kPinCs   = 10;
@@ -22,26 +21,11 @@ constexpr int kH = 240;
 constexpr int kCx = kW / 2;
 constexpr int kCy = kH / 2;
 
-constexpr uint32_t kModeTransitionMs = 600;   // fade duration
-constexpr uint32_t kSleepAfterMs = 20000;     // sleep after 20s parked
-constexpr uint8_t kLowFuelThreshold = 15;
-constexpr float kBreathSpeed = 0.0025f;       // radians per ms
+constexpr uint32_t kModeTransitionMs = 600;
+constexpr float kBreathSpeed = 0.003f;
 
 Arduino_DataBus *bus = nullptr;
 Arduino_GFX *gfx = nullptr;
-
-const char *gearChar(telemetry::TransmissionGear gear) {
-  switch (gear) {
-    case telemetry::TransmissionGear::Park:   return "P";
-    case telemetry::TransmissionGear::First:  return "1";
-    case telemetry::TransmissionGear::Second: return "2";
-    case telemetry::TransmissionGear::Third:  return "3";
-    case telemetry::TransmissionGear::Fourth: return "4";
-    case telemetry::TransmissionGear::Fifth:  return "5";
-    case telemetry::TransmissionGear::Sixth:  return "6";
-  }
-  return "?";
-}
 
 void drawArc(int cx, int cy, int r_outer, int r_inner,
              float start_deg, float end_deg, uint16_t color) {
@@ -59,7 +43,6 @@ void drawArc(int cx, int cy, int r_outer, int r_inner,
   }
 }
 
-// Blend two 565 colors by factor t (0.0 = a, 1.0 = b).
 uint16_t blend565(uint16_t a, uint16_t b, float t) {
   if (t <= 0.0f) return a;
   if (t >= 1.0f) return b;
@@ -73,69 +56,60 @@ uint16_t blend565(uint16_t a, uint16_t b, float t) {
 
 }  // namespace
 
+// ─── Lifecycle ───────────────────────────────────────────────────────────────
+
 void OrbDisplay::begin(Print &log) {
   log_ = &log;
-
   bus = new Arduino_ESP32SPI(kPinDc, kPinCs, kPinSclk, kPinMosi, -1);
   gfx = new Arduino_GC9A01(bus, kPinRst, 0, true);
-
   gfx->begin();
   gfx->fillScreen(BLACK);
-
   pinMode(kPinBl, OUTPUT);
   analogWrite(kPinBl, 255);
-
   initialized_ = true;
   needs_full_redraw_ = true;
-  log_->println("[DISP] GC9A01 240x240 cyber orb ready");
+  log_->println("[DISP] GC9A01 240x240 tamagotchi orb ready");
 }
 
 float OrbDisplay::modeTransition(uint8_t target_dm, uint32_t now_ms) {
   const float target = theme::isSport(target_dm) ? 1.0f : 0.0f;
-
   if (target_drive_mode_ != target_dm) {
     target_drive_mode_ = target_dm;
     mode_transition_start_ms_ = now_ms;
   }
-
   const uint32_t elapsed = now_ms - mode_transition_start_ms_;
   if (elapsed >= kModeTransitionMs) {
     mode_blend_ = target;
   } else {
-    const float progress = static_cast<float>(elapsed) / static_cast<float>(kModeTransitionMs);
-    // Ease in-out.
-    const float eased = progress < 0.5f
-        ? 2.0f * progress * progress
-        : 1.0f - 2.0f * (1.0f - progress) * (1.0f - progress);
-    mode_blend_ = mode_blend_ + (target - mode_blend_) * eased;
+    const float p = static_cast<float>(elapsed) / static_cast<float>(kModeTransitionMs);
+    const float e = p < 0.5f ? 2.0f * p * p : 1.0f - 2.0f * (1.0f - p) * (1.0f - p);
+    mode_blend_ = mode_blend_ + (target - mode_blend_) * e;
   }
-
   return mode_blend_;
 }
 
-void OrbDisplay::updateBacklight(uint8_t drive_mode, int16_t speed_kph, uint32_t now_ms) {
+void OrbDisplay::updateBacklight(uint8_t drive_mode, const PetState &pet, uint32_t now_ms) {
   if (now_ms - last_backlight_ms_ < 200) return;
   last_backlight_ms_ = now_ms;
 
-  // Target brightness: dim when sleeping, medium in chill, full in sport.
   uint8_t target = 200;
-  if (sleeping_) {
-    target = 30;
+  if (pet.isSleeping()) {
+    target = 40;
   } else if (theme::isSport(drive_mode)) {
     target = 255;
-  } else if (speed_kph == 0) {
-    target = 140;  // parked but awake
+  } else if (!pet.isInTrip()) {
+    target = 150;
   }
 
-  // Smooth ramp.
-  if (backlight_level_ < target) {
+  if (backlight_level_ < target)
     backlight_level_ = min(static_cast<uint8_t>(backlight_level_ + 8), target);
-  } else if (backlight_level_ > target) {
+  else if (backlight_level_ > target)
     backlight_level_ = max(static_cast<uint8_t>(backlight_level_ - 4), target);
-  }
 
   analogWrite(kPinBl, backlight_level_);
 }
+
+// ─── No-signal state ─────────────────────────────────────────────────────────
 
 void OrbDisplay::renderNoSignal(uint32_t now_ms) {
   if (!initialized_) return;
@@ -144,396 +118,159 @@ void OrbDisplay::renderNoSignal(uint32_t now_ms) {
 
   const uint16_t bg = theme::chill::bg();
 
+  // Batch display writes to reduce visible partial updates.
+  if (gfx) gfx->startWrite();
+
   if (!in_no_signal_) {
-    // First frame after losing signal: clear the screen.
     gfx->fillScreen(bg);
     in_no_signal_ = true;
   }
 
-  // Advance breathing phase for the sleep face animation.
   breath_phase_ += kBreathSpeed * 33.0f;
   if (breath_phase_ > 6.2832f) breath_phase_ -= 6.2832f;
 
-  // Slow pulsing mood ring (dim glow while searching).
   const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(now_ms) * 0.0008f);
   const uint16_t ring_color = blend565(bg, theme::chill::moodRing(), 0.1f + 0.25f * pulse);
-  drawArc(kCx, kCy, 119, 113, 0, 360, ring_color);
+  drawArc(kCx, kCy, 119, 114, 0, 360, ring_color);
 
-  // Sleeping/idle face.
-  drawSleepFace(0);
+  drawOrbFaceSleeping(now_ms);
 
-  // "NO SIG" label below face (clear the rect before redrawing to avoid ghosting).
-  gfx->fillRect(kCx - 26, kCy + 14, 52, 20, bg);
+  gfx->fillRect(kCx - 30, kCy + 40, 60, 16, bg);
   gfx->setTextColor(theme::chill::accentDim());
   gfx->setTextSize(1);
-  gfx->setCursor(kCx - 20, kCy + 18);
-  gfx->print("NO SIG");
+  gfx->setCursor(kCx - 24, kCy + 42);
+  gfx->print("WAITING");
 
-  // Dim backlight, breathing slightly.
   const uint8_t bl_target = 50 + static_cast<uint8_t>(30.0f * pulse);
   if (backlight_level_ != bl_target) {
     backlight_level_ = bl_target;
     analogWrite(kPinBl, backlight_level_);
   }
 
-  // Ensure a full redraw the first time real telemetry arrives.
   needs_full_redraw_ = true;
+
+  if (gfx) gfx->endWrite();
 }
 
-void OrbDisplay::render(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms) {
-  if (!initialized_) return;
+// ─── Main render ─────────────────────────────────────────────────────────────
 
-  // Coming back from no-signal state: needs_full_redraw_ is already set by
-  // renderNoSignal(); just clear the flag so we don't loop back in.
+void OrbDisplay::render(const PetState &pet, const telemetry::DashboardTelemetry &t, uint32_t now_ms) {
+  if (!initialized_) return;
   in_no_signal_ = false;
 
-  const uint8_t dm = static_cast<uint8_t>(telemetry.drive_mode);
-  const uint8_t mood = static_cast<uint8_t>(telemetry.companion_mood);
-  const uint8_t gear = static_cast<uint8_t>(telemetry.gear);
-  const bool low_fuel = telemetry.fuel_level_pct < kLowFuelThreshold && telemetry.fuel_level_pct > 0;
+  // Throttle rendering to ~30 FPS to avoid frequent partial screen updates.
+  if (now_ms - last_render_ms_ < 33) return;
+  last_render_ms_ = now_ms;
 
-  // Sleep detection: no motion for kSleepAfterMs.
-  if (telemetry.speed_kph > 0 || telemetry.rpm > 100) {
-    last_motion_ms_ = now_ms;
-    if (sleeping_) {
-      sleeping_ = false;
-      needs_full_redraw_ = true;
-    }
-  } else if (!sleeping_ && last_motion_ms_ > 0 && (now_ms - last_motion_ms_ > kSleepAfterMs)) {
-    sleeping_ = true;
-    needs_full_redraw_ = true;
-  }
+  const uint8_t dm = static_cast<uint8_t>(t.drive_mode);
+  const uint8_t mood = static_cast<uint8_t>(t.companion_mood);
+  const PetStage stage = pet.stage();
+  const DrivingDynamics &dyn = pet.dynamics();
 
   // Advance breathing animation.
-  breath_phase_ += kBreathSpeed * 33.0f;  // ~33ms per frame
+  breath_phase_ += kBreathSpeed * 33.0f;
   if (breath_phase_ > 6.2832f) breath_phase_ -= 6.2832f;
 
-  // Coaching score update.
-  if (now_ms - last_score_update_ms_ > 500) {
-    const int16_t delta = abs(telemetry.speed_kph - prev_speed_);
-    if (delta > 15) {
-      coaching_score_ = coaching_score_ > 5 ? coaching_score_ - 5 : 0;
-    } else if (delta < 3 && coaching_score_ < 99) {
-      ++coaching_score_;
-    }
-    prev_speed_ = telemetry.speed_kph;
-    last_score_update_ms_ = now_ms;
-  }
-
-  // Smooth mode transition.
   modeTransition(dm, now_ms);
+  updateBacklight(dm, pet, now_ms);
 
-  // Backlight management.
-  updateBacklight(dm, telemetry.speed_kph, now_ms);
-
-  // Mode change or fuel alert change triggers full redraw.
-  if (dm != last_drive_mode_ || low_fuel != last_low_fuel_) {
+  if (dm != last_drive_mode_ || stage != last_stage_) {
     needs_full_redraw_ = true;
   }
 
   if (needs_full_redraw_) {
-    drawFullScene(telemetry, now_ms);
+    if (gfx) gfx->startWrite();
+    drawFullScene(pet, t, now_ms);
+    if (gfx) gfx->endWrite();
     last_drive_mode_ = dm;
     last_mood_ = mood;
-    last_gear_ = gear;
-    last_rpm_ = telemetry.rpm;
-    last_accel_mg_ = telemetry.longitudinal_accel_mg;
-    last_score_ = coaching_score_;
-    last_fuel_pct_ = telemetry.fuel_level_pct;
-    last_low_fuel_ = low_fuel;
+    last_rpm_ = t.rpm;
+    last_stage_ = stage;
     needs_full_redraw_ = false;
     return;
   }
 
-  // Incremental updates.
-  bool face_dirty = (mood != last_mood_);
+  // Incremental updates (batched to reduce SPI transaction choppiness).
+  if (gfx) gfx->startWrite();
+  drawXpRing(pet, dm, t.rpm, now_ms);
 
-  // Mood ring pulses with RPM — always update.
-  drawMoodRing(dm, telemetry.rpm, now_ms);
-
-  if (sleeping_) {
-    // Only redraw sleep face occasionally for breathing.
-    drawSleepFace(dm);
-  } else if (low_fuel) {
-    drawLowFuelFace(dm, now_ms);
+  if (pet.isSleeping()) {
+    drawOrbFaceSleeping(now_ms);
   } else {
-    if (face_dirty || true) {  // always redraw face for breathing
-      drawFace(dm, mood, telemetry.rpm, now_ms);
-      last_mood_ = mood;
-    }
+    uint8_t face_mood;
+    if (dyn.in_sport_zone)          face_mood = 5;
+    else if (pet.happiness() > 80)  face_mood = 5;
+    else if (pet.happiness() > 60)  face_mood = 3;
+    else if (pet.happiness() > 40)  face_mood = 1;
+    else if (pet.happiness() > 20)  face_mood = 0;
+    else                            face_mood = 4;
+    drawOrbFace(face_mood, dyn, now_ms);
   }
 
-  if (theme::isSport(dm)) {
-    if (gear != last_gear_ || telemetry.rpm != last_rpm_) {
-      drawGearRpm(telemetry.gear, telemetry.rpm, telemetry.longitudinal_accel_mg, dm);
-      last_gear_ = gear;
-      last_rpm_ = telemetry.rpm;
-      last_accel_mg_ = telemetry.longitudinal_accel_mg;
-    }
-  } else {
-    if (coaching_score_ != last_score_ || abs(telemetry.longitudinal_accel_mg - last_accel_mg_) > 20) {
-      drawCoachingScore(coaching_score_, telemetry.longitudinal_accel_mg, dm);
-      last_score_ = coaching_score_;
-      last_accel_mg_ = telemetry.longitudinal_accel_mg;
-    }
+  if (pet.isReactionActive(now_ms)) {
+    drawReaction(pet.currentReaction(), pet.reactionAge(now_ms), now_ms);
   }
+
+  drawStatBars(pet.happiness(), pet.energy(), stage);
+  if (gfx) gfx->endWrite();
+
+  last_mood_ = mood;
+  last_rpm_ = t.rpm;
 }
 
-void OrbDisplay::drawFullScene(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms) {
-  const uint8_t dm = static_cast<uint8_t>(telemetry.drive_mode);
-  const bool low_fuel = telemetry.fuel_level_pct < kLowFuelThreshold && telemetry.fuel_level_pct > 0;
-
-  // Blended background during transition.
+void OrbDisplay::drawFullScene(const PetState &pet, const telemetry::DashboardTelemetry &t, uint32_t now_ms) {
+  const uint8_t dm = static_cast<uint8_t>(t.drive_mode);
   const uint16_t bg_color = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
   gfx->fillScreen(bg_color);
 
-  drawMoodRing(dm, telemetry.rpm, now_ms);
+  const DrivingDynamics &dyn = pet.dynamics();
 
-  if (sleeping_) {
-    drawSleepFace(dm);
-  } else if (low_fuel) {
-    drawLowFuelFace(dm, now_ms);
+  drawXpRing(pet, dm, t.rpm, now_ms);
+
+  if (pet.isSleeping()) {
+    drawOrbFaceSleeping(now_ms);
   } else {
-    drawFace(dm, static_cast<uint8_t>(telemetry.companion_mood), telemetry.rpm, now_ms);
+    const DrivingDynamics &fs_dyn = pet.dynamics();
+    uint8_t face_mood;
+    if (fs_dyn.in_sport_zone)          face_mood = 5;
+    else if (pet.happiness() > 80)     face_mood = 5;
+    else if (pet.happiness() > 60)     face_mood = 3;
+    else if (pet.happiness() > 40)     face_mood = 1;
+    else if (pet.happiness() > 20)     face_mood = 0;
+    else                               face_mood = 4;
+    drawOrbFace(face_mood, fs_dyn, now_ms);
   }
 
-  if (theme::isSport(dm)) {
-    drawGearRpm(telemetry.gear, telemetry.rpm, telemetry.longitudinal_accel_mg, dm);
-  } else if (!sleeping_) {
-    drawCoachingScore(coaching_score_, telemetry.longitudinal_accel_mg, dm);
+  if (pet.isReactionActive(now_ms)) {
+    drawReaction(pet.currentReaction(), pet.reactionAge(now_ms), now_ms);
   }
+
+  drawStatBars(pet.happiness(), pet.energy(), pet.stage());
 }
 
-void OrbDisplay::drawMoodRing(uint8_t drive_mode, int16_t rpm, uint32_t now_ms) {
-  // Pulse rate synced to RPM: faster heartbeat at higher revs.
-  // Base period ~2s at idle, ~0.3s at 6000 RPM.
+// ─── XP Ring ─────────────────────────────────────────────────────────────────
+
+void OrbDisplay::drawXpRing(const PetState &pet, uint8_t drive_mode, int16_t rpm, uint32_t now_ms) {
   const float rpm_norm = constrain(static_cast<float>(rpm) / 6000.0f, 0.0f, 1.0f);
-  const float pulse_speed = 0.002f + rpm_norm * 0.018f;  // radians per ms
-  const float pulse_phase = static_cast<float>(now_ms) * pulse_speed;
-  const float pulse = 0.5f + 0.5f * sinf(pulse_phase);  // 0..1
+  const float pulse_speed = 0.002f + rpm_norm * 0.012f;
+  const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(now_ms) * pulse_speed);
 
-  // Blend mood ring color between chill and sport based on transition.
-  const uint16_t base_color = blend565(theme::chill::moodRing(), theme::sport::moodRing(), mode_blend_);
-  const uint16_t dim_color = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
+  const uint16_t base = blend565(theme::chill::moodRing(), theme::sport::moodRing(), mode_blend_);
+  const uint16_t dim = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
 
-  // Pulse between dim and full brightness.
-  const uint16_t ring_color = blend565(dim_color, base_color, 0.3f + 0.7f * pulse);
+  const uint16_t track_color = blend565(dim, base, 0.08f + 0.12f * pulse);
+  drawArc(kCx, kCy, 119, 114, 0, 360, track_color);
 
-  drawArc(kCx, kCy, 119, 113, 0, 360, ring_color);
-}
-
-void OrbDisplay::drawFace(uint8_t drive_mode, uint8_t mood, int16_t rpm, uint32_t now_ms) {
-  const uint16_t bg = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
-  const uint16_t accent = blend565(theme::chill::accent(), theme::sport::accent(), mode_blend_);
-
-  // Breathing: eye size oscillates gently.
-  const float breath = 0.5f + 0.5f * sinf(breath_phase_);  // 0..1
-  const int breath_offset = static_cast<int>(breath * 2.0f);  // 0-2 pixel
-
-  // Clear face area.
-  gfx->fillCircle(kCx, kCy - 20, 42, bg);
-
-  // Eye tracking: eyes shift horizontally based on RPM direction.
-  // Positive RPM change = eyes look right, negative = left.
-  const int rpm_delta = rpm - last_rpm_;
-  int eye_shift = 0;
-  if (rpm_delta > 50) eye_shift = 2;
-  else if (rpm_delta < -50) eye_shift = -2;
-
-  const int eye_y = kCy - 28 + breath_offset;
-  const int eye_spacing = theme::isSport(drive_mode) ? 22 : 18;
-  const int base_eye_r = theme::isSport(drive_mode) ? 6 : 5;
-  const int eye_r = base_eye_r + (breath_offset > 1 ? 1 : 0);
-
-  gfx->fillCircle(kCx - eye_spacing + eye_shift, eye_y, eye_r, accent);
-  gfx->fillCircle(kCx + eye_spacing + eye_shift, eye_y, eye_r, accent);
-
-  // Mouth.
-  const int mouth_y = kCy - 4 + breath_offset;
-  if (mood == 0) {
-    // Idle: neutral line.
-    gfx->drawFastHLine(kCx - 8, mouth_y, 16, accent);
-  } else if (mood == 1) {
-    // Warm: slight smile arc.
-    for (int x = -12; x <= 12; ++x) {
-      int y_off = static_cast<int>(2.0f * sinf(static_cast<float>(x + 12) * 3.14159f / 24.0f));
-      gfx->drawPixel(kCx + x, mouth_y + y_off, accent);
-    }
-  } else if (mood == 2) {
-    // Alert: open mouth + blink.
-    gfx->fillCircle(kCx, mouth_y + 2, 6, accent);
-    gfx->fillCircle(kCx, mouth_y + 2, 3, bg);
-    if ((now_ms / 300) % 4 == 0) {
-      gfx->fillCircle(kCx - eye_spacing + eye_shift, eye_y, eye_r, bg);
-      gfx->fillCircle(kCx + eye_spacing + eye_shift, eye_y, eye_r, bg);
-      gfx->drawFastHLine(kCx - eye_spacing - eye_r + eye_shift, eye_y, eye_r * 2, accent);
-      gfx->drawFastHLine(kCx + eye_spacing - eye_r + eye_shift, eye_y, eye_r * 2, accent);
-    }
-  } else if (mood == 3) {
-    // Happy: wide smile + squinted arc eyes.
-    gfx->fillCircle(kCx - eye_spacing + eye_shift, eye_y, eye_r, bg);
-    gfx->fillCircle(kCx + eye_spacing + eye_shift, eye_y, eye_r, bg);
-    for (int x = -eye_r; x <= eye_r; ++x) {
-      int yo = static_cast<int>(-1.5f * sinf(static_cast<float>(x + eye_r) * 3.14159f / (eye_r * 2.0f)));
-      gfx->drawPixel(kCx - eye_spacing + eye_shift + x, eye_y + yo, accent);
-      gfx->drawPixel(kCx + eye_spacing + eye_shift + x, eye_y + yo, accent);
-    }
-    for (int x = -16; x <= 16; ++x) {
-      int y_off = static_cast<int>(4.0f * sinf(static_cast<float>(x + 16) * 3.14159f / 32.0f));
-      gfx->drawPixel(kCx + x, mouth_y + y_off, accent);
-      gfx->drawPixel(kCx + x, mouth_y + y_off + 1, accent);
-    }
-  } else if (mood == 4) {
-    // Sad: droopy eyes + frown.
-    gfx->drawLine(kCx - eye_spacing - eye_r, eye_y - 4, kCx - eye_spacing + eye_r, eye_y - 2, accent);
-    gfx->drawLine(kCx + eye_spacing - eye_r, eye_y - 2, kCx + eye_spacing + eye_r, eye_y - 4, accent);
-    for (int x = -12; x <= 12; ++x) {
-      int y_off = static_cast<int>(-2.0f * sinf(static_cast<float>(x + 12) * 3.14159f / 24.0f));
-      gfx->drawPixel(kCx + x, mouth_y + 4 + y_off, accent);
-    }
-  } else if (mood == 5) {
-    // Excited: star eyes + big grin.
-    gfx->fillCircle(kCx - eye_spacing + eye_shift, eye_y, eye_r, bg);
-    gfx->fillCircle(kCx + eye_spacing + eye_shift, eye_y, eye_r, bg);
-    for (int i = -eye_r; i <= eye_r; ++i) {
-      gfx->drawPixel(kCx - eye_spacing + eye_shift + i, eye_y, accent);
-      gfx->drawPixel(kCx - eye_spacing + eye_shift, eye_y + i, accent);
-      gfx->drawPixel(kCx + eye_spacing + eye_shift + i, eye_y, accent);
-      gfx->drawPixel(kCx + eye_spacing + eye_shift, eye_y + i, accent);
-    }
-    gfx->fillCircle(kCx, mouth_y + 2, 8, accent);
-    gfx->fillCircle(kCx, mouth_y + 2, 5, bg);
-    gfx->fillRect(kCx - 9, mouth_y - 4, 18, 6, bg);
-  }
-}
-
-void OrbDisplay::drawLowFuelFace(uint8_t drive_mode, uint32_t now_ms) {
-  const uint16_t bg = theme::bg(drive_mode);
-  const uint16_t warn = theme::warning();
-
-  // Clear face area.
-  gfx->fillCircle(kCx, kCy - 20, 42, bg);
-
-  // Worried eyes: angled eyebrows + smaller eyes.
-  const int eye_y = kCy - 26;
-  gfx->fillCircle(kCx - 18, eye_y, 4, warn);
-  gfx->fillCircle(kCx + 18, eye_y, 4, warn);
-
-  // Worried eyebrows (angled lines above eyes).
-  gfx->drawLine(kCx - 26, eye_y - 8, kCx - 12, eye_y - 12, warn);
-  gfx->drawLine(kCx + 12, eye_y - 12, kCx + 26, eye_y - 8, warn);
-
-  // Wavy worried mouth.
-  const int mouth_y = kCy - 2;
-  for (int x = -14; x <= 14; ++x) {
-    int y_off = static_cast<int>(2.0f * sinf(static_cast<float>(x) * 0.5f + static_cast<float>(now_ms) * 0.003f));
-    gfx->drawPixel(kCx + x, mouth_y + y_off, warn);
-  }
-
-  // "LOW FUEL" label below face.
-  gfx->fillRect(kCx - 35, kCy + 30, 70, 20, bg);
-  gfx->setTextColor(warn);
-  gfx->setTextSize(1);
-  gfx->setCursor(kCx - 28, kCy + 34);
-  gfx->print("LOW FUEL");
-}
-
-void OrbDisplay::drawSleepFace(uint8_t drive_mode) {
-  const uint16_t bg = theme::bg(drive_mode);
-  const uint16_t dim = theme::accentDim(drive_mode);
-
-  // Clear face area.
-  gfx->fillCircle(kCx, kCy - 10, 42, bg);
-
-  // Closed eyes: just horizontal lines.
-  const float breath = 0.5f + 0.5f * sinf(breath_phase_ * 0.4f);  // slow breathing
-  const int y_shift = static_cast<int>(breath * 2.0f);
-
-  const int eye_y = kCy - 20 + y_shift;
-  gfx->drawFastHLine(kCx - 24, eye_y, 12, dim);
-  gfx->drawFastHLine(kCx + 12, eye_y, 12, dim);
-
-  // Zzz.
-  gfx->setTextColor(dim);
-  gfx->setTextSize(1);
-  gfx->setCursor(kCx + 20, kCy - 38 + y_shift);
-  gfx->print("z");
-  gfx->setCursor(kCx + 28, kCy - 46 + y_shift);
-  gfx->print("z");
-}
-
-void OrbDisplay::drawCoachingScore(uint8_t score, int16_t longitudinal_accel_mg, uint8_t drive_mode) {
-  const uint16_t bg = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
-  const uint16_t accent = blend565(theme::chill::accent(), theme::sport::accent(), mode_blend_);
-  const uint16_t dim = blend565(theme::chill::accentDim(), theme::sport::accentDim(), mode_blend_);
-
-  gfx->fillRect(kCx - 44, kCy + 26, 88, 62, bg);
-
-  char buf[8];
-  snprintf(buf, sizeof(buf), "%u", score);
-  gfx->setTextColor(accent);
-  gfx->setTextSize(3);
-  gfx->setCursor(kCx - 18, kCy + 32);
-  gfx->print(buf);
-
-  gfx->setTextColor(dim);
-  gfx->setTextSize(1);
-  gfx->setCursor(kCx - 18, kCy + 62);
-  gfx->print("smooth");
-
-  char g_buf[12];
-  snprintf(g_buf, sizeof(g_buf), "%+.2fg", static_cast<float>(longitudinal_accel_mg) / 1000.0f);
-  gfx->setTextColor(accent);
-  gfx->setCursor(kCx - 20, kCy + 74);
-  gfx->print(g_buf);
-}
-
-void OrbDisplay::drawGearRpm(telemetry::TransmissionGear gear,
-                             int16_t rpm,
-                             int16_t longitudinal_accel_mg,
-                             uint8_t drive_mode) {
-  const uint16_t bg = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
-  const uint16_t accent = blend565(theme::chill::accent(), theme::sport::accent(), mode_blend_);
-  const uint16_t dim = blend565(theme::chill::accentDim(), theme::sport::accentDim(), mode_blend_);
-
-  gfx->fillRect(kCx - 40, kCy + 22, 80, 66, bg);
-
-  gfx->setTextColor(accent);
-  gfx->setTextSize(4);
-  gfx->setCursor(kCx - 12, kCy + 28);
-  gfx->print(gearChar(gear));
-
-  char g_buf[12];
-  snprintf(g_buf, sizeof(g_buf), "%+.2fg", static_cast<float>(longitudinal_accel_mg) / 1000.0f);
-  gfx->setTextColor(dim);
-  gfx->setTextSize(1);
-  gfx->setCursor(kCx - 20, kCy + 74);
-  gfx->print(g_buf);
-
-  const float rpm_norm = constrain(static_cast<float>(rpm) / 7000.0f, 0.0f, 1.0f);
-  const float sweep_end = 200.0f + rpm_norm * 140.0f;
-
-  // Clear full arc area.
-  drawArc(kCx, kCy, 110, 101, 200, 340, bg);
-
-  // Draw neon gradient arc — sweep through arcStart→arcMid→arcHigh→arcEnd.
-  const float arc_span = sweep_end - 200.0f;
-  if (arc_span > 0.5f) {
-    for (float a = 200.0f; a <= sweep_end; a += 0.8f) {
-      float t = (a - 200.0f) / 140.0f;  // 0..1 across full sweep range
-      uint16_t c;
-      if (t < 0.33f) {
-        c = blend565(theme::arcStart(), theme::arcMid(), t / 0.33f);
-      } else if (t < 0.66f) {
-        c = blend565(theme::arcMid(), theme::arcHigh(), (t - 0.33f) / 0.33f);
-      } else {
-        c = blend565(theme::arcHigh(), theme::arcEnd(), (t - 0.66f) / 0.34f);
-      }
-      // Draw a thicker solid fill for neon punch.
+  const float progress = pet.levelProgress();
+  if (progress > 0.005f) {
+    const float fill_end = 270.0f + progress * 360.0f;
+    for (float a = 270.0f; a <= fill_end && a <= 630.0f; a += 0.8f) {
+      float t = (a - 270.0f) / 360.0f;
+      uint16_t c = blend565(theme::arcStart(), theme::arcEnd(), t);
+      c = blend565(c, base, 0.15f + 0.15f * pulse);
       float rad = a * DEG_TO_RAD;
-      float cs = cosf(rad);
-      float sn = sinf(rad);
-      for (int r = 102; r <= 109; ++r) {
+      float cs = cosf(rad), sn = sinf(rad);
+      for (int r = 114; r <= 119; ++r) {
         int x = kCx + static_cast<int>(cs * r);
         int y = kCy + static_cast<int>(sn * r);
         if (x >= 0 && x < kW && y >= 0 && y < kH) {
@@ -542,11 +279,429 @@ void OrbDisplay::drawGearRpm(telemetry::TransmissionGear gear,
       }
     }
   }
+}
 
-  // Dim track for the unfilled portion.
-  if (sweep_end < 340.0f) {
-    drawArc(kCx, kCy, 108, 104, sweep_end, 340, theme::track(drive_mode));
+// ─── Orb Face - the whole display IS the face ─────────────────────────────
+
+void OrbDisplay::drawOrbFace(uint8_t mood, const DrivingDynamics &dyn, uint32_t now_ms) {
+  const uint16_t bg     = blend565(theme::chill::bg(),           theme::sport::bg(),           mode_blend_);
+  const uint16_t accent = blend565(theme::chill::accent(),       theme::sport::accent(),       mode_blend_);
+  const uint16_t strong = blend565(theme::chill::accentStrong(), theme::sport::accentStrong(), mode_blend_);
+
+  // Breathing: subtle vertical drift.
+  const float breath = 0.5f + 0.5f * sinf(breath_phase_);
+  const int b_off = static_cast<int>(breath * 2.0f);
+
+  // G-force lean: face tilts horizontally with lateral acceleration.
+  const int lean_px = static_cast<int>(
+      constrain(static_cast<float>(dyn.accel_mg) / 200.0f, -15.0f, 15.0f));
+
+  // Face anchor slightly above center to leave room for stat bars.
+  const int fx = kCx + lean_px;
+  const int fy = kCy - 5 + b_off;
+
+  const int eye_spacing = 40;
+  const int eye_r       = 18;
+  const int eye_y       = fy - 18;
+  const int lx          = fx - eye_spacing;
+  const int rx          = fx + eye_spacing;
+  const int mouth_y     = fy + 30;
+
+  // Clear interior (inside XP ring).
+  gfx->fillCircle(kCx, kCy, 110, bg);
+
+  // -- Eyes --
+
+  if (mood == 3) {
+    // Happy: squinted - bottom-half circles.
+    gfx->fillCircle(lx, eye_y, eye_r, accent);
+    gfx->fillRect(lx - eye_r - 2, eye_y - eye_r - 1, (eye_r + 2) * 2, eye_r + 1, bg);
+    gfx->fillCircle(rx, eye_y, eye_r, accent);
+    gfx->fillRect(rx - eye_r - 2, eye_y - eye_r - 1, (eye_r + 2) * 2, eye_r + 1, bg);
+
+  } else if (mood == 4) {
+    // Sad: top-half circles + droopy inner brow lines.
+    gfx->fillCircle(lx, eye_y, eye_r, accent);
+    gfx->fillRect(lx - eye_r - 2, eye_y, (eye_r + 2) * 2, eye_r + 2, bg);
+    gfx->fillCircle(rx, eye_y, eye_r, accent);
+    gfx->fillRect(rx - eye_r - 2, eye_y, (eye_r + 2) * 2, eye_r + 2, bg);
+    gfx->drawLine(lx - eye_r + 2, eye_y - eye_r + 4, lx + eye_r - 2, eye_y - eye_r + 9, accent);
+    gfx->drawLine(rx - eye_r + 2, eye_y - eye_r + 9, rx + eye_r - 2, eye_y - eye_r + 4, accent);
+
+  } else if (mood == 5) {
+    // Excited: star/X eyes.
+    gfx->fillCircle(lx, eye_y, eye_r, accent);
+    gfx->fillCircle(rx, eye_y, eye_r, accent);
+    const int d = eye_r - 4;
+    gfx->drawLine(lx - d, eye_y - d, lx + d, eye_y + d, bg);
+    gfx->drawLine(lx + d, eye_y - d, lx - d, eye_y + d, bg);
+    gfx->drawLine(lx - d, eye_y - d + 1, lx + d, eye_y + d + 1, bg);
+    gfx->drawLine(lx + d, eye_y - d + 1, lx - d, eye_y + d + 1, bg);
+    gfx->drawLine(rx - d, eye_y - d, rx + d, eye_y + d, bg);
+    gfx->drawLine(rx + d, eye_y - d, rx - d, eye_y + d, bg);
+    gfx->drawLine(rx - d, eye_y - d + 1, rx + d, eye_y + d + 1, bg);
+    gfx->drawLine(rx + d, eye_y - d + 1, rx - d, eye_y + d + 1, bg);
+
+  } else if (mood == 2) {
+    // Alert: large open eyes with pupils and catchlights.
+    const int alert_r = eye_r + 3;
+    gfx->fillCircle(lx, eye_y, alert_r, accent);
+    gfx->fillCircle(rx, eye_y, alert_r, accent);
+    gfx->fillCircle(lx + 2, eye_y + 2, alert_r - 5, bg);
+    gfx->fillCircle(rx + 2, eye_y + 2, alert_r - 5, bg);
+    gfx->fillCircle(lx - 5, eye_y - 6, 4, strong);
+    gfx->fillCircle(rx - 5, eye_y - 6, 4, strong);
+    if ((now_ms / 300) % 7 == 0) {
+      gfx->fillCircle(lx, eye_y, alert_r, accent);
+      gfx->drawFastHLine(lx - alert_r, eye_y, alert_r * 2, bg);
+      gfx->fillCircle(rx, eye_y, alert_r, accent);
+      gfx->drawFastHLine(rx - alert_r, eye_y, alert_r * 2, bg);
+    }
+
+  } else {
+    // 0 = Neutral, 1 = Warm - plain filled circles.
+    gfx->fillCircle(lx, eye_y, eye_r, accent);
+    gfx->fillCircle(rx, eye_y, eye_r, accent);
+    if (mood == 1) {
+      gfx->fillCircle(lx - 5, eye_y - 6, 4, strong);
+      gfx->fillCircle(rx - 5, eye_y - 6, 4, strong);
+    }
   }
+
+  // -- Cheeks --
+  if (mood == 1 || mood == 3 || mood == 5) {
+    const uint16_t blush =
+        blend565(bg, blend565(accent, theme::chill::moodRing(), 0.3f), 0.28f);
+    gfx->fillCircle(fx - 64, eye_y + 22, 14, blush);
+    gfx->fillCircle(fx + 64, eye_y + 22, 14, blush);
+  }
+
+  // -- Mouth --
+  if (mood == 0) {
+    gfx->drawFastHLine(fx - 22, mouth_y,     44, accent);
+    gfx->drawFastHLine(fx - 22, mouth_y + 1, 44, accent);
+  } else if (mood == 1) {
+    for (int x = -28; x <= 28; ++x) {
+      const int yo = static_cast<int>(12.0f * sinf(static_cast<float>(x + 28) * 3.14159f / 56.0f));
+      gfx->drawPixel(fx + x, mouth_y + yo,     accent);
+      gfx->drawPixel(fx + x, mouth_y + yo + 1, accent);
+    }
+  } else if (mood == 2) {
+    gfx->fillCircle(fx, mouth_y + 8, 14, accent);
+    gfx->fillCircle(fx, mouth_y + 8,  9, bg);
+  } else if (mood == 3 || mood == 5) {
+    for (int x = -36; x <= 36; ++x) {
+      const int yo = static_cast<int>(18.0f * sinf(static_cast<float>(x + 36) * 3.14159f / 72.0f));
+      gfx->drawPixel(fx + x, mouth_y + yo,     accent);
+      gfx->drawPixel(fx + x, mouth_y + yo + 1, accent);
+      gfx->drawPixel(fx + x, mouth_y + yo + 2, accent);
+    }
+  } else if (mood == 4) {
+    for (int x = -28; x <= 28; ++x) {
+      const int yo = static_cast<int>(
+          -12.0f * sinf(static_cast<float>(x + 28) * 3.14159f / 56.0f));
+      gfx->drawPixel(fx + x, mouth_y + 14 + yo, accent);
+      gfx->drawPixel(fx + x, mouth_y + 15 + yo, accent);
+    }
+  }
+}
+
+// ─── Orb Face - sleeping ─────────────────────────────────────────────────────
+
+void OrbDisplay::drawOrbFaceSleeping(uint32_t now_ms) {
+  const uint16_t bg     = blend565(theme::chill::bg(),       theme::sport::bg(),       mode_blend_);
+  const uint16_t accent = blend565(theme::chill::accent(),   theme::sport::accent(),   mode_blend_);
+  const uint16_t dim    = blend565(theme::chill::accentDim(),theme::sport::accentDim(),mode_blend_);
+
+  const float breath = 0.5f + 0.5f * sinf(breath_phase_ * 0.4f);
+  const int b_off = static_cast<int>(breath * 3.0f);
+
+  const int eye_spacing = 40;
+  const int eye_r       = 18;
+  const int eye_y       = kCy - 23 + b_off;
+  const int lx          = kCx - eye_spacing;
+  const int rx          = kCx + eye_spacing;
+
+  gfx->fillCircle(kCx, kCy, 110, bg);
+
+  // Closed eyes: bottom-half circles (relaxed squint).
+  gfx->fillCircle(lx, eye_y, eye_r, accent);
+  gfx->fillRect(lx - eye_r - 2, eye_y - eye_r - 1, (eye_r + 2) * 2, eye_r + 1, bg);
+  gfx->fillCircle(rx, eye_y, eye_r, accent);
+  gfx->fillRect(rx - eye_r - 2, eye_y - eye_r - 1, (eye_r + 2) * 2, eye_r + 1, bg);
+
+  // Resting slight smile.
+  const int mouth_y = kCy + 25 + b_off;
+  for (int x = -20; x <= 20; ++x) {
+    const int yo = static_cast<int>(7.0f * sinf(static_cast<float>(x + 20) * 3.14159f / 40.0f));
+    gfx->drawPixel(kCx + x, mouth_y + yo,     dim);
+    gfx->drawPixel(kCx + x, mouth_y + yo + 1, dim);
+  }
+
+  // Floating Zzz.
+  const float z_drift = sinf(static_cast<float>(now_ms) * 0.0015f) * 5.0f;
+  gfx->setTextColor(dim);
+  gfx->setTextSize(1);
+  gfx->setCursor(kCx + 50, kCy - 36 + static_cast<int>(z_drift));
+  gfx->print("z");
+  gfx->setCursor(kCx + 62, kCy - 50 + static_cast<int>(z_drift * 0.6f));
+  gfx->print("Z");
+  gfx->setCursor(kCx + 72, kCy - 62 + static_cast<int>(z_drift * 0.3f));
+  gfx->print("Z");
+}
+
+// ─── Reaction Overlays ───────────────────────────────────────────────────────
+
+void OrbDisplay::drawReaction(Reaction reaction, uint32_t age_ms, uint32_t now_ms) {
+  const uint16_t accent = blend565(theme::chill::accent(), theme::sport::accent(), mode_blend_);
+  const uint16_t strong = blend565(theme::chill::accentStrong(), theme::sport::accentStrong(), mode_blend_);
+  const uint16_t warn = theme::warning();
+
+  switch (reaction) {
+
+    case Reaction::Startled: {
+      if (age_ms < 300 || (age_ms / 150) % 2 == 0) {
+        drawArc(kCx, kCy, 112, 108, 0, 360, warn);
+      }
+      gfx->setTextColor(warn);
+      gfx->setTextSize(2);
+      gfx->setCursor(kCx - 40, kCy - 50);
+      gfx->print("!");
+      gfx->setCursor(kCx + 30, kCy - 50);
+      gfx->print("!");
+      break;
+    }
+
+    case Reaction::Hearts: {
+      const float phase = static_cast<float>(age_ms) / 1500.0f;
+      for (int i = 0; i < 3; ++i) {
+        float offset = static_cast<float>(i) * 0.33f;
+        float y_rise = (phase + offset);
+        if (y_rise > 1.0f) y_rise -= 1.0f;
+        int hx = kCx - 30 + i * 30 + static_cast<int>(sinf(y_rise * 6.28f) * 8.0f);
+        int hy = kCy + 30 - static_cast<int>(y_rise * 80.0f);
+        if (hy > kCy - 60 && hy < kCy + 40) {
+          gfx->fillCircle(hx - 2, hy, 3, strong);
+          gfx->fillCircle(hx + 2, hy, 3, strong);
+          gfx->fillTriangle(hx - 5, hy + 1, hx + 5, hy + 1, hx, hy + 7, strong);
+        }
+      }
+      break;
+    }
+
+    case Reaction::Stars: {
+      for (int i = 0; i < 4; ++i) {
+        float angle = (static_cast<float>(now_ms) * 0.004f) + i * 1.5708f;
+        int sx = kCx + static_cast<int>(cosf(angle) * 50.0f);
+        int sy = kCy - 10 + static_cast<int>(sinf(angle) * 35.0f);
+        if (sx > 4 && sx < kW - 4 && sy > 4 && sy < kH - 4) {
+          gfx->drawPixel(sx, sy, strong);
+          gfx->drawPixel(sx - 1, sy, accent);
+          gfx->drawPixel(sx + 1, sy, accent);
+          gfx->drawPixel(sx, sy - 1, accent);
+          gfx->drawPixel(sx, sy + 1, accent);
+          gfx->drawPixel(sx - 2, sy, strong);
+          gfx->drawPixel(sx + 2, sy, strong);
+          gfx->drawPixel(sx, sy - 2, strong);
+          gfx->drawPixel(sx, sy + 2, strong);
+        }
+      }
+      break;
+    }
+
+    case Reaction::Sleepy: {
+      const uint16_t dim = blend565(theme::chill::accentDim(), theme::sport::accentDim(), mode_blend_);
+      float drift = sinf(static_cast<float>(now_ms) * 0.002f) * 4.0f;
+      gfx->setTextColor(dim);
+      gfx->setTextSize(1);
+      gfx->setCursor(kCx + 25, kCy - 40 + static_cast<int>(drift));
+      gfx->print("z");
+      gfx->setCursor(kCx + 35, kCy - 52 + static_cast<int>(drift * 0.6f));
+      gfx->print("Z");
+      gfx->setCursor(kCx + 42, kCy - 62 + static_cast<int>(drift * 0.3f));
+      gfx->print("Z");
+      break;
+    }
+
+    case Reaction::Celebrate: {
+      const float phase = static_cast<float>(age_ms) / 2500.0f;
+      for (int i = 0; i < 8; ++i) {
+        float angle = static_cast<float>(i) * 0.7854f + phase * 3.14159f;
+        float radius = phase * 70.0f;
+        int px = kCx + static_cast<int>(cosf(angle) * radius);
+        int py = kCy - 10 + static_cast<int>(sinf(angle) * radius * 0.7f);
+        if (px > 2 && px < kW - 2 && py > 2 && py < kH - 2) {
+          uint16_t c = (i % 2 == 0) ? strong : theme::sport::moodRing();
+          gfx->fillRect(px - 1, py - 1, 3, 3, c);
+        }
+      }
+      if (age_ms < 2000) {
+        gfx->setTextColor(strong);
+        gfx->setTextSize(1);
+        gfx->setCursor(kCx - 20, kCy - 56);
+        gfx->print("LVL UP!");
+      }
+      break;
+    }
+
+    case Reaction::Worried: {
+      int dx = kCx + 30;
+      int dy = kCy - 30 + static_cast<int>(sinf(static_cast<float>(now_ms) * 0.005f) * 3.0f);
+      gfx->fillCircle(dx, dy, 3, theme::chill::accentAlt());
+      gfx->fillTriangle(dx - 2, dy - 2, dx + 2, dy - 2, dx, dy - 7, theme::chill::accentAlt());
+      break;
+    }
+
+    case Reaction::GForce: {
+      // Pet braces — motion lines behind the body in lean direction.
+      const uint16_t dim = blend565(theme::chill::accentDim(), theme::sport::accentDim(), mode_blend_);
+      for (int i = 0; i < 4; ++i) {
+        int lx = kCx - 45 + static_cast<int>(sinf(static_cast<float>(age_ms) * 0.01f + i) * 5.0f);
+        int ly = kCy - 20 + i * 12;
+        gfx->drawFastHLine(lx, ly, 8, dim);
+      }
+      // "G!" indicator.
+      gfx->setTextColor(warn);
+      gfx->setTextSize(1);
+      gfx->setCursor(kCx + 35, kCy - 45);
+      gfx->print("G!");
+      break;
+    }
+
+    case Reaction::GearShift: {
+      // Quick vertical bounce lines (gear shift jolt).
+      for (int i = 0; i < 3; ++i) {
+        int bx = kCx - 20 + i * 20;
+        int len = 6 + (i % 2) * 4;
+        int by = kCy + 40 - static_cast<int>(static_cast<float>(age_ms) * 0.03f);
+        if (by > kCy + 10) {
+          gfx->drawFastVLine(bx, by, len, accent);
+        }
+      }
+      break;
+    }
+
+    case Reaction::SpeedCheer: {
+      // Arms up + speed text flashing.
+      if ((age_ms / 200) % 2 == 0) {
+        gfx->setTextColor(strong);
+        gfx->setTextSize(1);
+        gfx->setCursor(kCx - 14, kCy - 58);
+        gfx->print("WOOO!");
+      }
+      // Sparkle burst.
+      for (int i = 0; i < 6; ++i) {
+        float angle = static_cast<float>(i) * 1.0472f + static_cast<float>(now_ms) * 0.005f;
+        int sx = kCx + static_cast<int>(cosf(angle) * 55.0f);
+        int sy = kCy - 5 + static_cast<int>(sinf(angle) * 40.0f);
+        if (sx > 2 && sx < kW - 2 && sy > 2 && sy < kH - 2) {
+          gfx->fillCircle(sx, sy, 2, strong);
+        }
+      }
+      break;
+    }
+
+    case Reaction::Chilly: {
+      // Shiver lines on both sides + snowflake dots.
+      const uint16_t ice = theme::chill::accentAlt();
+      for (int i = 0; i < 3; ++i) {
+        int shiver = static_cast<int>(sinf(static_cast<float>(now_ms) * 0.02f + i) * 3.0f);
+        gfx->drawFastHLine(kCx - 46 + shiver, kCy - 15 + i * 10, 6, ice);
+        gfx->drawFastHLine(kCx + 40 - shiver, kCy - 15 + i * 10, 6, ice);
+      }
+      // Tiny snowflake dots floating down.
+      for (int i = 0; i < 4; ++i) {
+        int fx = kCx - 35 + i * 22 + static_cast<int>(sinf(static_cast<float>(now_ms) * 0.003f + i) * 5.0f);
+        int fy = kCy - 55 + static_cast<int>((static_cast<float>(age_ms) * 0.04f)) % 80;
+        if (fy > kCy - 60 && fy < kCy + 30) {
+          gfx->drawPixel(fx, fy, ice);
+          gfx->drawPixel(fx - 1, fy, ice);
+          gfx->drawPixel(fx + 1, fy, ice);
+          gfx->drawPixel(fx, fy - 1, ice);
+          gfx->drawPixel(fx, fy + 1, ice);
+        }
+      }
+      gfx->setTextColor(ice);
+      gfx->setTextSize(1);
+      gfx->setCursor(kCx - 10, kCy + 30);
+      gfx->print("brr");
+      break;
+    }
+
+    case Reaction::SmoothStop: {
+      // Thumbs-up sparkle.
+      gfx->setTextColor(strong);
+      gfx->setTextSize(1);
+      if ((age_ms / 250) % 2 == 0) {
+        gfx->setCursor(kCx - 8, kCy - 55);
+        gfx->print("+1");
+      }
+      // Radiating circles.
+      int rad = static_cast<int>(static_cast<float>(age_ms) * 0.04f);
+      if (rad < 50) {
+        gfx->drawCircle(kCx, kCy - 10, rad, accent);
+      }
+      break;
+    }
+
+    case Reaction::Headbang: {
+      // Head bobbing — vertical "music note" symbols rising.
+      for (int i = 0; i < 3; ++i) {
+        float drift = sinf(static_cast<float>(now_ms) * 0.006f + static_cast<float>(i) * 2.0f) * 6.0f;
+        int nx = kCx + 30 + i * 12;
+        int ny = kCy - 35 - static_cast<int>(static_cast<float>(age_ms) * 0.02f) + static_cast<int>(drift);
+        if (ny > kCy - 70 && ny < kCy - 10 && nx < kW - 5) {
+          gfx->fillCircle(nx, ny, 2, accent);
+          gfx->drawFastVLine(nx + 2, ny - 6, 6, accent);
+          gfx->drawPixel(nx + 3, ny - 6, accent);
+        }
+      }
+      break;
+    }
+
+    case Reaction::None:
+      break;
+  }
+}
+
+// ─── Stat Bars ───────────────────────────────────────────────────────────────
+
+void OrbDisplay::drawStatBars(uint8_t happiness, uint8_t energy, PetStage stage) {
+  const uint16_t bg = blend565(theme::chill::bg(), theme::sport::bg(), mode_blend_);
+  const uint16_t accent = blend565(theme::chill::accent(), theme::sport::accent(), mode_blend_);
+  const uint16_t dim = blend565(theme::chill::accentDim(), theme::sport::accentDim(), mode_blend_);
+  const uint16_t warn = theme::warning();
+
+  const int bar_y = kCy + 56;
+  const int bar_w = 50;
+  const int bar_h = 4;
+
+  gfx->fillRect(kCx - 52, bar_y - 4, 104, 30, bg);
+
+  gfx->setTextColor(accent);
+  gfx->setTextSize(1);
+  gfx->setCursor(kCx - 52, bar_y - 2);
+  gfx->print("<3");
+
+  int h_fill = static_cast<int>(happiness / 100.0f * bar_w);
+  gfx->fillRect(kCx - 36, bar_y, bar_w, bar_h, dim);
+  uint16_t h_color = (happiness < 30) ? warn : accent;
+  gfx->fillRect(kCx - 36, bar_y, h_fill, bar_h, h_color);
+
+  gfx->setCursor(kCx - 52, bar_y + 10);
+  gfx->print("zz");
+
+  int e_fill = static_cast<int>(energy / 100.0f * bar_w);
+  gfx->fillRect(kCx - 36, bar_y + 12, bar_w, bar_h, dim);
+  uint16_t e_color = (energy < 20) ? warn : accent;
+  gfx->fillRect(kCx - 36, bar_y + 12, e_fill, bar_h, e_color);
+
+  const char *stage_labels[] = {"EGG", "BABY", "TEEN", "MAX"};
+  uint8_t si = static_cast<uint8_t>(stage);
+  if (si > 3) si = 3;
+  gfx->setTextColor(dim);
+  gfx->setCursor(kCx + 18, bar_y + 4);
+  gfx->print(stage_labels[si]);
 }
 
 }  // namespace orb

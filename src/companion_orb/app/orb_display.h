@@ -3,68 +3,65 @@
 #include <Arduino.h>
 
 #include "shared_data.h"
+#include "pet_state.h"
 
 namespace orb {
 
 class OrbDisplay {
  public:
   void begin(Print &log);
-  void render(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms);
-  // Called from the main loop when no gateway signal is available.
+  void render(const PetState &pet, const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms);
   void renderNoSignal(uint32_t now_ms);
 
  private:
-  void drawFullScene(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms);
-  void drawMoodRing(uint8_t drive_mode, int16_t rpm, uint32_t now_ms);
-  void drawFace(uint8_t drive_mode, uint8_t mood, int16_t rpm, uint32_t now_ms);
-  void drawLowFuelFace(uint8_t drive_mode, uint32_t now_ms);
-  void drawSleepFace(uint8_t drive_mode);
-  void drawCoachingScore(uint8_t score, int16_t longitudinal_accel_mg, uint8_t drive_mode);
-  void drawGearRpm(telemetry::TransmissionGear gear,
-                   int16_t rpm,
-                   int16_t longitudinal_accel_mg,
-                   uint8_t drive_mode);
-  void updateBacklight(uint8_t drive_mode, int16_t speed_kph, uint32_t now_ms);
+  void drawFullScene(const PetState &pet, const telemetry::DashboardTelemetry &t, uint32_t now_ms);
+
+  // XP ring replaces the old mood ring.
+  void drawXpRing(const PetState &pet, uint8_t drive_mode, int16_t rpm, uint32_t now_ms);
+
+  // The orb IS the face — eyes/mouth fill the whole 240×240 display interior.
+  void drawOrbFace(uint8_t mood, const DrivingDynamics &dyn, uint32_t now_ms);
+  void drawOrbFaceSleeping(uint32_t now_ms);
+
+  // Reaction overlays (hearts, stars, startled flash, etc.).
+  void drawReaction(Reaction reaction, uint32_t age_ms, uint32_t now_ms);
+
+  // Stat bars at the bottom.
+  void drawStatBars(uint8_t happiness, uint8_t energy, PetStage stage);
+
+  // Backlight.
+  void updateBacklight(uint8_t drive_mode, const PetState &pet, uint32_t now_ms);
+
+  // Mode transition.
   float modeTransition(uint8_t target_dm, uint32_t now_ms);
 
   Print *log_ = nullptr;
   bool initialized_ = false;
   bool needs_full_redraw_ = true;
 
-  // Cached state for incremental updates.
+  // Cached state.
   uint8_t last_drive_mode_ = 0xFF;
   uint8_t last_mood_ = 0xFF;
-  uint8_t last_gear_ = 0xFF;
   int16_t last_rpm_ = -1;
-  int16_t last_accel_mg_ = 0;
-  uint8_t last_score_ = 0xFF;
-  uint8_t last_fuel_pct_ = 0xFF;
-  bool last_low_fuel_ = false;
+  PetStage last_stage_ = PetStage::Egg;
 
-  // Coaching score.
-  uint8_t coaching_score_ = 80;
-  int16_t prev_speed_ = 0;
-  uint32_t last_score_update_ms_ = 0;
-
-  // Mode transition (smooth fade).
-  float mode_blend_ = 0.0f;       // 0.0 = chill, 1.0 = sport
+  // Mode transition.
+  float mode_blend_ = 0.0f;
   uint8_t target_drive_mode_ = 0;
   uint32_t mode_transition_start_ms_ = 0;
 
   // Breathing animation.
   float breath_phase_ = 0.0f;
 
-  // Sleep detection.
-  uint32_t last_motion_ms_ = 0;
-  bool sleeping_ = false;
-
   // Backlight.
   uint8_t backlight_level_ = 255;
   uint32_t last_backlight_ms_ = 0;
 
-  // No-signal state (display before/after gateway connection).
+  // No-signal.
   bool in_no_signal_ = false;
   uint32_t last_no_signal_render_ms_ = 0;
+  // Rendering throttle to avoid excessive partial updates (ms).
+  uint32_t last_render_ms_ = 0;
 };
 
 }  // namespace orb
