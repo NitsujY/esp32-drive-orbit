@@ -165,12 +165,22 @@ DashboardSnapshot buildDashboardSnapshot(const telemetry::DashboardTelemetry &te
   snprintf(snapshot.subtitle, sizeof(snapshot.subtitle), "%s",
            detail_view ? "Trip detail"
                        : screenTitle(view_state.active_screen));
-  snprintf(snapshot.speed_text, sizeof(snapshot.speed_text), "%d", telemetry.speed_kph);
-  snprintf(snapshot.rpm_text, sizeof(snapshot.rpm_text), "%d", displayed_rpm);
-  snprintf(snapshot.gear_text, sizeof(snapshot.gear_text), "%s", gearLabel(telemetry.gear));
-  snprintf(snapshot.range_text, sizeof(snapshot.range_text), "%u km",
-           telemetry.estimated_range_km);
-  snprintf(snapshot.fuel_text, sizeof(snapshot.fuel_text), "%u%%", telemetry.fuel_level_pct);
+                       
+  if (view_state.obd_connection_state != ObdConnectionState::Live) {
+    snprintf(snapshot.speed_text, sizeof(snapshot.speed_text), "--");
+    snprintf(snapshot.rpm_text, sizeof(snapshot.rpm_text), "--");
+    snprintf(snapshot.gear_text, sizeof(snapshot.gear_text), "--");
+    snprintf(snapshot.range_text, sizeof(snapshot.range_text), "--");
+    snprintf(snapshot.fuel_text, sizeof(snapshot.fuel_text), "--");
+  } else {
+    snprintf(snapshot.speed_text, sizeof(snapshot.speed_text), "%d", telemetry.speed_kph);
+    snprintf(snapshot.rpm_text, sizeof(snapshot.rpm_text), "%d", displayed_rpm);
+    snprintf(snapshot.gear_text, sizeof(snapshot.gear_text), "%s", gearLabel(telemetry.gear));
+    snprintf(snapshot.range_text, sizeof(snapshot.range_text), "%u km",
+             telemetry.estimated_range_km);
+    snprintf(snapshot.fuel_text, sizeof(snapshot.fuel_text), "%u%%", telemetry.fuel_level_pct);
+  }
+
   snprintf(snapshot.clock_text, sizeof(snapshot.clock_text), "%s",
            clock_label != nullptr ? clock_label : "--:--");
 
@@ -212,27 +222,47 @@ DashboardSnapshot buildDashboardSnapshot(const telemetry::DashboardTelemetry &te
   };
 
   char buffer[32];
-  snprintf(buffer, sizeof(buffer), "%d C", telemetry.coolant_temp_c);
-  addRow("Coolant Temp", buffer);
-  snprintf(buffer, sizeof(buffer), "%.1f V", telemetry.battery_mv / 1000.0f);
-  addRow("Battery", buffer);
-  snprintf(buffer, sizeof(buffer), "%u%%", telemetry.fuel_level_pct);
-  addRow("Fuel Level", buffer);
-  snprintf(buffer, sizeof(buffer), "%u km", telemetry.estimated_range_km);
-  addRow("Est. Range", buffer);
-  snprintf(buffer, sizeof(buffer), "%.1f km", view_state.trip.trip_distance_km);
-  addRow("Trip Distance", buffer);
-  if (telemetry.nearest_camera_m == telemetry::kNearestCameraUnknown) {
-    snprintf(buffer, sizeof(buffer), "No data");
-  } else if (telemetry.nearest_camera_m > 1000) {
-    snprintf(buffer, sizeof(buffer), "> 1 km");
+  if (view_state.obd_connection_state != ObdConnectionState::Live) {
+    addRow("Coolant Temp", "--");
+    snprintf(buffer, sizeof(buffer), "%.1f V", telemetry.battery_mv / 1000.0f);
+    addRow("Battery", buffer); // Usually battery voltage is a system value
+    addRow("Fuel Level", "--");
+    addRow("Est. Range", "--");
+    snprintf(buffer, sizeof(buffer), "%.1f km", view_state.trip.trip_distance_km);
+    addRow("Trip Distance", buffer);
+    if (telemetry.nearest_camera_m == telemetry::kNearestCameraUnknown) {
+      snprintf(buffer, sizeof(buffer), "No data");
+    } else if (telemetry.nearest_camera_m > 1000) {
+      snprintf(buffer, sizeof(buffer), "> 1 km");
+    } else {
+      snprintf(buffer, sizeof(buffer), "%u m", telemetry.nearest_camera_m);
+    }
+    addRow("Nearest Cam", buffer);
+    addRow("WiFi", telemetry.wifi_connected ? "Connected" : "Offline");
+    addRow("Gear", "--");
   } else {
-    snprintf(buffer, sizeof(buffer), "%u m", telemetry.nearest_camera_m);
+    snprintf(buffer, sizeof(buffer), "%d C", telemetry.coolant_temp_c);
+    addRow("Coolant Temp", buffer);
+    snprintf(buffer, sizeof(buffer), "%.1f V", telemetry.battery_mv / 1000.0f);
+    addRow("Battery", buffer);
+    snprintf(buffer, sizeof(buffer), "%u%%", telemetry.fuel_level_pct);
+    addRow("Fuel Level", buffer);
+    snprintf(buffer, sizeof(buffer), "%u km", telemetry.estimated_range_km);
+    addRow("Est. Range", buffer);
+    snprintf(buffer, sizeof(buffer), "%.1f km", view_state.trip.trip_distance_km);
+    addRow("Trip Distance", buffer);
+    if (telemetry.nearest_camera_m == telemetry::kNearestCameraUnknown) {
+      snprintf(buffer, sizeof(buffer), "No data");
+    } else if (telemetry.nearest_camera_m > 1000) {
+      snprintf(buffer, sizeof(buffer), "> 1 km");
+    } else {
+      snprintf(buffer, sizeof(buffer), "%u m", telemetry.nearest_camera_m);
+    }
+    addRow("Nearest Cam", buffer);
+    addRow("WiFi", telemetry.wifi_connected ? "Connected" : "Offline");
+    snprintf(buffer, sizeof(buffer), "%s", snapshot.gear_text);
+    addRow("Gear", buffer);
   }
-  addRow("Nearest Cam", buffer);
-  addRow("WiFi", telemetry.wifi_connected ? "Connected" : "Offline");
-  snprintf(buffer, sizeof(buffer), "%s", snapshot.gear_text);
-  addRow("Gear", buffer);
 
   return snapshot;
 }
