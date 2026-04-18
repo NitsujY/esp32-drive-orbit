@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <style>
+    body{margin:0;background:#0c1116;color:#86e6ff;font-family:'Courier New',monospace;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;}
+    .wrap{position:relative;width:240px;height:240px;background:#07101a;border-radius:120px;overflow:hidden;box-shadow:inset 0 0 40px rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;}
+    canvas{position:absolute;top:0;left:0;z-index:1;}
+    .ui{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="c" width="240" height="240"></canvas>
+    <div class="ui" id="ui"></div>
+  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const c = parseInt(params.get('c') || '2');
+    const ctx = document.getElementById('c').getContext('2d');
+    const ui = document.getElementById('ui');
+    let frame = 0;
+    const CX=120, CY=120;
+
+    function drawPet(scale=1, yo=0, color='#49c7ff', bg='#071826') {
+      ctx.save();
+      ctx.translate(CX, CY); ctx.scale(scale, scale); ctx.translate(-CX, -CY+yo);
+      if(bg && bg!=='transparent'){ ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(CX, CY, 105, 0, 7); ctx.fill(); }
+      const ey = CY - 20 + Math.sin(frame*0.05)*2;
+      ctx.fillStyle=color;
+      ctx.beginPath(); ctx.arc(CX-38, ey, 5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(CX+38, ey, 5, 0, 7); ctx.fill();
+      ctx.fillRect(CX-20, CY+28+Math.sin(frame*0.05)*2, 40, 3);
+      ctx.restore();
+    }
+
+    function setup() {
+       if(c===2) {
+          ui.innerHTML = '<div style="position:absolute;top:10px;width:100%;text-align:center;font-size:26px;font-weight:bold;color:#49c7ff;text-shadow:0 2px 4px #000">118 <span style="font-size:10px">km/h</span></div><div style="position:absolute;bottom:14px;width:100%;text-align:center;font-size:18px;color:#86e6ff;text-shadow:0 2px 4px #000">4200 <span style="font-size:8px">rpm</span></div>';
+       } else if(c===3) {
+          document.querySelector('.wrap').style.background = '#071826';
+          ui.innerHTML = '<div style="position:absolute;top:20px;width:100%;text-align:center;font-size:110px;font-weight:900;color:rgba(255,255,255,0.06);line-height:0.85;z-index:0">118<br><span style="font-size:40px">4200</span></div>';
+       } else if(c===4) {
+          ui.innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:210px;height:210px;border:1px solid rgba(125,249,198,0.2);border-radius:105px;"></div><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:130px;height:130px;border:1px dashed rgba(125,249,198,0.4);border-radius:65px;"></div><div style="position:absolute;top:44%;left:16px;font-size:16px;color:#7df9c6;text-shadow:0 0 4px #7df9c6">118</div><div style="position:absolute;top:44%;right:16px;font-size:14px;color:#ff7eb3;text-shadow:0 0 4px #ff7eb3">4.2k</div>';
+       } else if(c===5) {
+          ui.innerHTML = '<div style="position:absolute;top:40px;width:100%;text-align:center;font-size:85px;font-weight:bold;color:#fff;text-shadow:0 4px 10px #000">118</div><div style="position:absolute;top:130px;width:100%;text-align:center;font-size:16px;color:#49c7ff;">4200 RPM</div>';
+       } else if(c===7) {
+          ui.innerHTML = '<div style="position:absolute;top:30px;left:30px;width:180px;height:180px;border:2px solid rgba(73,199,255,0.3);border-radius:12px;"></div><div style="position:absolute;top:10px;width:100%;text-align:center;font-size:12px;color:#49c7ff;letter-spacing:2px">118 KM/H</div><div style="position:absolute;bottom:10px;width:100%;text-align:center;font-size:12px;color:#86e6ff;letter-spacing:2px">4200 RPM</div>';
+       } else if(c===8) {
+          ui.innerHTML = '<div id="g" style="position:absolute;top:35%;width:100%;text-align:center;font-size:60px;font-weight:bold;color:#eef6ff;text-shadow:3px 0 0 #ff003c, -3px 0 0 #00f0ff;mix-blend-mode:screen;opacity:0.85">118</div>';
+       } else if(c===9) {
+          ui.innerHTML = '<div style="position:absolute;bottom:0;width:100%;height:70px;background:rgba(0,0,0,0.85);border-top:1px solid #49c7ff;display:flex;justify-content:center;align-items:center;gap:20px;box-shadow:0 -5px 15px rgba(0,0,0,0.5);"><div style="color:#fff;font-size:26px">118<span style="font-size:10px;color:#49c7ff">kmh</span></div><div style="color:#fff;font-size:20px">4.2<span style="font-size:10px;color:#86e6ff">rpm</span></div></div>';
+       }
+    }
+
+    function draw() {
+       ctx.clearRect(0,0,240,240);
+       if(c===2 || c===4 || c===7 || c===9) { 
+           drawPet(); 
+       } else if(c===3) { 
+           drawPet(1,0,'#49c7ff','transparent'); 
+       } else if(c===5) { 
+           drawPet(0.4, 160); 
+       } else if(c===6) { 
+           drawPet();
+           ctx.lineWidth=12; ctx.lineCap='round';
+           ctx.strokeStyle='#49c7ff'; ctx.beginPath(); ctx.arc(CX,CY,108, Math.PI, Math.PI+Math.PI*0.85); ctx.stroke();
+           ctx.strokeStyle='#ff7eb3'; ctx.beginPath(); ctx.arc(CX,CY,108, 0, Math.PI*0.5); ctx.stroke();
+       } else if(c===8) { 
+           drawPet(); 
+           if(Math.random()<0.15) { ctx.clearRect(0,0,240,240); ctx.save(); ctx.translate((Math.random()-0.5)*16, (Math.random()-0.5)*16); drawPet(); ctx.restore(); }
+           if(Math.random()<0.1 && document.getElementById('g')) { document.getElementById('g').style.transform = `translate(${(Math.random()-0.5)*10}px, ${(Math.random()-0.5)*10}px)`; }
+       } else if(c===10) { 
+           let glow = 0.2+0.2*Math.sin(frame*0.05);
+           let r = Math.floor(11 + (150*glow));
+           let g = Math.floor(24 + (50*glow));
+           let b = Math.floor(38 + (20*glow));
+           drawPet(1, 0, '#49c7ff', `rgb(${r},${g},${b})`); 
+       }
+    }
+    setup();
+    setInterval(()=>{ frame++; ctx.save(); draw(); ctx.restore(); }, 33);
+  </script>
+</body>
+</html>

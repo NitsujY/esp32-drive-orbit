@@ -26,14 +26,25 @@ inline bool beginTransport() {
   return true;
 }
 
+// Initialise ESP-NOW without altering the Wi-Fi mode or connection.
+// Use this on devices (e.g. the headless gateway) that manage their own
+// Wi-Fi stack and must not disconnect to initialise the transport.
+// Returns true on success.
+inline bool beginGatewayTransport() {
+  if (esp_now_init() != ESP_OK) {
+    return false;
+  }
+
+  return true;
+}
+
 // Register the broadcast peer so esp_now_send can target it.
+// channel=0 means "follow the current radio channel", which is correct whether
+// Wi-Fi is associated to an AP or in standalone mode.
 inline bool addBroadcastPeer() {
   esp_now_peer_info_t peer{};
   memcpy(peer.peer_addr, kBroadcastAddress, 6);
-  // Use the current home channel when Wi-Fi is connected; otherwise fall back
-  // to the default ESP-NOW review channel for standalone operation.
-  const uint8_t current_channel = static_cast<uint8_t>(WiFi.channel());
-  peer.channel = current_channel == 0 ? kFallbackChannel : 0;
+  peer.channel = 0;  // Follow the current radio / AP channel.
   peer.encrypt = false;
 
   return esp_now_add_peer(&peer) == ESP_OK;

@@ -60,15 +60,22 @@ uint16_t blend565(uint16_t a, uint16_t b, float t) {
 
 void OrbDisplay::begin(Print &log) {
   log_ = &log;
-  bus = new Arduino_ESP32SPI(kPinDc, kPinCs, kPinSclk, kPinMosi, -1);
-  gfx = new Arduino_GC9A01(bus, kPinRst, 0, true);
-  gfx->begin();
-  gfx->fillScreen(BLACK);
+
   pinMode(kPinBl, OUTPUT);
   analogWrite(kPinBl, 255);
+
+  bus = new Arduino_ESP32SPI(kPinDc, kPinCs, kPinSclk, kPinMosi, -1);
+  gfx = new Arduino_GC9A01(bus, kPinRst, 0, true);
+  gfx->begin();  // Do not check return — can return false even when hw is fine.
+
+  // Simple bring-up: fill screen blue-teal so we can confirm display is alive.
+  gfx->fillScreen(theme::chill::moodRing());
+  delay(400);
+  gfx->fillScreen(BLACK);
+
   initialized_ = true;
   needs_full_redraw_ = true;
-  log_->println("[DISP] GC9A01 240x240 tamagotchi orb ready");
+  log_->println("[DISP] GC9A01 ready");
 }
 
 float OrbDisplay::modeTransition(uint8_t target_dm, uint32_t now_ms) {
@@ -113,13 +120,11 @@ void OrbDisplay::updateBacklight(uint8_t drive_mode, const PetState &pet, uint32
 
 void OrbDisplay::renderNoSignal(uint32_t now_ms) {
   if (!initialized_) return;
-  if (now_ms - last_no_signal_render_ms_ < 33) return;
+  // 100 ms — animation is slow (breath ~2 s, Zzz drift ~4 s); no need for 30 fps.
+  if (now_ms - last_no_signal_render_ms_ < 100) return;
   last_no_signal_render_ms_ = now_ms;
 
   const uint16_t bg = theme::chill::bg();
-
-  // Batch display writes to reduce visible partial updates.
-  if (gfx) gfx->startWrite();
 
   if (!in_no_signal_) {
     gfx->fillScreen(bg);
@@ -130,26 +135,27 @@ void OrbDisplay::renderNoSignal(uint32_t now_ms) {
   if (breath_phase_ > 6.2832f) breath_phase_ -= 6.2832f;
 
   const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(now_ms) * 0.0008f);
-  const uint16_t ring_color = blend565(bg, theme::chill::moodRing(), 0.1f + 0.25f * pulse);
+
+  // Ring — 60–100% of full moodRing colour, clearly visible.
+  const uint16_t ring_color = blend565(bg, theme::chill::moodRing(), 0.6f + 0.4f * pulse);
   drawArc(kCx, kCy, 119, 114, 0, 360, ring_color);
 
   drawOrbFaceSleeping(now_ms);
 
-  gfx->fillRect(kCx - 30, kCy + 40, 60, 16, bg);
-  gfx->setTextColor(theme::chill::accentDim());
-  gfx->setTextSize(1);
-  gfx->setCursor(kCx - 24, kCy + 42);
-  gfx->print("WAITING");
+  // "NO SIG" label.
+  gfx->fillRect(kCx - 42, kCy + 42, 84, 20, bg);
+  gfx->setTextColor(theme::chill::accent());
+  gfx->setTextSize(2);
+  gfx->setCursor(kCx - 36, kCy + 44);
+  gfx->print("NO SIG");
 
-  const uint8_t bl_target = 50 + static_cast<uint8_t>(30.0f * pulse);
-  if (backlight_level_ != bl_target) {
-    backlight_level_ = bl_target;
+  // Backlight fully lit.
+  if (backlight_level_ != 200) {
+    backlight_level_ = 200;
     analogWrite(kPinBl, backlight_level_);
   }
 
   needs_full_redraw_ = true;
-
-  if (gfx) gfx->endWrite();
 }
 
 // ─── Main render ─────────────────────────────────────────────────────────────
@@ -179,9 +185,7 @@ void OrbDisplay::render(const PetState &pet, const telemetry::DashboardTelemetry
   }
 
   if (needs_full_redraw_) {
-    if (gfx) gfx->startWrite();
     drawFullScene(pet, t, now_ms);
-    if (gfx) gfx->endWrite();
     last_drive_mode_ = dm;
     last_mood_ = mood;
     last_rpm_ = t.rpm;
@@ -190,8 +194,7 @@ void OrbDisplay::render(const PetState &pet, const telemetry::DashboardTelemetry
     return;
   }
 
-  // Incremental updates (batched to reduce SPI transaction choppiness).
-  if (gfx) gfx->startWrite();
+  // Incremental updates.
   drawXpRing(pet, dm, t.rpm, now_ms);
 
   if (pet.isSleeping()) {
@@ -212,7 +215,6 @@ void OrbDisplay::render(const PetState &pet, const telemetry::DashboardTelemetry
   }
 
   drawStatBars(pet.happiness(), pet.energy(), stage);
-  if (gfx) gfx->endWrite();
 
   last_mood_ = mood;
   last_rpm_ = t.rpm;
@@ -301,70 +303,66 @@ void OrbDisplay::drawOrbFace(uint8_t mood, const DrivingDynamics &dyn, uint32_t 
   const int fy = kCy - 5 + b_off;
 
   const int eye_spacing = 40;
-  const int eye_r       = 18;
+  const int eye_r       = 5;    // small dot
   const int eye_y       = fy - 18;
   const int lx          = fx - eye_spacing;
   const int rx          = fx + eye_spacing;
   const int mouth_y     = fy + 30;
 
-  // Clear interior (inside XP ring).
-  gfx->fillCircle(kCx, kCy, 110, bg);
+  // Clear only the face interior zones that change, not the whole circle.
+  // Eyes strip (covers b_off travel + dot height + lean + margin).
+  gfx->fillRect(kCx - 100, eye_y - 15, 200, 30, bg);
+  // Cheek strip.
+  gfx->fillRect(kCx - 90, eye_y + 8, 180, 30, bg);
+  // Mouth strip.
+  gfx->fillRect(kCx - 50, mouth_y - 4, 100, 28, bg);
 
-  // -- Eyes --
+  // -- Eyes (small dots for all moods) --
 
   if (mood == 3) {
-    // Happy: squinted - bottom-half circles.
-    gfx->fillCircle(lx, eye_y, eye_r, accent);
-    gfx->fillRect(lx - eye_r - 2, eye_y - eye_r - 1, (eye_r + 2) * 2, eye_r + 1, bg);
-    gfx->fillCircle(rx, eye_y, eye_r, accent);
-    gfx->fillRect(rx - eye_r - 2, eye_y - eye_r - 1, (eye_r + 2) * 2, eye_r + 1, bg);
+    // Happy: squinted — thin horizontal lines.
+    gfx->fillRect(lx - eye_r - 2, eye_y - 1, (eye_r + 2) * 2, 3, accent);
+    gfx->fillRect(rx - eye_r - 2, eye_y - 1, (eye_r + 2) * 2, 3, accent);
 
   } else if (mood == 4) {
-    // Sad: top-half circles + droopy inner brow lines.
+    // Sad: small dots + droopy angled brows above.
     gfx->fillCircle(lx, eye_y, eye_r, accent);
-    gfx->fillRect(lx - eye_r - 2, eye_y, (eye_r + 2) * 2, eye_r + 2, bg);
     gfx->fillCircle(rx, eye_y, eye_r, accent);
-    gfx->fillRect(rx - eye_r - 2, eye_y, (eye_r + 2) * 2, eye_r + 2, bg);
-    gfx->drawLine(lx - eye_r + 2, eye_y - eye_r + 4, lx + eye_r - 2, eye_y - eye_r + 9, accent);
-    gfx->drawLine(rx - eye_r + 2, eye_y - eye_r + 9, rx + eye_r - 2, eye_y - eye_r + 4, accent);
+    gfx->drawLine(lx - 10, eye_y - 12, lx + 10, eye_y - 8,  accent);
+    gfx->drawLine(rx - 10, eye_y - 8,  rx + 10, eye_y - 12, accent);
 
   } else if (mood == 5) {
-    // Excited: star/X eyes.
+    // Excited: small dots with X cross.
     gfx->fillCircle(lx, eye_y, eye_r, accent);
     gfx->fillCircle(rx, eye_y, eye_r, accent);
-    const int d = eye_r - 4;
+    const int d = eye_r - 1;
     gfx->drawLine(lx - d, eye_y - d, lx + d, eye_y + d, bg);
     gfx->drawLine(lx + d, eye_y - d, lx - d, eye_y + d, bg);
-    gfx->drawLine(lx - d, eye_y - d + 1, lx + d, eye_y + d + 1, bg);
-    gfx->drawLine(lx + d, eye_y - d + 1, lx - d, eye_y + d + 1, bg);
     gfx->drawLine(rx - d, eye_y - d, rx + d, eye_y + d, bg);
     gfx->drawLine(rx + d, eye_y - d, rx - d, eye_y + d, bg);
-    gfx->drawLine(rx - d, eye_y - d + 1, rx + d, eye_y + d + 1, bg);
-    gfx->drawLine(rx + d, eye_y - d + 1, rx - d, eye_y + d + 1, bg);
 
   } else if (mood == 2) {
-    // Alert: large open eyes with pupils and catchlights.
-    const int alert_r = eye_r + 3;
+    // Alert: slightly larger dots with catchlights; periodic blink.
+    const int alert_r = eye_r + 2;
     gfx->fillCircle(lx, eye_y, alert_r, accent);
     gfx->fillCircle(rx, eye_y, alert_r, accent);
-    gfx->fillCircle(lx + 2, eye_y + 2, alert_r - 5, bg);
-    gfx->fillCircle(rx + 2, eye_y + 2, alert_r - 5, bg);
-    gfx->fillCircle(lx - 5, eye_y - 6, 4, strong);
-    gfx->fillCircle(rx - 5, eye_y - 6, 4, strong);
+    gfx->fillCircle(lx - 2, eye_y - 2, 2, strong);
+    gfx->fillCircle(rx - 2, eye_y - 2, 2, strong);
     if ((now_ms / 300) % 7 == 0) {
-      gfx->fillCircle(lx, eye_y, alert_r, accent);
-      gfx->drawFastHLine(lx - alert_r, eye_y, alert_r * 2, bg);
-      gfx->fillCircle(rx, eye_y, alert_r, accent);
-      gfx->drawFastHLine(rx - alert_r, eye_y, alert_r * 2, bg);
+      // Blink: replace dots with thin lines.
+      gfx->fillCircle(lx, eye_y, alert_r, bg);
+      gfx->fillCircle(rx, eye_y, alert_r, bg);
+      gfx->drawFastHLine(lx - alert_r, eye_y, alert_r * 2, accent);
+      gfx->drawFastHLine(rx - alert_r, eye_y, alert_r * 2, accent);
     }
 
   } else {
-    // 0 = Neutral, 1 = Warm - plain filled circles.
+    // 0 = Neutral, 1 = Warm — small plain dots.
     gfx->fillCircle(lx, eye_y, eye_r, accent);
     gfx->fillCircle(rx, eye_y, eye_r, accent);
     if (mood == 1) {
-      gfx->fillCircle(lx - 5, eye_y - 6, 4, strong);
-      gfx->fillCircle(rx - 5, eye_y - 6, 4, strong);
+      gfx->fillCircle(lx - 2, eye_y - 2, 2, strong);
+      gfx->fillCircle(rx - 2, eye_y - 2, 2, strong);
     }
   }
 
@@ -411,42 +409,48 @@ void OrbDisplay::drawOrbFace(uint8_t mood, const DrivingDynamics &dyn, uint32_t 
 void OrbDisplay::drawOrbFaceSleeping(uint32_t now_ms) {
   const uint16_t bg     = blend565(theme::chill::bg(),       theme::sport::bg(),       mode_blend_);
   const uint16_t accent = blend565(theme::chill::accent(),   theme::sport::accent(),   mode_blend_);
-  const uint16_t dim    = blend565(theme::chill::accentDim(),theme::sport::accentDim(),mode_blend_);
 
   const float breath = 0.5f + 0.5f * sinf(breath_phase_ * 0.4f);
   const int b_off = static_cast<int>(breath * 3.0f);
 
   const int eye_spacing = 40;
-  const int eye_r       = 18;
-  const int eye_y       = kCy - 23 + b_off;
-  const int lx          = kCx - eye_spacing;
-  const int rx          = kCx + eye_spacing;
+  const int lx = kCx - eye_spacing;
+  const int rx = kCx + eye_spacing;
 
-  gfx->fillCircle(kCx, kCy, 110, bg);
+  // NO full-circle erase — that causes the flicker.
+  // Clear only the tight strip around each animated element.
 
-  // Closed eyes: bottom-half circles (relaxed squint).
-  gfx->fillCircle(lx, eye_y, eye_r, accent);
-  gfx->fillRect(lx - eye_r - 2, eye_y - eye_r - 1, (eye_r + 2) * 2, eye_r + 1, bg);
-  gfx->fillCircle(rx, eye_y, eye_r, accent);
-  gfx->fillRect(rx - eye_r - 2, eye_y - eye_r - 1, (eye_r + 2) * 2, eye_r + 1, bg);
+  // Eyes: b_off travels 0–3 px. Cover the full travel range + element height (5px) + margin.
+  // Strip height = margin(2) + travel(3) + eye_height(5) + margin(2) = 12 px.
+  const int eye_strip_top = kCy - 27;  // kCy - 23 (base) - 2 (margin) - 3 (max b_off) - 1
+  gfx->fillRect(lx - 18, eye_strip_top, 36, 12, bg);
+  gfx->fillRect(rx - 18, eye_strip_top, 36, 12, bg);
+  const int eye_y = kCy - 23 + b_off;
+  gfx->fillRect(lx - 16, eye_y - 2, 32, 5, accent);
+  gfx->fillRect(rx - 16, eye_y - 2, 32, 5, accent);
 
-  // Resting slight smile.
+  // Mouth: clears a strip covering full travel (3 px) + sine height (8 px) + margins.
+  const int mouth_strip_top = kCy + 22;
+  gfx->fillRect(kCx - 22, mouth_strip_top, 44, 18, bg);
   const int mouth_y = kCy + 25 + b_off;
   for (int x = -20; x <= 20; ++x) {
     const int yo = static_cast<int>(7.0f * sinf(static_cast<float>(x + 20) * 3.14159f / 40.0f));
-    gfx->drawPixel(kCx + x, mouth_y + yo,     dim);
-    gfx->drawPixel(kCx + x, mouth_y + yo + 1, dim);
+    gfx->drawPixel(kCx + x, mouth_y + yo,     accent);
+    gfx->drawPixel(kCx + x, mouth_y + yo + 1, accent);
+    gfx->drawPixel(kCx + x, mouth_y + yo + 2, accent);
   }
 
-  // Floating Zzz.
-  const float z_drift = sinf(static_cast<float>(now_ms) * 0.0015f) * 5.0f;
-  gfx->setTextColor(dim);
-  gfx->setTextSize(1);
-  gfx->setCursor(kCx + 50, kCy - 36 + static_cast<int>(z_drift));
+  // Zzz: shifted inward so clear rect stays inside r=114 (ring inner boundary).
+  // Clear rect x:138→182, y:40→98 — all corners < r=100 from center. Safe.
+  const float z_drift = sinf(static_cast<float>(now_ms) * 0.0015f) * 4.0f;
+  gfx->fillRect(kCx + 18, kCy - 80, 46, 58, bg);
+  gfx->setTextColor(accent);
+  gfx->setTextSize(2);
+  gfx->setCursor(kCx + 20, kCy - 32 + static_cast<int>(z_drift));
   gfx->print("z");
-  gfx->setCursor(kCx + 62, kCy - 50 + static_cast<int>(z_drift * 0.6f));
+  gfx->setCursor(kCx + 32, kCy - 52 + static_cast<int>(z_drift * 0.6f));
   gfx->print("Z");
-  gfx->setCursor(kCx + 72, kCy - 62 + static_cast<int>(z_drift * 0.3f));
+  gfx->setCursor(kCx + 42, kCy - 70 + static_cast<int>(z_drift * 0.3f));
   gfx->print("Z");
 }
 

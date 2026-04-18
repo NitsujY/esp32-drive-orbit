@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Drive Orbit — Orb Concepts</title>
+<style>
+:root{--bg-0:#04080e;--bg-1:#0a1420;--bg-2:#122234;--text:#eef6ff;--muted:#7a99ad;--line:rgba(140,210,255,.14);--accent:#7df9c6;--accent-2:#ff7eb3}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:'Avenir Next','Segoe UI',sans-serif;color:var(--text);background:radial-gradient(circle at 20% 8%,rgba(125,249,198,.1),transparent 28%),radial-gradient(circle at 80% 12%,rgba(255,126,179,.08),transparent 26%),linear-gradient(170deg,var(--bg-0),var(--bg-1) 40%,var(--bg-2));padding:36px 20px 56px}
+main{max-width:1200px;margin:0 auto}
+.topline{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.back-link{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);color:inherit;text-decoration:none;font-size:13px;background:rgba(255,255,255,.03);transition:border-color .2s,transform .2s}
+.back-link:hover{border-color:rgba(125,249,198,.4);transform:translateY(-1px)}
+.eyebrow{letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-size:11px}
+h1{font-size:clamp(32px,6vw,60px);line-height:.95;margin:8px 0 14px;max-width:800px}
+.subtitle{max-width:680px;color:var(--muted);font-size:16px;line-height:1.55;margin-bottom:32px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+a.card{display:block;border:1px solid var(--line);border-radius:20px;overflow:hidden;color:inherit;text-decoration:none;background:rgba(6,12,20,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:transform .2s,border-color .2s,box-shadow .2s}
+a.card:hover{transform:translateY(-4px);border-color:rgba(125,249,198,.4);box-shadow:0 16px 48px rgba(0,0,0,.3)}
+.card-preview{height:160px;background:#0a0a0a;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.card-preview iframe{width:240px;height:240px;border:none;transform:scale(.6);transform-origin:center center;pointer-events:none;border-radius:0}
+.card-body{padding:16px 18px 18px}
+.card-num{display:inline-block;width:28px;height:28px;border-radius:50%;background:rgba(125,249,198,.12);color:var(--accent);font-size:12px;font-weight:700;line-height:28px;text-align:center;margin-bottom:8px}
+.card-title{font-size:20px;font-weight:600;margin:0 0 6px}
+.card-desc{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid rgba(255,255,255,.06)}
+</style>
+</head>
+<body>
+<main>
+  <div class="topline">
+    <a class="back-link" href="../">&larr; Preview Hub</a>
+  </div>
+  <div class="eyebrow">Round Display UX</div>
+  <h1>10 Orb Circular Concepts</h1>
+  <p class="subtitle">Embracing the circular edge boundary. Exploring a <strong>pure data/gauge</strong> approach centered around a prominent speed readout, removing the companion face concept.</p>
+  <div class="grid">
+    
+    <a class="card" href="./01-minimalist-rings.html">
+      <div class="card-preview"><iframe src="./01-minimalist-rings.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">1</span>
+        <h2 class="card-title">Minimalist Rings (Default)</h2>
+        <p class="card-desc">Beautiful ultra-thin bar gauges replace UI boxes. Text overlapping fixed by moving metrics further outward.</p>
+        <div class="card-tags"><span class='tag'>Abstract</span><span class='tag'>Arcs</span><span class='tag'>Data</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./02-glitch-ui.html">
+      <div class="card-preview"><iframe src="./02-glitch-ui.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">2</span>
+        <h2 class="card-title">Glitch UI</h2>
+        <p class="card-desc">All telemetry stutters. Boost and Load are harsh red visual blocks glitching in the background.</p>
+        <div class="card-tags"><span class='tag'>Aggressive</span><span class='tag'>Reactive</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./03-segmented-dash.html">
+      <div class="card-preview"><iframe src="./03-segmented-dash.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">3</span>
+        <h2 class="card-title">Segmented Dash</h2>
+        <p class="card-desc">Multi-track segmented LCD blocks.</p>
+        <div class="card-tags"><span class='tag'>Retro</span><span class='tag'>Digital</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./04-orbiting-satellites.html">
+      <div class="card-preview"><iframe src="./04-orbiting-satellites.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">4</span>
+        <h2 class="card-title">Orbiting Satellites</h2>
+        <p class="card-desc">4 satellites orbit the edge. Their sizes and speeds correlate to Gas, Load, Boost, and RPM.</p>
+        <div class="card-tags"><span class='tag'>Kinetic</span><span class='tag'>Dots</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./05-wave-perimeter.html">
+      <div class="card-preview"><iframe src="./05-wave-perimeter.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">5</span>
+        <h2 class="card-title">Wave Perimeter</h2>
+        <p class="card-desc">Amplitude of the boundary wave reacts to Engine Load and Boost natively.</p>
+        <div class="card-tags"><span class='tag'>Fluid</span><span class='tag'>Audio</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./06-concentric-progress.html">
+      <div class="card-preview"><iframe src="./06-concentric-progress.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">6</span>
+        <h2 class="card-title">Concentric Progress</h2>
+        <p class="card-desc">4 incredibly precise, ultra-thin nested arcs replacing traditional gauges.</p>
+        <div class="card-tags"><span class='tag'>Clean</span><span class='tag'>Data</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./07-compass-ticks.html">
+      <div class="card-preview"><iframe src="./07-compass-ticks.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">7</span>
+        <h2 class="card-title">Compass Ticks</h2>
+        <p class="card-desc">Compass ticks illuminate dynamically mapping telemetry directly onto the compass headings.</p>
+        <div class="card-tags"><span class='tag'>Tactical</span><span class='tag'>Minimal</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./08-gear-teeth.html">
+      <div class="card-preview"><iframe src="./08-gear-teeth.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">8</span>
+        <h2 class="card-title">Gear Teeth</h2>
+        <p class="card-desc">Gear thickness and opacity fills up based on Load and Boost. Mechanical and grounded.</p>
+        <div class="card-tags"><span class='tag'>Mechanical</span><span class='tag'>Industrial</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./09-dotted-arc.html">
+      <div class="card-preview"><iframe src="./09-dotted-arc.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">9</span>
+        <h2 class="card-title">Dotted Arc</h2>
+        <p class="card-desc">Dual sequences of dots. Outer ring is RPM/Boost, Inner ring is Gas/Trip.</p>
+        <div class="card-tags"><span class='tag'>Sequential</span><span class='tag'>LED</span></div>
+      </div>
+    </a>
+    
+    <a class="card" href="./10-edge-particles.html">
+      <div class="card-preview"><iframe src="./10-edge-particles.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="card-body">
+        <span class="card-num">10</span>
+        <h2 class="card-title">Edge Particles</h2>
+        <p class="card-desc">Particle density and speed scales linearly with Engine Load and Turbo Boost.</p>
+        <div class="card-tags"><span class='tag'>VFX</span><span class='tag'>Spark</span></div>
+      </div>
+    </a>
+    
+  </div>
+</main>
+</body>
+</html>

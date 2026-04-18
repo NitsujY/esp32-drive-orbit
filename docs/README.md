@@ -32,22 +32,17 @@ This repository uses a lightweight spec-driven development structure.
 - Stage 4: interaction validation complete
 - Stage 5: implementation active
 
-## Device Architecture
+## Device Architecture (Refactored)
 
-| Device | Role | Display |
-| ------ | ---- | ------- |
-| iPhone 15 (Capacitor iOS app) | Primary dashboard UI | 852 × 393 CSS pts landscape |
-| ESP32 `dash_35` | Headless telemetry gateway | No local rendering |
-| ESP32-C3 `companion_orb` | Ambient companion display | 240 × 240 round (deferred) |
+| Device | Role | Connection |
+| ------ | ---- | ---------- |
+| ESP32-C3 `companion_orb` | **Primary in-car display** (OBD2 only) | Direct UART → ELM327 OBD2 |
+| iPhone 15 (optional) | Secondary dashboard / data logging | *Decoupled, not used in orb-only mode* |
+| ESP32 `dash_35` | Deprecated (reference only) | N/A |
 
-The **iPhone** is the dashboard. The **ESP32** is a headless gateway that polls OBD2, connects to the iPhone hotspot, and broadcasts telemetry via WebSocket. All UI rendering happens on the phone.
+The **Orb is now standalone**: it connects directly to the OBD2 adapter via UART, displays speed/RPM with tamagotchi UI, and needs no external relay. This eliminates the complexity of WiFi + ESP-NOW broadcasting, which was causing data loss.
 
-Current Stage 5 slice:
-
-- `dash_35`-first standalone implementation
-- dashboard-screen selection and trip/coaching state pipeline
-- ST7796 display smoke-test rendering on `dash_35`
-- companion linkage intentionally deferred
+**See [REFACTOR.md](/REFACTOR.md) for full migration details.**
 
 Deferred later stage:
 

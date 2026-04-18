@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Orbiting Satellites</title>
+  <style>
+    body { margin:0; background:#0c1116; color:#86e6ff; font-family:'Courier New',monospace; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
+    .wrap { position:relative; width:240px; height:240px; background:#07101a; border-radius:120px; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; }
+    canvas { position:absolute; top:0; left:0; z-index:1; }
+    .ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="c" width="240" height="240"></canvas>
+    <div class="ui" id="ui"></div>
+  </div>
+  <script>
+    const ctx = document.getElementById('c').getContext('2d');
+    let frame = 0;
+    const CX=120, CY=120;
+    
+    function getTelemetry() {
+        let gasLevel = 0.82;
+        return {
+            lod: Math.abs(Math.sin(frame*0.05)),
+            bst: Math.abs(Math.sin(frame*0.1)) * 1.5,
+            spd: 75 + Math.floor(Math.sin(frame*0.01)*20),
+            gas: gasLevel,
+            trp: 12.4 + (frame * 0.005),
+            rng: Math.floor(420 * gasLevel)
+        };
+    }
+
+    function draw() { 
+        ctx.clearRect(0,0,240,240); 
+        let t = getTelemetry();
+        let s=[{{c:'#7df9c6',a:frame*0.05,r:6+t.bst*4}}, {{c:'#ff7eb3',a:-frame*0.03,r:8*(0.5+t.lod)}}, {{c:'#49c7ff',a:frame*0.01,r:5*(t.gas+0.5)}}, {{c:'#ffcc00',a:Math.PI,r:4}}]; s.forEach(p=>{{ ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(CX+Math.cos(p.a)*110, CY+Math.sin(p.a)*110, p.r, 0, 7); ctx.fill(); }}); ctx.fillStyle='#fff'; ctx.font='bold 40px Arial'; ctx.textAlign='center'; ctx.fillText(t.spd, CX, CY+15); 
+    }
+    setInterval(()=>{ frame++; ctx.save(); draw(); ctx.restore(); }, 33);
+  </script>
+</body>
+</html>

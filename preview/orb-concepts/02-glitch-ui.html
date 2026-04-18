@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Glitch UI</title>
+  <style>
+    body { margin:0; background:#0c1116; color:#86e6ff; font-family:'Courier New',monospace; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
+    .wrap { position:relative; width:240px; height:240px; background:#07101a; border-radius:120px; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; }
+    canvas { position:absolute; top:0; left:0; z-index:1; }
+    .ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="c" width="240" height="240"></canvas>
+    <div class="ui" id="ui"><div id='g' style='position:absolute;top:25%;width:100%;text-align:center;font-size:40px;font-weight:bold;color:#eef6ff;text-shadow:3px 0 0 #ff003c, -3px 0 0 #00f0ff;mix-blend-mode:screen;opacity:0.85'>118</div></div>
+  </div>
+  <script>
+    const ctx = document.getElementById('c').getContext('2d');
+    let frame = 0;
+    const CX=120, CY=120;
+    
+    function getTelemetry() {
+        let gasLevel = 0.82;
+        return {
+            lod: Math.abs(Math.sin(frame*0.05)),
+            bst: Math.abs(Math.sin(frame*0.1)) * 1.5,
+            spd: 75 + Math.floor(Math.sin(frame*0.01)*20),
+            gas: gasLevel,
+            trp: 12.4 + (frame * 0.005),
+            rng: Math.floor(420 * gasLevel)
+        };
+    }
+
+    function draw() { 
+        ctx.clearRect(0,0,240,240); 
+        let t = getTelemetry();
+        if(Math.random()<0.15) {{ ctx.clearRect(0,0,240,240); ctx.save(); ctx.translate((Math.random()-0.5)*16, (Math.random()-0.5)*16); ctx.restore(); }} if(Math.random()<0.1 && document.getElementById('g')) document.getElementById('g').style.transform = `translate(${{(Math.random()-0.5)*10}}px, ${{(Math.random()-0.5)*10}}px)`; ctx.fillStyle='rgba(255,0,60,0.4)'; if(Math.random() < t.lod) ctx.fillRect(20, 100, 20, 40*t.lod); if(Math.random() < 0.2) ctx.fillRect(200, 80, 10, 60*t.bst); ctx.fillStyle='#fff'; ctx.font='bold 40px Arial'; ctx.textAlign='center'; ctx.fillText(t.spd, CX, CY); 
+    }
+    setInterval(()=>{ frame++; ctx.save(); draw(); ctx.restore(); }, 33);
+  </script>
+</body>
+</html>

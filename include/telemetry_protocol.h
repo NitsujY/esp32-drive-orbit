@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <string.h>
 
+#include "car_telemetry.h"
 #include "shared_data.h"
 
 namespace transport {
@@ -121,6 +122,47 @@ inline size_t encodeStatusTelemetryFrame(const telemetry::DashboardTelemetry &te
                                          uint8_t *buffer,
                                          size_t buffer_size) {
   return encodeFrame(PacketType::StatusTelemetry, makeStatusTelemetryPayload(telemetry), buffer,
+                     buffer_size);
+}
+
+// CarTelemetry overloads — used by the headless gateway (dash_35) which
+// manages its own Wi-Fi and does not hold a DashboardTelemetry.
+inline FastTelemetryPayload makeFastTelemetryPayload(const telemetry::CarTelemetry &t) {
+  FastTelemetryPayload payload{};
+  payload.sequence = t.sequence;
+  payload.uptime_ms = t.uptime_ms;
+  payload.rpm = t.rpm;
+  payload.speed_kph = t.speed_kph;
+  payload.longitudinal_accel_mg = t.longitudinal_accel_mg;
+  payload.drive_mode = static_cast<uint8_t>(telemetry::resolveDriveMode(t.speed_kph));
+  payload.companion_mood =
+      static_cast<uint8_t>(telemetry::resolveCompanionMood(t.speed_kph, t.rpm));
+  payload.gear = 0;  // gear not tracked by gateway
+  payload.headlights_on = t.headlights_on ? 1U : 0U;
+  return payload;
+}
+
+inline StatusTelemetryPayload makeStatusTelemetryPayload(const telemetry::CarTelemetry &t) {
+  StatusTelemetryPayload payload{};
+  payload.sequence = t.sequence;
+  payload.coolant_temp_c = t.coolant_temp_c;
+  payload.battery_mv = t.battery_mv;
+  payload.fuel_level_pct = t.fuel_level_pct;
+  payload.estimated_range_km = t.estimated_range_km;
+  payload.nearest_camera_m = telemetry::kNearestCameraUnknown;
+  return payload;
+}
+
+inline size_t encodeFastTelemetryFrame(const telemetry::CarTelemetry &t,
+                                       uint8_t *buffer,
+                                       size_t buffer_size) {
+  return encodeFrame(PacketType::FastTelemetry, makeFastTelemetryPayload(t), buffer, buffer_size);
+}
+
+inline size_t encodeStatusTelemetryFrame(const telemetry::CarTelemetry &t,
+                                         uint8_t *buffer,
+                                         size_t buffer_size) {
+  return encodeFrame(PacketType::StatusTelemetry, makeStatusTelemetryPayload(t), buffer,
                      buffer_size);
 }
 

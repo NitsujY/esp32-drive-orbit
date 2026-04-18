@@ -17,6 +17,7 @@ class DashboardWebServer {
   void poll(uint32_t now_ms, bool wifi_connected);
   bool hasHostedUi() const;
   bool usingEmbeddedFallback() const;
+  uint8_t connectedClientCount() const;
 
  private:
   void handleSocketEvent(AsyncWebSocket *server,

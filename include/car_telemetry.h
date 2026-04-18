@@ -26,6 +26,8 @@ struct CarTelemetry {
   bool headlights_on;
   bool obd_connected;
   bool telemetry_fresh;
+  uint8_t app_ws_clients;   // number of WebSocket clients currently connected
+  bool orb_transmitting;    // true when ESP-NOW transmitter is active
 };
 
 inline uint16_t estimateGatewayRangeKm(uint8_t fuel_level_pct, int16_t speed_kph) {
@@ -55,6 +57,8 @@ inline CarTelemetry makeInitialCarTelemetry() {
   telemetry.headlights_on = false;
   telemetry.obd_connected = false;
   telemetry.telemetry_fresh = false;
+  telemetry.app_ws_clients = 0;
+  telemetry.orb_transmitting = false;
   return telemetry;
 }
 

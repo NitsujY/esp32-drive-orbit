@@ -21,9 +21,12 @@ void TelemetryTransmitter::begin(Print &log_output) {
   last_fast_publish_ms_ = 0;
   last_status_publish_ms_ = 0;
   emitted_initial_status_ = false;
+  active_ = true;
 }
 
-void TelemetryTransmitter::publish(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms) {
+bool TelemetryTransmitter::isActive() const { return active_; }
+
+void TelemetryTransmitter::publish(const telemetry::CarTelemetry &telemetry, uint32_t now_ms) {
   if (log_output_ == nullptr) {
     return;
   }
@@ -40,7 +43,7 @@ void TelemetryTransmitter::publish(const telemetry::DashboardTelemetry &telemetr
   }
 }
 
-void TelemetryTransmitter::publishFastFrame(const telemetry::DashboardTelemetry &telemetry) {
+void TelemetryTransmitter::publishFastFrame(const telemetry::CarTelemetry &telemetry) {
   uint8_t frame[transport::kFastTelemetryFrameSize] = {0};
   const size_t frame_size = transport::encodeFastTelemetryFrame(telemetry, frame, sizeof(frame));
   if (frame_size > 0) {
@@ -51,7 +54,7 @@ void TelemetryTransmitter::publishFastFrame(const telemetry::DashboardTelemetry 
   }
 }
 
-void TelemetryTransmitter::publishStatusFrame(const telemetry::DashboardTelemetry &telemetry) {
+void TelemetryTransmitter::publishStatusFrame(const telemetry::CarTelemetry &telemetry) {
   uint8_t frame[transport::kStatusTelemetryFrameSize] = {0};
   const size_t frame_size = transport::encodeStatusTelemetryFrame(telemetry, frame, sizeof(frame));
   if (frame_size > 0) {

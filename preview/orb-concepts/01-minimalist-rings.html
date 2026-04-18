@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Minimalist Rings (Default)</title>
+  <style>
+    body { margin:0; background:#0c1116; color:#86e6ff; font-family:'Courier New',monospace; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
+    .wrap { position:relative; width:240px; height:240px; background:#07101a; border-radius:120px; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; }
+    canvas { position:absolute; top:0; left:0; z-index:1; }
+    .ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="c" width="240" height="240"></canvas>
+    <div class="ui" id="ui"><div style='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;'><div id='u-spd' style='font-family:Arial,sans-serif;font-size:62px;font-weight:bold;color:#fff;line-height:0.8;text-shadow:0 0 8px rgba(0,0,0,0.8);'>--</div><div style='font-size:12px;font-family:Courier New,monospace;color:#7a99ad;letter-spacing:1px;margin-top:6px;'>KM/H</div></div></div>
+  </div>
+  <script>
+    const ctx = document.getElementById('c').getContext('2d');
+    let frame = 0;
+    const CX=120, CY=120;
+    
+    function getTelemetry() {
+        let gasLevel = 0.82;
+        return {
+            lod: Math.abs(Math.sin(frame*0.05)),
+            bst: Math.abs(Math.sin(frame*0.1)) * 1.5,
+            spd: 75 + Math.floor(Math.sin(frame*0.01)*20),
+            gas: gasLevel,
+            trp: 12.4 + (frame * 0.005),
+            rng: Math.floor(420 * gasLevel)
+        };
+    }
+
+    function draw() { 
+        ctx.clearRect(0,0,240,240); 
+        let t = getTelemetry();
+        
+    ctx.lineCap='round'; 
+    ctx.lineWidth=4; 
+    
+    // Gas Inner Bottom Left Arc (Dashed)
+    ctx.strokeStyle='#eef6ff'; 
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath(); 
+    let gasEndAngle = Math.PI/2 + Math.PI/2*t.gas;
+    ctx.arc(CX,CY,118, Math.PI/2, gasEndAngle); 
+    ctx.stroke(); 
+    ctx.setLineDash([]);
+    
+    // Gas percentage text tracking the tip of the Gas ARC
+    let gx = CX + Math.cos(gasEndAngle) * 100;
+    let gy = CY + Math.sin(gasEndAngle) * 100;
+    ctx.font = 'bold 11px Courier New';
+    ctx.fillStyle = '#eef6ff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(Math.floor(t.gas*100) + '%', gx, gy);
+    
+    // Load Inner Top Right Arc (Color changes red to orange)
+    let gColor = Math.floor(200 - t.lod*150);
+    ctx.strokeStyle=`rgb(255, ${gColor}, 0)`; 
+    ctx.beginPath(); 
+    ctx.arc(CX,CY,118, -Math.PI/2, -Math.PI/2 + Math.PI/2*t.lod); 
+    ctx.stroke();
+    
+    // ----------------------------------------
+    // BOTTOM: Merged Trip & Range Block
+    // ----------------------------------------
+    // Leaving the top empty makes the entire composition more elegant and minimalist.
+    ctx.textBaseline = 'middle';
+
+    // Trip (Left Side)
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#7a99ad';
+    ctx.font = '10px Courier New';
+    ctx.fillText('TRIP', CX - 10, CY + 58);
+    ctx.fillStyle = '#eef6ff';
+    ctx.font = 'bold 11px Courier New';
+    ctx.fillText(t.trp.toFixed(1), CX - 10, CY + 70);
+
+    // Range (Right Side)
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#4caf8c';
+    ctx.font = '10px Courier New';
+    ctx.fillText('RNG', CX + 10, CY + 58);
+    ctx.fillStyle = '#eef6ff';
+    ctx.font = 'bold 11px Courier New';
+    ctx.fillText(t.rng, CX + 10, CY + 70);
+
+    // Subtle Vertical Divider
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(CX - 1, CY + 54, 2, 20);
+
+    // Sleek Single Range Bar Gauge
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.fillRect(CX - 30, CY + 82, 60, 2);
+    ctx.fillStyle='#7df9c6';
+    ctx.fillRect(CX - 30, CY + 82, 60 * t.gas, 2);
+
+    let sEl = document.getElementById('u-spd');
+    if(sEl) sEl.innerText = t.spd;
+     
+    }
+    setInterval(()=>{ frame++; ctx.save(); draw(); ctx.restore(); }, 33);
+  </script>
+</body>
+</html>

@@ -5,9 +5,11 @@
 #include "app/elm327_client.h"
 #include "app/gateway_status_display.h"
 #include "app/simulation_controller.h"
+#include "app/telemetry_transmitter.h"
 #include "app/weather_client.h"
 #include "app/wifi_manager.h"
 #include "car_telemetry.h"
+#include "espnow_transport.h"
 
 namespace {
 
@@ -17,6 +19,7 @@ app::DashboardWebServer dashboard_web_server(telemetry_store);
 app::Elm327Client elm327_client;
 app::GatewayStatusDisplay gateway_status_display;
 app::SimulationController simulation_controller;
+app::TelemetryTransmitter telemetry_transmitter;
 app::WeatherClient weather_client;
 app::WifiManager wifi_manager;
 int16_t previous_speed_kph = 0;
@@ -31,6 +34,8 @@ void updateDerivedTelemetry(uint32_t now_ms, bool fresh_sample) {
   live_telemetry.obd_connected =
       elm327_client.connectionState() == app::Elm327Client::ConnectionState::Live;
   live_telemetry.telemetry_fresh = elm327_client.hasFreshTelemetry(now_ms);
+  live_telemetry.app_ws_clients = dashboard_web_server.connectedClientCount();
+  live_telemetry.orb_transmitting = telemetry_transmitter.isActive();
 
   if (fresh_sample && last_speed_sample_ms != 0 && now_ms > last_speed_sample_ms) {
     const float dt_s = static_cast<float>(now_ms - last_speed_sample_ms) / 1000.0f;
@@ -79,6 +84,14 @@ void setup() {
   dashboard_web_server.begin(Serial);
   gateway_status_display.begin(Serial);
   simulation_controller.begin(Serial);
+
+  if (espnow::beginGatewayTransport() && espnow::addBroadcastPeer()) {
+    telemetry_transmitter.begin(Serial);
+    Serial.println("[BOOT] ESP-NOW transmitter ready — broadcasting to companion_orb");
+  } else {
+    Serial.println("[BOOT] ESP-NOW init failed — orb link unavailable");
+  }
+
   telemetry_store.publish(live_telemetry);
 }
 
@@ -116,6 +129,7 @@ void loop() {
   }
 
   telemetry_store.publish(live_telemetry);
+  telemetry_transmitter.publish(live_telemetry, now);
   dashboard_web_server.poll(now, wifi_manager.isConnected());
 
   char access_label[48] = {0};

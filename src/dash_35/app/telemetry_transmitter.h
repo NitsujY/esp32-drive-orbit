@@ -2,24 +2,26 @@
 
 #include <Arduino.h>
 
-#include "shared_data.h"
+#include "car_telemetry.h"
 
 namespace app {
 
 class TelemetryTransmitter {
  public:
   void begin(Print &log_output);
-  void publish(const telemetry::DashboardTelemetry &telemetry, uint32_t now_ms);
+  void publish(const telemetry::CarTelemetry &telemetry, uint32_t now_ms);
+  bool isActive() const;
 
  private:
-  void publishFastFrame(const telemetry::DashboardTelemetry &telemetry);
-  void publishStatusFrame(const telemetry::DashboardTelemetry &telemetry);
+  void publishFastFrame(const telemetry::CarTelemetry &telemetry);
+  void publishStatusFrame(const telemetry::CarTelemetry &telemetry);
   void logFrame(const char *label, const uint8_t *frame, size_t frame_size) const;
 
   Print *log_output_ = nullptr;
   uint32_t last_fast_publish_ms_ = 0;
   uint32_t last_status_publish_ms_ = 0;
   bool emitted_initial_status_ = false;
+  bool active_ = false;
 };
 
 }  // namespace app

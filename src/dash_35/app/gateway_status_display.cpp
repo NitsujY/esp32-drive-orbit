@@ -168,17 +168,33 @@ void GatewayStatusDisplay::render(const telemetry::CarTelemetry &telemetry,
   gfx->print(access_label != nullptr ? access_label : "waiting...");
   gfx->setCursor(334, 266);
   gfx->print(using_embedded_ui ? "embedded page" : "filesystem page");
-  gfx->setCursor(334, 286);
-  gfx->print(simulation_enabled ? "BOOT: sim on" : "BOOT: sim off");
+
+  // Phone app WebSocket connections
+  {
+    const bool has_app = telemetry.app_ws_clients > 0;
+    gfx->setTextColor(has_app ? gfx->color565(109, 246, 216) : gfx->color565(135, 173, 190));
+    gfx->setTextSize(1);
+    gfx->setCursor(334, 286);
+    char app_text[18] = {0};
+    snprintf(app_text, sizeof(app_text), "APP: %u conn", telemetry.app_ws_clients);
+    gfx->print(app_text);
+  }
 
   gfx->setTextColor(gfx->color565(135, 173, 190));
   gfx->setTextSize(1);
-  gfx->setCursor(20, 314);
+  gfx->setCursor(20, 306);
   gfx->print(telemetry.wifi_connected ? "Wi-Fi linked" : "Wi-Fi waiting");
-  gfx->setCursor(170, 314);
+  gfx->setCursor(156, 306);
   gfx->print(telemetry.obd_connected ? "OBD live" : "OBD scan");
-  gfx->setCursor(292, 314);
-  gfx->print(telemetry.telemetry_fresh ? "telemetry fresh" : "telemetry stale");
+  gfx->setCursor(268, 306);
+  gfx->print(telemetry.telemetry_fresh ? "data fresh" : "data stale");
+
+  // Orb ESP-NOW link indicator
+  gfx->setTextColor(telemetry.orb_transmitting
+                        ? gfx->color565(109, 246, 216)
+                        : gfx->color565(135, 173, 190));
+  gfx->setCursor(380, 306);
+  gfx->print(telemetry.orb_transmitting ? "ORB link" : "ORB off");
   flushDisplay();
 }
 

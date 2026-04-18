@@ -39,7 +39,8 @@ size_t serializeSnapshot(const telemetry::CarTelemetry &snapshot, char *buffer, 
   const int written = snprintf(buffer, buffer_size,
                                "{\"v\":1,\"seq\":%lu,\"up\":%lu,\"spd\":%d,\"rpm\":%d,"
                                "\"clt\":%d,\"wt\":%d,\"wc\":%u,\"bat\":%u,\"fuel\":%u,\"rng\":%u,\"acc\":%d,"
-                               "\"wifi\":%u,\"hl\":%u,\"obd\":%u,\"fresh\":%u}",
+                               "\"wifi\":%u,\"hl\":%u,\"obd\":%u,\"fresh\":%u,"
+                               "\"app_ws\":%u,\"orb\":%u}",
                                static_cast<unsigned long>(snapshot.sequence),
                                static_cast<unsigned long>(snapshot.uptime_ms), snapshot.speed_kph,
                                snapshot.rpm, snapshot.coolant_temp_c, snapshot.weather_temp_c,
@@ -47,7 +48,9 @@ size_t serializeSnapshot(const telemetry::CarTelemetry &snapshot, char *buffer, 
                                snapshot.fuel_level_pct, snapshot.estimated_range_km,
                                snapshot.longitudinal_accel_mg, snapshot.wifi_connected ? 1U : 0U,
                                snapshot.headlights_on ? 1U : 0U, snapshot.obd_connected ? 1U : 0U,
-                               snapshot.telemetry_fresh ? 1U : 0U);
+                               snapshot.telemetry_fresh ? 1U : 0U,
+                               static_cast<unsigned>(snapshot.app_ws_clients),
+                               snapshot.orb_transmitting ? 1U : 0U);
   if (written <= 0 || static_cast<size_t>(written) >= buffer_size) {
     return 0;
   }
@@ -107,7 +110,7 @@ void DashboardWebServer::begin(Print &log_output) {
     sendAsset(request, "/apple-touch-icon.png", "image/png", true);
   });
   server_.on(kApiTelemetryPath, HTTP_GET, [this](AsyncWebServerRequest *request) {
-    char payload[192] = {0};
+    char payload[224] = {0};
     const telemetry::CarTelemetry snapshot = telemetry_store_.snapshot();
     const size_t payload_size = serializeSnapshot(snapshot, payload, sizeof(payload));
     if (payload_size == 0) {
@@ -131,6 +134,12 @@ bool DashboardWebServer::hasHostedUi() const {
 
 bool DashboardWebServer::usingEmbeddedFallback() const {
   return !hosted_ui_available_;
+}
+
+uint8_t DashboardWebServer::connectedClientCount() const {
+  // AsyncWebSocket::count() is const-correct.
+  const uint32_t n = socket_.count();
+  return n > 255U ? 255U : static_cast<uint8_t>(n);
 }
 
 void DashboardWebServer::poll(uint32_t now_ms, bool wifi_connected) {
@@ -198,7 +207,7 @@ void DashboardWebServer::sendSnapshot(AsyncWebSocketClient *client,
     return;
   }
 
-  char payload[192] = {0};
+  char payload[224] = {0};
   const size_t payload_size = serializeSnapshot(snapshot, payload, sizeof(payload));
   if (payload_size == 0) {
     return;
@@ -213,7 +222,7 @@ void DashboardWebServer::broadcastSnapshot(uint32_t now_ms) {
   }
 
   last_broadcast_ms_ = now_ms;
-  char payload[192] = {0};
+  char payload[224] = {0};
   const telemetry::CarTelemetry snapshot = telemetry_store_.snapshot();
   const size_t payload_size = serializeSnapshot(snapshot, payload, sizeof(payload));
   if (payload_size == 0) {

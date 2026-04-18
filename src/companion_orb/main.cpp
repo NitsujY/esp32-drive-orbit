@@ -1,65 +1,36 @@
 #include <Arduino.h>
-#include <esp_now.h>
+#include <WiFi.h>
 
-#include "espnow_transport.h"
-#include "cyber_theme.h"
 #include "shared_data.h"
-#include "app/telemetry_stream_parser.h"
+#include "cyber_theme.h"
+#include "app/elm327_obd2_client.h"
+#include "app/pet_state.h"
 #include "app/orb_display.h"
 
 namespace {
 
 constexpr uint32_t kHeartbeatIntervalMs = 2000;
-constexpr uint32_t kStaleThresholdMs = 5000;
+constexpr uint32_t kStaleThresholdMs = 4000;
 
-uint32_t last_heartbeat_ms = 0;
-uint32_t last_receive_ms = 0;
-uint32_t packets_received = 0;
-
-orb::TelemetryStreamParser parser;
+orb::Elm327Obd2Client obd2_client;
+orb::PetState pet;
 orb::OrbDisplay display;
 
-// ESP-NOW receive callback — runs in Wi-Fi task context, keep it fast.
-void onDataReceived(const uint8_t * /*mac_addr*/, const uint8_t *data, int data_len) {
-  if (data_len > 0) {
-    parser.pushBytes(data, static_cast<size_t>(data_len));
-    last_receive_ms = millis();
-    ++packets_received;
-  }
-}
-
-void logParsedTelemetry(const telemetry::DashboardTelemetry &snapshot) {
-  Serial.print("[ORB] seq=");
-  Serial.print(snapshot.sequence);
-  Serial.print(" spd=");
-  Serial.print(snapshot.speed_kph);
-  Serial.print(" rpm=");
-  Serial.print(snapshot.rpm);
-  Serial.print(" gear=");
-  Serial.print(static_cast<uint8_t>(snapshot.gear));
-  Serial.print(" fuel=");
-  Serial.print(snapshot.fuel_level_pct);
-  Serial.print("% range=");
-  Serial.print(snapshot.estimated_range_km);
-  Serial.print("km drop=");
-  Serial.println(parser.droppedByteCount());
-}
+uint32_t last_heartbeat_ms = 0;
+uint32_t packets_received = 0;
 
 }  // namespace
 
 void setup() {
   Serial.begin(115200);
   Serial.println();
-  Serial.println("[BOOT] companion_orb starting");
+  Serial.println("[BOOT] companion_orb starting (independent OBD2 mode)");
 
+  pet.begin(Serial);
   display.begin(Serial);
 
-  if (espnow::beginTransport()) {
-    esp_now_register_recv_cb(onDataReceived);
-    Serial.println("[BOOT] ESP-NOW receiver ready — waiting for dash_35 broadcast");
-  } else {
-    Serial.println("[BOOT] ESP-NOW init failed");
-  }
+  // Initialize OBD2 client on Serial1
+  obd2_client.begin(Serial, 38400);
 
   Serial.print("[BOOT] MAC: ");
   Serial.println(WiFi.macAddress());
@@ -68,34 +39,51 @@ void setup() {
 void loop() {
   const uint32_t now = millis();
 
-  // A live signal means we've received a packet recently (within stale threshold).
-  const bool has_signal = (last_receive_ms != 0) && (now - last_receive_ms <= kStaleThresholdMs);
+  // Poll the OBD2 client
+  obd2_client.poll(now);
 
-  if (parser.hasFreshTelemetry()) {
-    const telemetry::DashboardTelemetry snapshot = parser.takeTelemetry();
-    theme::darkMode() = snapshot.headlights_on;
-    logParsedTelemetry(snapshot);
-    display.render(snapshot, now);
-  } else if (!has_signal) {
-    // No connection to the gateway (never connected, or stream went stale):
-    // keep the display alive with a waiting animation.
+  // If we have fresh data from OBD2, update the display
+  if (obd2_client.hasFreshData(now)) {
+    // Build a DashboardTelemetry struct from OBD2 data
+    telemetry::DashboardTelemetry telemetry;
+    telemetry.sequence = packets_received;
+    telemetry.uptime_ms = now;
+    telemetry.speed_kph = obd2_client.lastSpeed();
+    telemetry.rpm = obd2_client.lastRpm();
+    telemetry.fuel_level_pct = obd2_client.lastFuelPct();
+    telemetry.longitudinal_accel_mg = 0;  // Not available from basic OBD2
+    telemetry.coolant_temp_c = 0;          // Not available in this simplified client
+    telemetry.battery_mv = 0;              // Not available
+    telemetry.estimated_range_km = 0;      // Not available
+    telemetry.nearest_camera_m = 0xFFFF;
+    telemetry.drive_mode = telemetry::DriveMode::Cruise;  // Default
+    telemetry.headlights_on = false;        // Not available
+    
+    // Update pet state based on telemetry
+    pet.update(telemetry, now);
+
+    // Render the display
+    display.render(pet, telemetry, now);
+
+    ++packets_received;
+  } else if (!obd2_client.connected()) {
+    // Show waiting/connecting animation
     display.renderNoSignal(now);
   }
 
+  // Heartbeat log
   if (now - last_heartbeat_ms >= kHeartbeatIntervalMs) {
     last_heartbeat_ms = now;
 
-    if (last_receive_ms == 0) {
-      Serial.println("[ORB] Listening for dash_35 ESP-NOW packets...");
-    } else if (now - last_receive_ms > kStaleThresholdMs) {
-      Serial.print("[ORB] No data for ");
-      Serial.print((now - last_receive_ms) / 1000U);
-      Serial.print("s (total pkts=");
-      Serial.print(packets_received);
-      Serial.println(")");
-    } else {
-      Serial.print("[ORB] Link active, pkts=");
-      Serial.println(packets_received);
-    }
+    Serial.print("[ORB] Status: ");
+    Serial.print(obd2_client.statusText());
+    Serial.print(" | Speed: ");
+    Serial.print(obd2_client.lastSpeed());
+    Serial.print(" km/h, RPM: ");
+    Serial.print(obd2_client.lastRpm());
+    Serial.print(" | Fuel: ");
+    Serial.print(obd2_client.lastFuelPct());
+    Serial.print("% | Packets: ");
+    Serial.println(packets_received);
   }
 }
