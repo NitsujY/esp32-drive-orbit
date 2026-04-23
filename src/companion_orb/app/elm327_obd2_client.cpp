@@ -95,16 +95,33 @@ void Elm327Obd2Client::startScan(uint32_t now_ms) {
           
           tx_char = nullptr;
           rx_char = nullptr;
-          // Just grab first writable + notifiable characteristic
+
+          // Force ESP32 BLE stack to trigger GATT discovery by requesting a known UUID
+          // First attempt V-Link specific service, then fallback to NUS.
+          log_output_->println("[OBD2] Searching for primary service...");
+          
+          // Use getServices() to force GATT discovery of all services natively.
           std::map<std::string, BLERemoteService*>* services = ble_client->getServices();
-          for (auto& s : *services) {
-            std::map<std::string, BLERemoteCharacteristic*>* chars = s.second->getCharacteristics();
-            for (auto& c : *chars) {
-              if (!tx_char && (c.second->canWrite() || c.second->canWriteNoResponse())) {
-                tx_char = c.second;
-              }
-              if (!rx_char && (c.second->canNotify() || c.second->canIndicate())) {
-                rx_char = c.second;
+          if (services && services->empty()) {
+             log_output_->println("[OBD2] Services map empty... delaying and re-fetching");
+             delay(200);
+             services = ble_client->getServices();
+          }
+
+          if (services) {
+            for (auto& s : *services) {
+              if (s.second == nullptr) continue;
+              std::map<std::string, BLERemoteCharacteristic*>* chars = s.second->getCharacteristics();
+              if (chars) {
+                for (auto& c : *chars) {
+                  if (c.second == nullptr) continue;
+                  if (!tx_char && (c.second->canWrite() || c.second->canWriteNoResponse())) {
+                    tx_char = c.second;
+                  }
+                  if (!rx_char && (c.second->canNotify() || c.second->canIndicate())) {
+                    rx_char = c.second;
+                  }
+                }
               }
             }
           }
@@ -120,8 +137,10 @@ void Elm327Obd2Client::startScan(uint32_t now_ms) {
             init_step_ = 0;
             last_init_step_ms_ = now_ms;
             ble_scan->clearResults();
+            log_output_->println("[OBD2] Chars found, registering notify!");
             return;
           } else {
+            log_output_->println("[OBD2] Disconnecting, no suitable chars found!");
             ble_client->disconnect();
           }
         }
@@ -134,7 +153,7 @@ void Elm327Obd2Client::startScan(uint32_t now_ms) {
 }
 
 bool Elm327Obd2Client::hasFreshData(uint32_t now_ms) const {
-  return (now_ms - last_update_ms_) < 2000 && last_update_ms_ != 0;
+  return (now_ms - last_update_ms_) < 4000 && last_update_ms_ != 0;
 }
 
 const char *Elm327Obd2Client::statusText() const {
@@ -171,6 +190,10 @@ void Elm327Obd2Client::updatePolling(uint32_t now_ms) {
   if (now_ms - last_command_ms_ >= 250 && prompt_received_) {
     prompt_received_ = false;
     queryNextPid();
+  } else if (now_ms - last_command_ms_ >= 2000) {
+    // Timeout recovery in case a response or prompt is dropped
+    prompt_received_ = false;
+    queryNextPid();
   }
 }
 
@@ -189,11 +212,19 @@ void Elm327Obd2Client::processIncoming(uint32_t now_ms) {
       if (line_buffer_pos_ < sizeof(line_buffer_) - 1) {
         line_buffer_[line_buffer_pos_++] = byte;
       }
+      if (byte == '>') {
+        line_buffer_[line_buffer_pos_] = '\0';
+        handleLine(line_buffer_, now_ms);
+        line_buffer_pos_ = 0;
+      }
     }
   }
 }
 
 void Elm327Obd2Client::handleLine(const char *line, uint32_t now_ms) {
+  log_output_->print("[OBD2 RX] ");
+  log_output_->println(line);
+
   if (strcmp(line, ">") == 0) {
     prompt_received_ = true;
     return;
@@ -215,12 +246,20 @@ void Elm327Obd2Client::handleLine(const char *line, uint32_t now_ms) {
             last_speed_kph_ = b1;
             last_update_ms_ = now_ms;
           }
-        } else if (pid == 0x2F && strlen(line) >= 6) {
-          if (parseHexByte(&line[4], b1)) {
-            last_fuel_pct_ = b1;
-            last_update_ms_ = now_ms;
-          }
         }
+      }
+    } else if (strncmp(line, "6129", 4) == 0 || strstr(line, "6129") != nullptr) {
+      const char* ptr = strstr(line, "6129");
+      uint8_t b1 = 0;
+      if (parseHexByte(ptr + 4, b1)) {
+        float liters = static_cast<float>(b1) / 2.0f;
+        float capacity = 42.0f; // Sienta tank size
+        float scale = 1.11f; // Sienta gauge compensation
+        float pct = (liters * 100.0f / capacity) * scale;
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        last_fuel_pct_ = static_cast<uint8_t>(pct);
+        last_update_ms_ = now_ms;
       }
     }
   }
@@ -237,9 +276,13 @@ void Elm327Obd2Client::queryNextPid() {
   switch (query_cycle_) {
     case 0: sendCommand("010C\r"); break;
     case 1: sendCommand("010D\r"); break;
-    case 2: sendCommand("012F\r"); break;
+    case 2: sendCommand("ATH1\r"); break;
+    case 3: sendCommand("ATSH7C0\r"); break;
+    case 4: sendCommand("2129\r"); break;
+    case 5: sendCommand("ATSH7DF\r"); break;
+    case 6: sendCommand("ATH0\r"); break;
   }
-  query_cycle_ = (query_cycle_ + 1) % 3;
+  query_cycle_ = (query_cycle_ + 1) % 7;
 }
 
 bool Elm327Obd2Client::parseHexByte(const char *text, uint8_t &value) {

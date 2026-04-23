@@ -112,9 +112,9 @@ void OrbDisplay::updateBacklight(uint8_t drive_mode, uint32_t now_ms) {
   uint8_t target = 255;
   if (in_no_signal_) target = 80;
   if (backlight_level_ < target)
-    backlight_level_ = min(static_cast<uint8_t>(backlight_level_ + 8), target);
+    backlight_level_ = min((int)backlight_level_ + 8, (int)target);
   else if (backlight_level_ > target)
-    backlight_level_ = max(static_cast<uint8_t>(backlight_level_ - 4), target);
+    backlight_level_ = max((int)backlight_level_ - 4, (int)target);
   analogWrite(kPinBl, backlight_level_);
 }
 
@@ -165,7 +165,6 @@ void OrbDisplay::render(const PetState &pet, const telemetry::DashboardTelemetry
     in_debug_screen_ = false;
     in_no_signal_ = false; // ensure reset
     gfx->fillScreen(COLOR_BG);
-    in_no_signal_ = false;
     
     // Draw static elements once on recovery
     gfx->setTextSize(1);
@@ -178,6 +177,11 @@ void OrbDisplay::render(const PetState &pet, const telemetry::DashboardTelemetry
     renderRightText(kCx - 10, kCy + 58, 40, 10, "TRIP", COLOR_TRIP_LBL, 1);
     renderLeftText(kCx + 10, kCy + 58, 40, 10, "RNG", COLOR_RNG_LBL, 1);
     gfx->fillRect(kCx - 1, kCy + 54, 2, 20, rgb565(50, 50, 50));
+
+    // Force redraw of dynamic elements
+    last_spd_ = -1;
+    last_gas_ = -1.0f;
+    last_lod_ = -1.0f;
   }
 
   updateBacklight(static_cast<uint8_t>(t.drive_mode), now_ms);
@@ -234,6 +238,13 @@ void OrbDisplay::render(const PetState &pet, const telemetry::DashboardTelemetry
     drawArc(kCx, kCy, 118, 114, 90.0f, 180.0f, COLOR_BG, false);
     drawArc(kCx, kCy, 118, 114, 90.0f, 90.0f + gas_sweep, COLOR_GAS_ARC, true);
     
+    if (last_gas_ >= 0.0f) {
+      float old_tip = (90.0f + last_gas_ * 90.0f) * DEG_TO_RAD;
+      int old_gx = kCx + static_cast<int>(cosf(old_tip) * 100.0f);
+      int old_gy = kCy + static_cast<int>(sinf(old_tip) * 100.0f);
+      gfx->fillRect(old_gx - 16, old_gy - 9, 32, 18, COLOR_BG);
+    }
+
     float tip_rad = (90.0f + gas_sweep) * DEG_TO_RAD;
     int gx = kCx + static_cast<int>(cosf(tip_rad) * 100.0f);
     int gy = kCy + static_cast<int>(sinf(tip_rad) * 100.0f);

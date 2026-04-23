@@ -34,7 +34,8 @@ void checkTouch(uint32_t now) {
   
   Wire.beginTransmission(0x15);
   Wire.write(0x02); // Finger count reg
-  if (Wire.endTransmission(false) == 0) {
+  uint8_t error = Wire.endTransmission(false);
+  if (error == 0) {
     Wire.requestFrom((uint8_t)0x15, (uint8_t)1);
     if (Wire.available()) {
       uint8_t fingers = Wire.read();
@@ -46,6 +47,13 @@ void checkTouch(uint32_t now) {
         Serial.println(debug_view_active);
       }
       was_touched = is_touched;
+    }
+  } else {
+    // If I2C hangs, reset the bus
+    if (error == 5) {
+      Wire.end();
+      Wire.begin(4, 5);
+      Wire.setTimeOut(100);
     }
   }
 }
@@ -71,6 +79,7 @@ void setup() {
 
   // Setup I2C for Touch
   Wire.begin(4, 5);
+  Wire.setTimeOut(100); // Prevent I2C from hanging on breadboard wire jiggle
   Serial.println("Scanning I2C...");
   for (byte i = 8; i < 120; i++) {
     Wire.beginTransmission(i);
