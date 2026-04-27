@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <time.h>
 
 #include "app/car_telemetry_store.h"
 #include "app/dashboard_web_server.h"
@@ -27,6 +28,30 @@ uint32_t last_speed_sample_ms = 0;
 uint32_t last_trip_accum_ms = 0;
 float trip_distance_km = 0.0f;
 bool simulation_mode_active = false;
+bool wifi_one_shot_done = false;
+
+bool isPrecipWeatherCode(uint8_t weather_code) {
+  return (weather_code >= 51 && weather_code <= 67) ||
+         (weather_code >= 71 && weather_code <= 77) ||
+         (weather_code >= 80 && weather_code <= 82) ||
+         (weather_code >= 85 && weather_code <= 86) ||
+         (weather_code == 95);
+}
+
+// Live ELM327 telemetry currently does not include a reliable headlight signal.
+// Use local time and weather as a fallback so UI theme/reminder logic can react.
+bool inferHeadlightsFallback(bool wifi_connected, uint8_t weather_code) {
+  bool night_hours = false;
+  if (wifi_connected) {
+    struct tm local_time_info {};
+    if (getLocalTime(&local_time_info, 0)) {
+      const int hour = local_time_info.tm_hour;
+      night_hours = (hour >= 18 || hour < 6);
+    }
+  }
+
+  return night_hours || isPrecipWeatherCode(weather_code);
+}
 
 void updateDerivedTelemetry(uint32_t now_ms, bool fresh_sample) {
   live_telemetry.uptime_ms = now_ms;
@@ -76,7 +101,7 @@ void accumulateTripDistance(uint32_t now_ms, bool speed_fresh) {
 void setup() {
   Serial.begin(115200);
   Serial.println();
-  Serial.println("[BOOT] dash_35 headless gateway starting");
+  Serial.println("[BOOT] dash_35 legacy gateway starting");
 
   elm327_client.begin(Serial);
   wifi_manager.begin(Serial);
@@ -118,6 +143,16 @@ void loop() {
   } else {
     elm327_client.poll(now, live_telemetry);
     weather_client.poll(now, wifi_manager.isConnected(), live_telemetry);
+
+    if (!wifi_one_shot_done && weather_client.hasFreshWeather()) {
+      wifi_manager.stop("One-shot weather fetch complete; Wi-Fi disabled until reboot");
+      wifi_one_shot_done = true;
+    }
+
+    if (!live_telemetry.headlights_on) {
+      live_telemetry.headlights_on =
+          inferHeadlightsFallback(wifi_manager.isConnected(), live_telemetry.weather_code);
+    }
 
     fresh_sample = elm327_client.hasFreshTelemetry(now);
     if (fresh_sample) {

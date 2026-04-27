@@ -7,6 +7,8 @@
 #include "app/elm327_obd2_client.h"
 #include "app/pet_state.h"
 #include "app/orb_display.h"
+#include "app/wifi_manager.h"
+#include "app/weather_client.h"
 
 namespace {
 
@@ -16,7 +18,10 @@ constexpr uint32_t kStaleThresholdMs = 4000;
 orb::Elm327Obd2Client obd2_client;
 orb::PetState pet;
 orb::OrbDisplay display;
+orb::WifiManager wifi_manager;
+orb::WeatherClient weather_client;
 
+bool wifi_one_shot_done = false;
 
 uint32_t last_heartbeat_ms = 0;
 uint32_t packets_received = 0;
@@ -68,6 +73,12 @@ void setup() {
 
   pet.begin(Serial);
   display.begin(Serial);
+  
+  // Show splash screen for 2.5 seconds during boot
+  delay(2500);
+
+  wifi_manager.begin(Serial);
+  weather_client.begin(Serial);
 
   // Initialize OBD2 client on Serial1
   obd2_client.begin(Serial, 38400);
@@ -98,6 +109,16 @@ void loop() {
 
   checkTouch(now);
 
+  wifi_manager.poll(now);
+
+  telemetry::DashboardTelemetry temp_telemetry;
+  weather_client.poll(now, wifi_manager.isConnected(), temp_telemetry);
+
+  if (!wifi_one_shot_done && weather_client.hasFreshWeather() && wifi_manager.isTimeSynced()) {
+    wifi_manager.stop("Weather & Time synced, stopping Wi-Fi.");
+    wifi_one_shot_done = true;
+  }
+
   // Poll the OBD2 client
 
   obd2_client.poll(now);
@@ -106,25 +127,29 @@ void loop() {
   if (obd2_client.hasFreshData(now)) {
     // Build a DashboardTelemetry struct from OBD2 data
     telemetry::DashboardTelemetry telemetry;
-    telemetry.sequence = packets_received;
-    telemetry.uptime_ms = now;
-    telemetry.speed_kph = obd2_client.lastSpeed();
-    telemetry.rpm = obd2_client.lastRpm();
-    telemetry.fuel_level_pct = obd2_client.lastFuelPct();
-    telemetry.longitudinal_accel_mg = 0;  // Not available from basic OBD2
-    telemetry.coolant_temp_c = 0;          // Not available in this simplified client
-    telemetry.battery_mv = 0;              // Not available
-    telemetry.estimated_range_km = 0;      // Not available
-    telemetry.nearest_camera_m = 0xFFFF;
-    telemetry.drive_mode = telemetry::DriveMode::Cruise;  // Default
-    telemetry.headlights_on = false;        // Not available
+    telemetry.sequence              = packets_received;
+    telemetry.uptime_ms             = now;
+    telemetry.speed_kph             = obd2_client.lastSpeed();
+    telemetry.rpm                   = obd2_client.lastRpm();
+    telemetry.fuel_level_pct        = obd2_client.lastFuelPct();
+    telemetry.longitudinal_accel_mg = 0;      // not available from basic OBD2
+    telemetry.coolant_temp_c        = 0;      // not in this simplified client
+    telemetry.battery_mv            = 0;      // not available
+    telemetry.estimated_range_km    = 0;      // not available
+    telemetry.nearest_camera_m      = telemetry::kNearestCameraUnknown;
+    telemetry.drive_mode            = telemetry::DriveMode::Cruise;
+    telemetry.headlights_on         = false;
+
+    telemetry.weather_temp_c        = temp_telemetry.weather_temp_c;
+    telemetry.weather_code          = temp_telemetry.weather_code;
+    telemetry.wifi_connected        = temp_telemetry.wifi_connected;
     
     // Update pet state based on telemetry
     pet.update(telemetry, now);
 
 
     if (debug_view_active) {
-      display.renderDebugScreen(obd2_client.statusText(), obd2_client.lastSpeed(), obd2_client.lastRpm(), obd2_client.lastFuelPct(), packets_received, now);
+      display.renderDebugScreen(obd2_client.statusText(), telemetry, now);
     } else {
       display.render(pet, telemetry, now);
     }
@@ -132,11 +157,32 @@ void loop() {
 
     ++packets_received;
   } else if (!obd2_client.connected()) {
+    
+    // Show parked screen with weather when OBD is disconnected
+    telemetry::DashboardTelemetry telemetry;
+    telemetry.sequence              = packets_received;
+    telemetry.uptime_ms             = now;
+    telemetry.speed_kph             = 0;
+    telemetry.rpm                   = 0;
+    telemetry.fuel_level_pct        = 0;
+    telemetry.longitudinal_accel_mg = 0;
+    telemetry.coolant_temp_c        = 0;
+    telemetry.battery_mv            = 0;
+    telemetry.estimated_range_km    = 0;
+    telemetry.nearest_camera_m      = telemetry::kNearestCameraUnknown;
+    telemetry.drive_mode            = telemetry::DriveMode::Cruise;
+    telemetry.headlights_on         = false;
+
+    telemetry.weather_temp_c        = temp_telemetry.weather_temp_c;
+    telemetry.weather_code          = temp_telemetry.weather_code;
+    telemetry.wifi_connected        = temp_telemetry.wifi_connected;
+    
+    pet.update(telemetry, now);
 
     if (debug_view_active) {
-      display.renderDebugScreen(obd2_client.statusText(), 0, 0, 0, packets_received, now);
+      display.renderDebugScreen(obd2_client.statusText(), telemetry, now);
     } else {
-      display.renderNoSignal(now);
+      display.render(pet, telemetry, now);
     }
 
   }

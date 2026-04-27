@@ -8,7 +8,7 @@
 
 ## Objective
 
-Connect `dash_35` to an iPhone personal hotspot. Fetch weather data and include it in the WebSocket telemetry broadcast so the web dashboard can display ambient conditions.
+Connect `dash_35` (legacy) to an iPhone personal hotspot. Fetch weather data and include it in the WebSocket telemetry broadcast so the web dashboard can display ambient conditions.
 
 ## Architecture
 
@@ -16,7 +16,7 @@ Connect `dash_35` to an iPhone personal hotspot. Fetch weather data and include 
 iPhone Hotspot (Wi-Fi AP)
     |
     v
-dash_35 (Wi-Fi STA + WebSocket broadcast)
+dash_35 (legacy) (Wi-Fi STA + WebSocket broadcast)
     |  fetches weather via HTTPS every 10 min
     |  includes weather fields in JSON broadcast
     v

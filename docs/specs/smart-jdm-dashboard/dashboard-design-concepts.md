@@ -13,10 +13,10 @@ Strip the dashboard to its core: **Speed** and **RPM** as hero elements, with mi
 | Device | Role | Display |
 | ------ | ---- | ------- |
 | iPhone 15 (iOS app) | Primary dashboard UI | 852 × 393 CSS pts landscape (2556 × 1179 @3x) |
-| ESP32 `dash_35` | Headless telemetry gateway | No local rendering — OBD polling, WiFi, WebSocket broadcast |
+| ESP32 `dash_35` (legacy) | Headless telemetry gateway | No local rendering — OBD polling, WiFi, WebSocket broadcast |
 | ESP32-C3 `companion_orb` | Ambient companion display | 240 × 240 round GC9A01 (deferred) |
 
-The dashboard is a web app served via Capacitor on the iPhone. The ESP32 `dash_35` acts as a headless gateway only — it does not render any UI. All visual design targets the iPhone screen.
+The dashboard is a web app served via Capacitor on the iPhone. The ESP32 `dash_35` (legacy) acts as a headless gateway only — it does not render any UI. All visual design targets the iPhone screen.
 
 **Data available:** `spd` (km/h), `rpm`, `fuel` (%), `rng` (km), `clt` (°C), `bat` (mV), `acc` (milli-g), `hl`, `obd`, `wifi`, `fresh`.
 

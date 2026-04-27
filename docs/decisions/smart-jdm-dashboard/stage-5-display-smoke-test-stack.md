@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for the current `dash_35` Stage 5 slice.
+Accepted for the current `dash_35` (legacy) Stage 5 slice.
 
 ## Decision
 
@@ -12,7 +12,7 @@ Use `GFX_Library_for_Arduino` with the Waveshare `ESP32-Touch-LCD-3.5` board's k
 
 - The Waveshare board documentation already provides a known-good Arduino example using `Arduino_ST7796`.
 - This gives a low-risk hardware validation step before introducing a heavier retained-mode UI framework.
-- The project can now verify panel reset, SPI wiring, orientation, backlight, and basic rendering while keeping the existing `dash_35` state pipeline unchanged.
+- The project can now verify panel reset, SPI wiring, orientation, backlight, and basic rendering while keeping the existing `dash_35` (legacy) state pipeline unchanged.
 
 ## Board Notes
 

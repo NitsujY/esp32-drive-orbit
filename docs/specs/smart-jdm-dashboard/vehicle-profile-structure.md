@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines how car-specific OBD2 behavior is organized for `dash_35` so BLE target names and derived calculations do not live directly inside the transport code.
+This document defines how car-specific OBD2 behavior is organized for `dash_35` (legacy) so BLE target names and derived calculations do not live directly inside the transport code.
 
 ## Active Profile
 
@@ -27,7 +27,7 @@ src/
 The active Toyota Sienta profile currently attempts Bluetooth Classic connection using these adapter names in order:
 
 1. `OBDII`
-2. `V-LINK`
+2. `IOS-Vlink`
 3. `VLINK`
 4. `ELM327`
 
@@ -41,7 +41,7 @@ These are the active calculations associated with the Sienta profile in the repo
 4. Fuel Level: `ATSH7C0` + `2129` -> liters = `A / 2`, then percent = `(liters / 42.0) * 100`
 5. Battery Voltage: `ATRV` -> `volts * 1000`
 
-The current `dash_35` profile does not poll standard fuel PID `012F` because it is known not to work on this Toyota Sienta.
+The current `dash_35` (legacy) profile does not poll standard fuel PID `012F` because it is known not to work on this Toyota Sienta.
 
 Fuel calibration is profile-based:
 

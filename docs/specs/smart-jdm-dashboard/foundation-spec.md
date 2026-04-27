@@ -54,7 +54,7 @@ After hardware verification, UI preview should happen before deeper firmware int
 
 ## System Overview
 
-### Master Board: `dash_35`
+### Master Board: `dash_35` (legacy)
 
 - Hardware: Waveshare ESP32-Touch-LCD-3.5
 - MCU: Classic ESP32 with 16MB flash and 2MB PSRAM
@@ -75,7 +75,7 @@ After hardware verification, UI preview should happen before deeper firmware int
 - Orientation: Landscape-first layout, portrait fallback
 - Responsibilities:
   - Full dashboard rendering (speed, RPM, gauges, trip sheet)
-  - WebSocket client connection to `dash_35` gateway
+  - WebSocket client connection to `dash_35` (legacy) gateway
   - All visual design, animation, and interaction
   - Simulation mode for development without live gateway
 
@@ -516,7 +516,7 @@ The simulation must be deterministic enough for parser testing while still visib
 
 The foundation is complete when all of the following are true:
 
-1. `dash_35` hardware is verified on real hardware.
+1. `dash_35` (legacy) hardware is verified on real hardware.
 2. A local preview exists for the dashboard UI.
 3. A local preview exists for the companion display UI.
 4. The welcome, trip, health, and sport-mode UI concepts are visible in preview before firmware UI integration.

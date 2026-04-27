@@ -736,11 +736,11 @@ void Elm327Client::handleLine(const char *line, uint32_t now_ms, telemetry::CarT
          static_cast<int>(vehicle_profiles::activeProfile().fuel_scale_percent)) /
         100;
       const float raw_fuel = static_cast<float>(constrain(scaled_pct, 0, 100));
-      if (smoothed_fuel_pct_ < 0.0f) {
+      if (smoothed_fuel_pct_ < 0.0f || std::abs(raw_fuel - smoothed_fuel_pct_) > 15.0f) {
         smoothed_fuel_pct_ = raw_fuel;
       } else {
-        // Low-pass filter: ~45 second time constant at 10s poll interval.
-        smoothed_fuel_pct_ += (raw_fuel - smoothed_fuel_pct_) * 0.08f;
+        // Ultra-low pass filter to avoid gas level bouncing from fuel slosh (minutes to converge)
+        smoothed_fuel_pct_ += (raw_fuel - smoothed_fuel_pct_) * 0.01f;
       }
       telemetry.fuel_level_pct = static_cast<uint8_t>(lroundf(smoothed_fuel_pct_));
         standard_fuel_unsupported_ = false;
@@ -760,10 +760,11 @@ void Elm327Client::handleLine(const char *line, uint32_t now_ms, telemetry::CarT
             (liters * 100.0f / profile.fuel_tank_liters) *
                 (static_cast<float>(profile.fuel_scale_percent) / 100.0f),
             0.0f, 100.0f);
-        if (smoothed_fuel_pct_ < 0.0f) {
+        if (smoothed_fuel_pct_ < 0.0f || std::abs(scaled_pct - smoothed_fuel_pct_) > 15.0f) {
           smoothed_fuel_pct_ = scaled_pct;
         } else {
-          smoothed_fuel_pct_ += (scaled_pct - smoothed_fuel_pct_) * 0.08f;
+          // Ultra-low pass filter to avoid gas level bouncing from fuel slosh (minutes to converge)
+          smoothed_fuel_pct_ += (scaled_pct - smoothed_fuel_pct_) * 0.01f;
         }
         telemetry.fuel_level_pct = static_cast<uint8_t>(lroundf(smoothed_fuel_pct_));
         last_fuel_update_ms_ = now_ms;
@@ -806,16 +807,19 @@ void Elm327Client::sendCommand(const char *command) {
 }
 
 void Elm327Client::advanceQuery() {
-  // Time-interval scheduling: RPM/Speed alternate every cycle.
-  // Coolant and Voltage are interleaved only when their interval has elapsed.
-  // This keeps motion data updating sub-second while slow-changing values
-  // refresh on the order of minutes.
+  // Time-interval scheduling: Speed runs fast on every cycle.
+  // RPM, Coolant, and Voltage are interleaved only when their elapsed intervals expire.
   constexpr uint32_t kCoolantIntervalMs = 30000;   // every 30s
   constexpr uint32_t kVoltageIntervalMs = 60000;   // every 60s
+  constexpr uint32_t kRpmIntervalMs = 60000;       // every 60s (~1 min)
 
   const uint32_t now = millis();
 
-  // Check if a slow channel is due — insert it once, then resume fast cycling.
+  if (now - last_rpm_query_ms_ >= kRpmIntervalMs) {
+    next_query_ = QueryKind::Rpm;
+    last_rpm_query_ms_ = now;
+    return;
+  }
   if (now - last_coolant_query_ms_ >= kCoolantIntervalMs) {
     next_query_ = QueryKind::Coolant;
     last_coolant_query_ms_ = now;
@@ -827,8 +831,8 @@ void Elm327Client::advanceQuery() {
     return;
   }
 
-  // Default: alternate RPM ↔ Speed.
-  next_query_ = (next_query_ == QueryKind::Rpm) ? QueryKind::Speed : QueryKind::Rpm;
+  // Default: always ask for Speed.
+  next_query_ = QueryKind::Speed;
 }
 
 void Elm327Client::startFuelSequence() {

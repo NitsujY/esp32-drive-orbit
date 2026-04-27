@@ -6,17 +6,39 @@
   padding: 0;
 }
 
+/* ── Dark theme (default — lifted dark grey) ── */
 :root {
-  --bg: #0c0c0c;
+  --bg: #1a1a1a;
   --text: #fafafa;
   --muted: #9ca3af;
-  --dim: #555;
-  --rule: rgba(255, 255, 255, 0.08);
-  --rule-light: rgba(255, 255, 255, 0.06);
+  --dim: #666;
+  --rule: rgba(255, 255, 255, 0.09);
+  --rule-light: rgba(255, 255, 255, 0.07);
   --teal: #2dd4bf;
   --amber: #fbbf24;
   --rose: #fb7185;
-  --fuel-track: rgba(255, 255, 255, 0.06);
+  --fuel-track: rgba(255, 255, 255, 0.07);
+  --panel-bg: #222222;
+  --sheet-bg: #222222;
+  --settings-bg: #282828;
+  --theme-transition: background 0.35s ease, color 0.35s ease, border-color 0.35s ease;
+}
+
+/* ── Black theme (pure black — for dark car interiors) ── */
+:root[data-theme="black"] {
+  --bg: #000000;
+  --text: #e6f0ff;
+  --muted: #6b7f96;
+  --dim: #3a4a5a;
+  --rule: rgba(255, 255, 255, 0.06);
+  --rule-light: rgba(255, 255, 255, 0.04);
+  --teal: #2dd4bf;
+  --amber: #fbbf24;
+  --rose: #fb7185;
+  --fuel-track: rgba(255, 255, 255, 0.05);
+  --panel-bg: #080808;
+  --sheet-bg: #080808;
+  --settings-bg: #0d0d0d;
 }
 
 html,
@@ -29,6 +51,7 @@ body {
   font-family: 'Helvetica Neue', 'Inter', -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: var(--theme-transition);
 }
 
 body {
@@ -442,7 +465,7 @@ body {
   right: 0;
   max-width: 480px;
   margin: 0 auto;
-  background: #1a1a1a;
+  background: var(--settings-bg);
   border-radius: 20px 20px 0 0;
   padding: 24px 24px max(24px, env(safe-area-inset-bottom));
   z-index: 100;
@@ -700,7 +723,7 @@ body {
   right: 0;
   max-width: 480px;
   margin: 0 auto;
-  background: #131313;
+  background: var(--sheet-bg);
   border-radius: 20px 20px 0 0;
   padding: 12px 24px max(24px, env(safe-area-inset-bottom));
   z-index: 100;
@@ -775,7 +798,7 @@ body {
   flex-direction: column;
   gap: 3px;
   padding: 14px 16px;
-  background: #131313;
+  background: var(--sheet-bg);
 }
 
 .trip-stat-value {
@@ -942,4 +965,128 @@ body {
   0% { opacity: 0.4; }
   50% { opacity: 1; }
   100% { opacity: 1; }
+}
+
+/* Headlight Toggle styles — hidden by default, used as theme switcher */
+#headlight-icon {
+  /* Hidden from normal view — only visible as a subtle theme toggle */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* ── Theme Toggle Button ── */
+
+.theme-toggle {
+  position: absolute;
+  top: 8px;
+  left: 52px;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.2);
+  transition: color 0.2s, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.theme-toggle:hover,
+.theme-toggle:active {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Half-moon icon — shown in dark mode (click to go black) */
+.theme-toggle .icon-moon { display: block; }
+.theme-toggle .icon-sun  { display: none; }
+
+/* Circle icon — shown in black mode (click to go dark) */
+:root[data-theme="black"] .theme-toggle .icon-moon { display: none; }
+:root[data-theme="black"] .theme-toggle .icon-sun  { display: block; }
+
+/* ── Weather Bar ── */
+
+.weather-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 5px 24px 0;
+  flex-shrink: 0;
+  min-height: 22px;
+}
+
+.weather-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-item .weather-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.weather-item .weather-val {
+  color: var(--muted);
+}
+
+.weather-sep {
+  width: 1px;
+  height: 10px;
+  background: var(--rule);
+  flex-shrink: 0;
+}
+
+.weather-bar.wifi-off {
+  opacity: 0.3;
+}
+
+/* Black theme — panels go to near-true-black */
+:root[data-theme="black"] .settings-panel,
+:root[data-theme="black"] .trip-sheet,
+:root[data-theme="black"] .trip-stat {
+  background: var(--sheet-bg);
+}
+
+:root[data-theme="black"] .trip-stats-grid {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme="black"] .trip-section-rule {
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme="black"] .trip-event-row {
+  border-bottom-color: rgba(255, 255, 255, 0.03);
+}
+
+:root[data-theme="black"] .gauge-micro-bar {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme="black"] .trip-bar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme="black"] .shift-led {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:root[data-theme="black"] .status-dot {
+  background: #333;
 }

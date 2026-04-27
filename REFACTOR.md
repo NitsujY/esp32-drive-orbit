@@ -2,10 +2,10 @@
 
 ## Overview
 
-The project has been refactored to focus **exclusively on the Orb** as the single device in the car, eliminating the complex WiFi + ESP32 + Bluetooth relay through dash_35. The Orb now reads OBD2 data directly via UART.
+The project has been refactored to focus **exclusively on the Orb** as the single device in the car, eliminating the complex WiFi + ESP32 + Bluetooth relay through dash_35 (legacy). The Orb now reads OBD2 data directly via UART.
 
 ### Problem Solved
-- **Before**: OBD2 → dash_35 (gateway) ✗→ ESP-NOW broadcast ✗→ companion_orb (frequent data loss)
+- **Before**: OBD2 → dash_35 (legacy) (gateway) ✗→ ESP-NOW broadcast ✗→ companion_orb (frequent data loss)
 - **Now**: OBD2 → companion_orb (direct UART, reliable & simple)
 
 ---
@@ -57,7 +57,7 @@ Orb Display + Pet Logic
 
 **File**: `platformio.ini`
 
-- Changed `default_envs` from `dash_35` → `companion_orb`
+- Changed `default_envs` from `dash_35` (legacy) → `companion_orb`
 - Orb is now the default build target
 - All companion_orb source files automatically included
 
@@ -111,7 +111,7 @@ Before deployment:
 
 ## What's Deprecated
 
-- **dash_35**: The headless gateway is no longer used. Kept in repo for reference.
+- **dash_35 (legacy)**: The headless gateway is no longer used. Kept in repo for reference.
 - **ESP-NOW broadcast**: No longer needed for orb communication.
 - **WiFi on orb**: Fully removed to simplify firmware and improve reliability.
 

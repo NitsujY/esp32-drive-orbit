@@ -52,6 +52,8 @@ struct DashboardTelemetry {
   TransmissionGear gear;
   int8_t weather_temp_c;
   uint8_t weather_code;
+  uint16_t sunset_minute; // 0-1439 mins since midnight local time
+  char greeting[64];      // daily pet greeting
   bool wifi_connected;
   bool headlights_on;
 };
@@ -148,6 +150,8 @@ inline DashboardTelemetry makeSimulatedTelemetry(uint32_t sequence,
   telemetry.fuel_level_pct = fuel_level_pct;
   telemetry.weather_temp_c = kWeatherTempUnknown;
   telemetry.weather_code = kWeatherCodeUnknown;
+  telemetry.sunset_minute = 0xFFFF;
+  telemetry.greeting[0] = '\0';
   telemetry.wifi_connected = false;
   telemetry.nearest_camera_m = kNearestCameraUnknown;
   refreshDerivedTelemetry(telemetry);

@@ -1,108 +1,315 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
-  <title>Minimalist Rings (Default)</title>
+  <title>Minimalist Rings (Connected)</title>
   <style>
-    body { margin:0; background:#0c1116; color:#86e6ff; font-family:'Courier New',monospace; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
-    .wrap { position:relative; width:240px; height:240px; background:#07101a; border-radius:120px; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; }
+    :root { --body-bg:#0c1116; --orb-bg:#07101a; --text-col:#86e6ff; --muted-col:#7a99ad; }
+    [data-theme="black"] { --body-bg:#000000; --orb-bg:#000000; --text-col:#e6f0ff; --muted-col:#6b7f96; }
+    body { margin:0; background:var(--body-bg); color:var(--text-col); font-family:'Courier New',monospace; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; overflow:hidden; gap:16px; transition:background 0.3s; }
+    .wrap { position:relative; width:240px; height:240px; background:var(--orb-bg); border-radius:120px; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; transition:background 0.3s; }
     canvas { position:absolute; top:0; left:0; z-index:1; }
     .ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none; }
+
+    /* ── Speed screen (driving) ── */
+    .screen-weather {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      transition: opacity 0.6s ease;
+    }
+    .spd-num {
+      font-family: Arial, sans-serif;
+      font-size: 64px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      text-shadow: 0 0 12px rgba(0,0,0,0.7);
+    }
+    [data-theme="black"] .spd-num { color: #e6f0ff; text-shadow: none; }
+    .spd-unit {
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #7a99ad;
+      margin-top: 2px;
+    }
+
+    /* ── Parked / info screen (weather = 0) ── */
+    .screen-parked {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap: 2px;
+      transition: opacity 0.6s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .park-time {
+      font-family: Arial, sans-serif;
+      font-size: 38px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      text-shadow: 0 0 10px rgba(0,0,0,0.6);
+    }
+    [data-theme="black"] .park-time { color: #e6f0ff; text-shadow: none; }
+    .park-temp {
+      font-size: 20px;
+      font-weight: 300;
+      color: #7df9c6;
+      letter-spacing: 0.02em;
+      margin-top: 4px;
+    }
+    [data-theme="black"] .park-temp { color: #2dd4bf; }
+    .park-cond {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #7a99ad;
+      margin-top: 1px;
+    }
+    .park-wifi {
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      color: #4a6a7a;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .park-wifi-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #4a6a7a;
+      display: inline-block;
+    }
+    .park-wifi-dot.online { background: #7df9c6; box-shadow: 0 0 4px rgba(125,249,198,0.6); }
+    [data-theme="black"] .park-wifi-dot.online { background: #2dd4bf; }
+
+    .theme-btn { background:rgba(125,249,198,0.1); border:1px solid rgba(125,249,198,0.25); color:var(--text-col); font-family:'Courier New',monospace; font-size:11px; letter-spacing:0.1em; padding:6px 16px; border-radius:999px; cursor:pointer; transition:background 0.2s, border-color 0.2s; }
+    .theme-btn:hover { background:rgba(125,249,198,0.2); border-color:rgba(125,249,198,0.5); }
+    [data-theme="black"] .theme-btn { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.08); }
+
+    /* sim controls */
+    .sim-row { display:flex; gap:8px; align-items:center; }
+    .sim-btn { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--text-col); font-family:'Courier New',monospace; font-size:10px; letter-spacing:0.08em; padding:5px 12px; border-radius:999px; cursor:pointer; transition:background 0.2s; }
+    .sim-btn:hover { background:rgba(255,255,255,0.12); }
+    [data-theme="black"] .sim-btn { background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.06); }
+    .sim-label { font-size:10px; color:var(--muted-col); letter-spacing:0.06em; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <canvas id="c" width="240" height="240"></canvas>
-    <div class="ui" id="ui"><div style='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;'><div id='u-spd' style='font-family:Arial,sans-serif;font-size:62px;font-weight:bold;color:#fff;line-height:0.8;text-shadow:0 0 8px rgba(0,0,0,0.8);'>--</div><div style='font-size:12px;font-family:Courier New,monospace;color:#7a99ad;letter-spacing:1px;margin-top:6px;'>KM/H</div></div></div>
+    <div class="ui">
+      <div class="weather-chip" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:4px 10px;border-radius:999px;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#7a99ad;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)" id="weather-chip">WiFi / Weather</div>
+
+      <!-- Speed screen — shown while driving -->
+      <div class="screen-weather" id="screen-weather">
+        <div class="spd-num" id="spd-num">0</div>
+        <div class="spd-unit">local time</div>
+      </div>
+
+      <!-- Parked screen — shown when weather = 0 for 2s, WiFi data -->
+      <div class="screen-parked" id="screen-parked">
+        <div class="park-time" id="park-time">--:--</div>
+        <div class="park-temp" id="park-temp">--°C</div>
+        <div class="park-cond" id="park-cond">--</div>
+        <div class="park-wifi">
+          <span class="park-wifi-dot" id="wifi-dot"></span>
+          <span id="wifi-label">offline</span>
+        </div>
+      </div>
+
+    </div>
   </div>
+
+  <div class="sim-row">
+    <button class="sim-btn" id="btn-drive">▶ Driving</button>
+    <button class="sim-btn" id="btn-stop">■ Stopped</button>
+    <span class="sim-label" id="sim-label">weather: 58 local time</span>
+  </div>
+  <button class="theme-btn" id="theme-btn">⬛ BLACK</button>
+
   <script>
-    const ctx = document.getElementById('c').getContext('2d');
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const CX = 120, CY = 120;
     let frame = 0;
-    const CX=120, CY=120;
-    
-    function getTelemetry() {
-        let gasLevel = 0.82;
-        return {
-            lod: Math.abs(Math.sin(frame*0.05)),
-            bst: Math.abs(Math.sin(frame*0.1)) * 1.5,
-            spd: 75 + Math.floor(Math.sin(frame*0.01)*20),
-            gas: gasLevel,
-            trp: 12.4 + (frame * 0.005),
-            rng: Math.floor(420 * gasLevel)
-        };
+    let isDark = true;
+
+    // ── Simulated state ──
+    let simSpeed = 58;       // local time — the real hero value
+    let simGas   = 0.72;
+    let simLoad  = 0.0;
+    let stoppedMs = 0;       // how long we've been at weather=0
+    const PARK_DELAY_MS = 2000; // show parked screen after 2s stopped
+
+    // ── Weather (simulated WiFi fetch) ──
+    const weatherScenes = [
+      { temp: 24, cond: 'CLEAR',   icon: '☀', wifiOn: true  },
+      { temp: 19, cond: 'CLOUDY',  icon: '⛅', wifiOn: true  },
+      { temp: 14, cond: 'RAIN',    icon: '🌧', wifiOn: true  },
+      { temp: -2, cond: 'SNOW',    icon: '❄',  wifiOn: false },
+    ];
+    let weatherIdx = 0;
+    let weather = weatherScenes[0];
+
+    // Cycle weather every 3s when parked
+    setInterval(() => {
+      if (simSpeed === 0) {
+        weatherIdx = (weatherIdx + 1) % weatherScenes.length;
+        weather = weatherScenes[weatherIdx];
+      }
+    }, 3000);
+
+    // ── Screen crossfade ──
+    let parkedVisible = false;
+
+    function setParkedScreen(show) {
+      if (show === parkedVisible) return;
+      parkedVisible = show;
+      document.getElementById('screen-weather').style.opacity  = show ? '0' : '1';
+      document.getElementById('screen-parked').style.opacity = show ? '1' : '0';
     }
 
-    function draw() { 
-        ctx.clearRect(0,0,240,240); 
-        let t = getTelemetry();
-        
-    ctx.lineCap='round'; 
-    ctx.lineWidth=4; 
-    
-    // Gas Inner Bottom Left Arc (Dashed)
-    ctx.strokeStyle='#eef6ff'; 
-    ctx.setLineDash([8, 4]);
-    ctx.beginPath(); 
-    let gasEndAngle = Math.PI/2 + Math.PI/2*t.gas;
-    ctx.arc(CX,CY,118, Math.PI/2, gasEndAngle); 
-    ctx.stroke(); 
-    ctx.setLineDash([]);
-    
-    // Gas percentage text tracking the tip of the Gas ARC
-    let gx = CX + Math.cos(gasEndAngle) * 100;
-    let gy = CY + Math.sin(gasEndAngle) * 100;
-    ctx.font = 'bold 11px Courier New';
-    ctx.fillStyle = '#eef6ff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(Math.floor(t.gas*100) + '%', gx, gy);
-    
-    // Load Inner Top Right Arc (Color changes red to orange)
-    let gColor = Math.floor(200 - t.lod*150);
-    ctx.strokeStyle=`rgb(255, ${gColor}, 0)`; 
-    ctx.beginPath(); 
-    ctx.arc(CX,CY,118, -Math.PI/2, -Math.PI/2 + Math.PI/2*t.lod); 
-    ctx.stroke();
-    
-    // ----------------------------------------
-    // BOTTOM: Merged Trip & Range Block
-    // ----------------------------------------
-    // Leaving the top empty makes the entire composition more elegant and minimalist.
-    ctx.textBaseline = 'middle';
-
-    // Trip (Left Side)
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#7a99ad';
-    ctx.font = '10px Courier New';
-    ctx.fillText('TRIP', CX - 10, CY + 58);
-    ctx.fillStyle = '#eef6ff';
-    ctx.font = 'bold 11px Courier New';
-    ctx.fillText(t.trp.toFixed(1), CX - 10, CY + 70);
-
-    // Range (Right Side)
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#4caf8c';
-    ctx.font = '10px Courier New';
-    ctx.fillText('RNG', CX + 10, CY + 58);
-    ctx.fillStyle = '#eef6ff';
-    ctx.font = 'bold 11px Courier New';
-    ctx.fillText(t.rng, CX + 10, CY + 70);
-
-    // Subtle Vertical Divider
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(CX - 1, CY + 54, 2, 20);
-
-    // Sleek Single Range Bar Gauge
-    ctx.fillStyle='rgba(255,255,255,0.1)';
-    ctx.fillRect(CX - 30, CY + 82, 60, 2);
-    ctx.fillStyle='#7df9c6';
-    ctx.fillRect(CX - 30, CY + 82, 60 * t.gas, 2);
-
-    let sEl = document.getElementById('u-spd');
-    if(sEl) sEl.innerText = t.spd;
-     
+    // ── Clock ──
+    function getTime() {
+      const d = new Date();
+      return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
     }
-    setInterval(()=>{ frame++; ctx.save(); draw(); ctx.restore(); }, 33);
+
+    // ── Update parked screen DOM ──
+    function updateParkedDOM() {
+      document.getElementById('park-time').textContent = getTime();
+      document.getElementById('park-temp').textContent = weather.icon + '  ' + weather.temp + '°C';
+      document.getElementById('park-cond').textContent = weather.cond;
+      const dot = document.getElementById('wifi-dot');
+      dot.classList.toggle('online', weather.wifiOn);
+      document.getElementById('wifi-label').textContent = weather.wifiOn ? 'wifi · open-meteo' : 'offline';
+    }
+
+    // ── Sim controls ──
+    document.getElementById('btn-drive').addEventListener('click', () => {
+      simSpeed = 42 + Math.floor(Math.random() * 60);
+      stoppedMs = 0;
+      document.getElementById('sim-label').textContent = 'weather: ' + simSpeed + ' local time';
+    });
+    document.getElementById('btn-stop').addEventListener('click', () => {
+      simSpeed = 0;
+      document.getElementById('sim-label').textContent = 'weather: 0 local time — parked';
+    });
+
+    // ── Theme toggle ──
+    document.getElementById('theme-btn').addEventListener('click', () => {
+      isDark = !isDark;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'black');
+      document.getElementById('theme-btn').textContent = isDark ? '⬛ BLACK' : '🌑 DARK';
+    });
+
+    // ── Canvas draw ──
+    function draw(dt) {
+      ctx.clearRect(0, 0, 240, 240);
+
+      // Smooth load when driving
+      const targetLoad = simSpeed > 0 ? Math.min(1, simSpeed / 120 + Math.sin(frame * 0.04) * 0.1) : 0;
+      simLoad += (targetLoad - simLoad) * 0.08;
+
+      const arcCol  = isDark ? '#eef6ff' : '#c8deff';
+      const loadR   = Math.floor(200 - simLoad * 150);
+      const loadCol = `rgb(255,${loadR},0)`;
+      const labelCol = isDark ? '#7a99ad' : '#6b7f96';
+      const valCol   = isDark ? '#eef6ff' : '#c8deff';
+      const rngCol   = isDark ? '#4caf8c' : '#2dd4bf';
+      const barBg    = 'rgba(255,255,255,0.08)';
+      const barFg    = isDark ? '#7df9c6' : '#2dd4bf';
+      const divCol   = 'rgba(255,255,255,0.12)';
+
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 4;
+
+      // ── Gas arc — bottom-left quadrant (always visible) ──
+      ctx.strokeStyle = arcCol;
+      ctx.setLineDash([8, 4]);
+      ctx.beginPath();
+      const gasEnd = Math.PI / 2 + (Math.PI / 2) * simGas;
+      ctx.arc(CX, CY, 118, Math.PI / 2, gasEnd);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Gas % label at arc tip
+      ctx.font = 'bold 11px Courier New';
+      ctx.fillStyle = arcCol;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(Math.floor(simGas * 100) + '%',
+        CX + Math.cos(gasEnd) * 100,
+        CY + Math.sin(gasEnd) * 100);
+
+      // ── Load arc — top-right quadrant (only while driving) ──
+      if (simSpeed > 0 || simLoad > 0.02) {
+        ctx.strokeStyle = loadCol;
+        ctx.beginPath();
+        ctx.arc(CX, CY, 118, -Math.PI / 2, -Math.PI / 2 + (Math.PI / 2) * simLoad);
+        ctx.stroke();
+      }
+
+      // ── Bottom info row (TRIP / RNG) — only while driving ──
+      if (simSpeed > 0) {
+        const trip = (12.4 + frame * 0.0003).toFixed(1);
+        const rng  = Math.floor(420 * simGas);
+
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = labelCol; ctx.font = '10px Courier New';
+        ctx.fillText('TRIP', CX - 10, CY + 58);
+        ctx.fillStyle = valCol; ctx.font = 'bold 11px Courier New';
+        ctx.fillText(trip, CX - 10, CY + 70);
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = rngCol; ctx.font = '10px Courier New';
+        ctx.fillText('RNG', CX + 10, CY + 58);
+        ctx.fillStyle = valCol; ctx.font = 'bold 11px Courier New';
+        ctx.fillText(rng + ' km', CX + 10, CY + 70);
+
+        ctx.fillStyle = divCol;
+        ctx.fillRect(CX - 1, CY + 54, 2, 20);
+
+        ctx.fillStyle = barBg;
+        ctx.fillRect(CX - 30, CY + 82, 60, 2);
+        ctx.fillStyle = barFg;
+        ctx.fillRect(CX - 30, CY + 82, 60 * simGas, 2);
+      }
+
+      // ── Speed DOM update ──
+      document.getElementById('spd-num').textContent = simSpeed;
+
+      // ── Parked screen logic ──
+      if (simSpeed === 0) {
+        stoppedMs += dt;
+        if (stoppedMs >= PARK_DELAY_MS) {
+          setParkedScreen(true);
+          updateParkedDOM();
+        }
+      } else {
+        stoppedMs = 0;
+        setParkedScreen(false);
+      }
+    }
+
+    // ── Loop ──
+    let lastTs = performance.now();
+    function loop(ts) {
+      const dt = ts - lastTs;
+      lastTs = ts;
+      frame++;
+      ctx.save();
+      draw(dt);
+      ctx.restore();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
   </script>
 </body>
 </html>

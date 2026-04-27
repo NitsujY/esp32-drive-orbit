@@ -8,75 +8,79 @@ inline uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
   return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
-// ── Global light/dark mode flag ──
-// Default: false (light mode). Set to true when headlights are detected on.
-inline bool &darkMode() {
-  static bool dark = false;
-  return dark;
+// ── Global theme flag ──
+// false = dark mode  (deep navy tint — default)
+// true  = black mode (pure black — for dark car interiors)
+inline bool &blackMode() {
+  static bool black = false;
+  return black;
 }
 
-// ── DARK mode palette (headlights ON / night) ──
+// Keep darkMode() as an alias so existing call-sites compile unchanged.
+inline bool &darkMode() { return blackMode(); }
+
+// ── DARK mode palette (deep navy tint — default) ──
 
 namespace dark {
 namespace chill {
-  inline uint16_t bg()           { return rgb565(5, 9, 16); }
-  inline uint16_t panel()        { return rgb565(10, 16, 34); }
-  inline uint16_t line()         { return rgb565(22, 44, 70); }
+  inline uint16_t bg()           { return rgb565(12, 18, 28); }
+  inline uint16_t panel()        { return rgb565(18, 28, 50); }
+  inline uint16_t line()         { return rgb565(30, 56, 84); }
   inline uint16_t accent()       { return rgb565(134, 255, 225); }
   inline uint16_t accentStrong() { return rgb565(215, 248, 255); }
-  inline uint16_t accentDim()    { return rgb565(38, 94, 102); }
+  inline uint16_t accentDim()    { return rgb565(44, 106, 116); }
   inline uint16_t moodRing()     { return rgb565(113, 207, 255); }
   inline uint16_t accentAlt()    { return rgb565(113, 207, 255); }
   inline uint16_t shift()        { return rgb565(255, 95, 210); }
 }
 namespace sport {
-  inline uint16_t bg()           { return rgb565(16, 7, 10); }
-  inline uint16_t panel()        { return rgb565(24, 10, 18); }
-  inline uint16_t line()         { return rgb565(68, 28, 32); }
+  inline uint16_t bg()           { return rgb565(24, 12, 16); }
+  inline uint16_t panel()        { return rgb565(36, 16, 26); }
+  inline uint16_t line()         { return rgb565(80, 36, 42); }
   inline uint16_t accent()       { return rgb565(255, 177, 75); }
   inline uint16_t accentStrong() { return rgb565(255, 229, 194); }
-  inline uint16_t accentDim()    { return rgb565(104, 58, 30); }
+  inline uint16_t accentDim()    { return rgb565(116, 68, 36); }
   inline uint16_t moodRing()     { return rgb565(255, 123, 95); }
   inline uint16_t accentAlt()    { return rgb565(255, 123, 95); }
   inline uint16_t shift()        { return rgb565(255, 85, 200); }
 }
 inline uint16_t text()       { return rgb565(220, 235, 250); }
-inline uint16_t muted()      { return rgb565(80, 100, 120); }
-inline uint16_t trackChill() { return rgb565(18, 28, 44); }
-inline uint16_t trackSport() { return rgb565(38, 18, 20); }
+inline uint16_t muted()      { return rgb565(96, 118, 140); }
+inline uint16_t trackChill() { return rgb565(24, 36, 56); }
+inline uint16_t trackSport() { return rgb565(48, 24, 28); }
 }  // namespace dark
 
-// ── LIGHT mode palette (headlights OFF / daytime, default) ──
-// Not white — a slightly lifted dark palette for daytime readability.
+// ── BLACK mode palette (pure black — maximum contrast for dark interiors) ──
+// Backgrounds go to true black. Accents stay vivid.
 
-namespace light {
+namespace black {
 namespace chill {
-  inline uint16_t bg()           { return rgb565(8, 16, 28); }
-  inline uint16_t panel()        { return rgb565(14, 26, 44); }
-  inline uint16_t line()         { return rgb565(34, 72, 96); }
+  inline uint16_t bg()           { return rgb565(0, 0, 0); }
+  inline uint16_t panel()        { return rgb565(6, 6, 10); }
+  inline uint16_t line()         { return rgb565(18, 28, 40); }
   inline uint16_t accent()       { return rgb565(134, 255, 225); }
   inline uint16_t accentStrong() { return rgb565(215, 248, 255); }
-  inline uint16_t accentDim()    { return rgb565(46, 118, 126); }
+  inline uint16_t accentDim()    { return rgb565(28, 72, 80); }
   inline uint16_t moodRing()     { return rgb565(113, 207, 255); }
   inline uint16_t accentAlt()    { return rgb565(113, 207, 255); }
   inline uint16_t shift()        { return rgb565(255, 95, 210); }
 }
 namespace sport {
-  inline uint16_t bg()           { return rgb565(24, 12, 10); }
-  inline uint16_t panel()        { return rgb565(40, 18, 20); }
-  inline uint16_t line()         { return rgb565(92, 46, 38); }
+  inline uint16_t bg()           { return rgb565(0, 0, 0); }
+  inline uint16_t panel()        { return rgb565(10, 4, 6); }
+  inline uint16_t line()         { return rgb565(50, 16, 18); }
   inline uint16_t accent()       { return rgb565(255, 177, 75); }
   inline uint16_t accentStrong() { return rgb565(255, 229, 194); }
-  inline uint16_t accentDim()    { return rgb565(134, 76, 40); }
+  inline uint16_t accentDim()    { return rgb565(80, 36, 14); }
   inline uint16_t moodRing()     { return rgb565(255, 123, 95); }
   inline uint16_t accentAlt()    { return rgb565(255, 123, 95); }
   inline uint16_t shift()        { return rgb565(255, 85, 200); }
 }
-inline uint16_t text()       { return rgb565(235, 248, 255); }
-inline uint16_t muted()      { return rgb565(110, 140, 160); }
-inline uint16_t trackChill() { return rgb565(26, 40, 58); }
-inline uint16_t trackSport() { return rgb565(56, 28, 24); }
-}  // namespace light
+inline uint16_t text()       { return rgb565(230, 240, 255); }
+inline uint16_t muted()      { return rgb565(70, 88, 106); }
+inline uint16_t trackChill() { return rgb565(10, 16, 26); }
+inline uint16_t trackSport() { return rgb565(24, 10, 12); }
+}  // namespace black
 
 // Common (mode-independent)
 inline uint16_t warning() { return rgb565(255, 177, 75); }
@@ -87,48 +91,50 @@ inline uint16_t arcMid()    { return rgb565(68, 255, 50); }
 inline uint16_t arcHigh()   { return rgb565(0, 255, 102); }
 inline uint16_t arcEnd()    { return rgb565(0, 204, 136); }
 
-// ── Mode-aware helpers (read darkMode() flag) ──
+// ── Mode-aware helpers ──
+// blackMode() == false → dark palette (default)
+// blackMode() == true  → black palette
 
 inline bool isSport(uint8_t drive_mode) { return drive_mode == 2; }
 
-// Chill namespace accessors (light/dark aware)
 namespace chill {
-  inline uint16_t bg()           { return darkMode() ? dark::chill::bg()           : light::chill::bg(); }
-  inline uint16_t panel()        { return darkMode() ? dark::chill::panel()        : light::chill::panel(); }
-  inline uint16_t line()         { return darkMode() ? dark::chill::line()          : light::chill::line(); }
-  inline uint16_t accent()       { return darkMode() ? dark::chill::accent()       : light::chill::accent(); }
-  inline uint16_t accentStrong() { return darkMode() ? dark::chill::accentStrong() : light::chill::accentStrong(); }
-  inline uint16_t accentDim()    { return darkMode() ? dark::chill::accentDim()    : light::chill::accentDim(); }
-  inline uint16_t moodRing()     { return darkMode() ? dark::chill::moodRing()     : light::chill::moodRing(); }
-  inline uint16_t accentAlt()    { return darkMode() ? dark::chill::accentAlt()    : light::chill::accentAlt(); }
-  inline uint16_t shift()        { return darkMode() ? dark::chill::shift()        : light::chill::shift(); }
+  inline uint16_t bg()           { return blackMode() ? black::chill::bg()           : dark::chill::bg(); }
+  inline uint16_t panel()        { return blackMode() ? black::chill::panel()        : dark::chill::panel(); }
+  inline uint16_t line()         { return blackMode() ? black::chill::line()         : dark::chill::line(); }
+  inline uint16_t accent()       { return blackMode() ? black::chill::accent()       : dark::chill::accent(); }
+  inline uint16_t accentStrong() { return blackMode() ? black::chill::accentStrong() : dark::chill::accentStrong(); }
+  inline uint16_t accentDim()    { return blackMode() ? black::chill::accentDim()    : dark::chill::accentDim(); }
+  inline uint16_t moodRing()     { return blackMode() ? black::chill::moodRing()     : dark::chill::moodRing(); }
+  inline uint16_t accentAlt()    { return blackMode() ? black::chill::accentAlt()    : dark::chill::accentAlt(); }
+  inline uint16_t shift()        { return blackMode() ? black::chill::shift()        : dark::chill::shift(); }
 }
 
 namespace sport {
-  inline uint16_t bg()           { return darkMode() ? dark::sport::bg()           : light::sport::bg(); }
-  inline uint16_t panel()        { return darkMode() ? dark::sport::panel()        : light::sport::panel(); }
-  inline uint16_t line()         { return darkMode() ? dark::sport::line()          : light::sport::line(); }
-  inline uint16_t accent()       { return darkMode() ? dark::sport::accent()       : light::sport::accent(); }
-  inline uint16_t accentStrong() { return darkMode() ? dark::sport::accentStrong() : light::sport::accentStrong(); }
-  inline uint16_t accentDim()    { return darkMode() ? dark::sport::accentDim()    : light::sport::accentDim(); }
-  inline uint16_t moodRing()     { return darkMode() ? dark::sport::moodRing()     : light::sport::moodRing(); }
-  inline uint16_t accentAlt()    { return darkMode() ? dark::sport::accentAlt()    : light::sport::accentAlt(); }
-  inline uint16_t shift()        { return darkMode() ? dark::sport::shift()        : light::sport::shift(); }
+  inline uint16_t bg()           { return blackMode() ? black::sport::bg()           : dark::sport::bg(); }
+  inline uint16_t panel()        { return blackMode() ? black::sport::panel()        : dark::sport::panel(); }
+  inline uint16_t line()         { return blackMode() ? black::sport::line()         : dark::sport::line(); }
+  inline uint16_t accent()       { return blackMode() ? black::sport::accent()       : dark::sport::accent(); }
+  inline uint16_t accentStrong() { return blackMode() ? black::sport::accentStrong() : dark::sport::accentStrong(); }
+  inline uint16_t accentDim()    { return blackMode() ? black::sport::accentDim()    : dark::sport::accentDim(); }
+  inline uint16_t moodRing()     { return blackMode() ? black::sport::moodRing()     : dark::sport::moodRing(); }
+  inline uint16_t accentAlt()    { return blackMode() ? black::sport::accentAlt()    : dark::sport::accentAlt(); }
+  inline uint16_t shift()        { return blackMode() ? black::sport::shift()        : dark::sport::shift(); }
 }
 
-inline uint16_t text()  { return darkMode() ? dark::text()  : light::text(); }
-inline uint16_t muted() { return darkMode() ? dark::muted() : light::muted(); }
+inline uint16_t text()  { return blackMode() ? black::text()  : dark::text(); }
+inline uint16_t muted() { return blackMode() ? black::muted() : dark::muted(); }
 
 inline uint16_t bg(uint8_t dm)           { return isSport(dm) ? sport::bg()           : chill::bg(); }
 inline uint16_t panel(uint8_t dm)        { return isSport(dm) ? sport::panel()        : chill::panel(); }
-inline uint16_t line(uint8_t dm)         { return isSport(dm) ? sport::line()          : chill::line(); }
+inline uint16_t line(uint8_t dm)         { return isSport(dm) ? sport::line()         : chill::line(); }
 inline uint16_t accent(uint8_t dm)       { return isSport(dm) ? sport::accent()       : chill::accent(); }
 inline uint16_t accentStrong(uint8_t dm) { return isSport(dm) ? sport::accentStrong() : chill::accentStrong(); }
 inline uint16_t accentDim(uint8_t dm)    { return isSport(dm) ? sport::accentDim()    : chill::accentDim(); }
 inline uint16_t moodRing(uint8_t dm)     { return isSport(dm) ? sport::moodRing()     : chill::moodRing(); }
 inline uint16_t accentAlt(uint8_t dm)    { return isSport(dm) ? sport::accentAlt()    : chill::accentAlt(); }
 inline uint16_t shift(uint8_t dm)        { return isSport(dm) ? sport::shift()        : chill::shift(); }
-inline uint16_t track(uint8_t dm)        { return isSport(dm) ? (darkMode() ? dark::trackSport() : light::trackSport())
-                                                               : (darkMode() ? dark::trackChill() : light::trackChill()); }
+inline uint16_t track(uint8_t dm)        { return isSport(dm)
+    ? (blackMode() ? black::trackSport() : dark::trackSport())
+    : (blackMode() ? black::trackChill() : dark::trackChill()); }
 
 }  // namespace theme

@@ -30,7 +30,7 @@ This specification describes the overarching hardware but will now differentiate
 | Display | GC9A01 — 240 × 240 px round TFT (IPS, 65K colour) |
 | Interface | SPI — SCLK:6 MOSI:7 CS:10 DC:2 RST:1 BL:3 |
 | Backlight | PWM via `analogWrite` on pin 3 |
-| Communication | ESP-NOW (receiver only, broadcasts from `dash_35`) |
+| Communication | ESP-NOW (receiver only, broadcasts from `dash_35` (legacy)) |
 | Framework | Arduino + PlatformIO `env:companion_orb` |
 | Display library | Arduino_GFX v1.6 |
 
@@ -39,7 +39,7 @@ This specification describes the overarching hardware but will now differentiate
 ## System Role
 
 ```
-dash_35  ──ESP-NOW broadcast──►  companion_orb
+dash_35 (legacy)  ──ESP-NOW broadcast──►  companion_orb
            DashboardTelemetry           │
            (binary framed, ~10 Hz)      │
                                  TelemetryStreamParser
@@ -47,7 +47,7 @@ dash_35  ──ESP-NOW broadcast──►  companion_orb
                                   OrbDisplay::render()
 ```
 
-`companion_orb` is receive-only. It never sends data back to `dash_35`.
+`companion_orb` is receive-only. It never sends data back to `dash_35` (legacy).
 
 ---
 

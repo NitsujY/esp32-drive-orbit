@@ -2,7 +2,7 @@
 
 ## Status: Ideas — not yet specced or scheduled
 
-> **Design context:** dash_35 is now a headless OBD telemetry gateway. The web dashboard (browser/iOS)
+> **Design context:** dash_35 (legacy) is now a headless OBD telemetry gateway. The web dashboard (browser/iOS)
 > is the primary UI. companion_orb is deferred. Features below target the **web dashboard** unless
 > noted as firmware-side.
 
@@ -127,7 +127,7 @@ These features use the existing Wi-Fi + iPhone hotspot path. Location is pre-con
 
 ### 10. ~~Fuel Price "Good Day to Fill"~~ (spec removed)
 
-~~`fuel-price-lookup.md` has been removed~~ — spec was written for the physical dash_35 detail view which no longer exists. Can be re-specced for the web dashboard if needed.
+~~`fuel-price-lookup.md` has been removed~~ — spec was written for the physical dash_35 (legacy) detail view which no longer exists. Can be re-specced for the web dashboard if needed.
 
 ### 11. ~~Speed Camera Database~~  (spec removed)
 

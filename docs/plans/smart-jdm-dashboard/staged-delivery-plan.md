@@ -4,11 +4,11 @@
 
 This plan is now ordered around a browser-first release flow.
 
-The web preview is the primary product until the design is locked on desktop and phone. Only after that is stable do we aggressively remove leftover code, harden hotspot reliability, validate the end-to-end dash_35 plus phone behavior, and ship the final ESP32-hosted release.
+The web preview is the primary product until the design is locked on desktop and phone. Only after that is stable do we aggressively remove leftover code, harden hotspot reliability, validate the end-to-end dash_35 (legacy) plus phone behavior, and ship the final ESP32-hosted release.
 
 ## Current Direction
 
-- `dash_35` is being reduced to a headless telemetry gateway.
+- `dash_35` (legacy) is being reduced to a headless telemetry gateway.
 - The browser dashboard is the main UI surface and should be finalized before deeper firmware cleanup continues.
 - `companion_orb` is not part of the active delivery path for this release.
 - The immediate priority is not feature expansion. The priority is sequencing: preview release first, cleanup second, hotspot reliability third, integrated behavior validation fourth, release last.
@@ -54,9 +54,9 @@ Acceptance gate:
 
 Outputs:
 
-- `dash_35` reduced to only the code required for OBD polling, Wi-Fi, mDNS, AsyncWebServer, WebSocket broadcast, and LittleFS serving
-- Old dash_35 display code removed from the repository or clearly retired after a final review
-- No weather, camera, ESP-NOW, or local rendering logic left in the active dash_35 path
+- `dash_35` (legacy) reduced to only the code required for OBD polling, Wi-Fi, mDNS, AsyncWebServer, WebSocket broadcast, and LittleFS serving
+- Old dash_35 (legacy) display code removed from the repository or clearly retired after a final review
+- No weather, camera, ESP-NOW, or local rendering logic left in the active dash_35 (legacy) path
 
 Why it exists:
 
@@ -65,7 +65,7 @@ Why it exists:
 
 Acceptance gate:
 
-- The dash_35 source tree is easy to read and limited to the gateway responsibilities
+- The dash_35 (legacy) source tree is easy to read and limited to the gateway responsibilities
 - `pio run -e dash_35` stays green after cleanup
 
 ### Stage 3: iPhone Hotspot Reliability Validation
@@ -87,11 +87,11 @@ Acceptance gate:
 - The dashboard remains reachable by direct IP even if `carconsole.local` is inconsistent
 - Failures, if any, are reduced to a small documented set of known hotspot limitations
 
-### Stage 4: End-To-End dash_35 And Phone App Behavior Test
+### Stage 4: End-To-End dash_35 (legacy) And Phone App Behavior Test
 
 Outputs:
 
-- Verified behavior with live `dash_35` telemetry feeding the browser dashboard
+- Verified behavior with live `dash_35` (legacy) telemetry feeding the browser dashboard
 - Confirmed reconnect behavior when the board restarts, the hotspot cycles, or the browser reloads
 - Confirmed UI responsiveness, stale-data behavior, and visual stability on the phone
 
@@ -130,9 +130,9 @@ Acceptance gate:
 
 1. Treat the current browser dashboard as a release candidate and iterate only on design-quality issues until the preview is approved.
 2. Every preview-facing UI update must be verified against the live OBD path before the iteration is considered complete.
-3. After preview approval, physically remove unused dash_35 code instead of only excluding it from the build.
+3. After preview approval, physically remove unused dash_35 (legacy) code instead of only excluding it from the build.
 4. Run repeated iPhone hotspot connection trials and tighten Wi-Fi behavior until it is dependable.
-5. Validate live dash_35 plus phone behavior with the real board, not the mock feed.
+5. Validate live dash_35 (legacy) plus phone behavior with the real board, not the mock feed.
 6. Only then produce and deploy the final release assets.
 
 ## Explicit Non-Goals For This Release

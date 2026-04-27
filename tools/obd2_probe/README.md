@@ -38,7 +38,7 @@ python -m obd2_probe repl --address <BLE_ID>
 Run an automated scan-and-test pass:
 
 ```bash
-python -m obd2_probe test --name V-LINK \
+python -m obd2_probe test --name IOS-Vlink \
   --tx-uuid 00002af1-0000-1000-8000-00805f9b34fb \
   --rx-uuid 00002af0-0000-1000-8000-00805f9b34fb \
   --include-toyota-fuel
@@ -47,7 +47,7 @@ python -m obd2_probe test --name V-LINK \
 Scan Toyota custom Mode 21 or 22 PID ranges:
 
 ```bash
-python -m obd2_probe toyota-scan --name V-LINK \
+python -m obd2_probe toyota-scan --name IOS-Vlink \
   --tx-uuid 00002af1-0000-1000-8000-00805f9b34fb \
   --rx-uuid 00002af0-0000-1000-8000-00805f9b34fb \
   --header 7C0 --mode 21 --pid-start 0x00 --pid-end 0xFF

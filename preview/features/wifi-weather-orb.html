@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <title>WiFi Weather Orb — Drive Orbit</title>
+  <style>
+    :root {
+      --bg: #06131a;
+      --orb-bg: #07101a;
+      --text: #eaf7ff;
+      --muted: #8eaab7;
+      --dim: #4a6a7a;
+      --accent: #7df9c6;
+      --line: rgba(125,249,198,0.15);
+    }
+    [data-theme="black"] {
+      --bg: #000000;
+      --orb-bg: #000000;
+      --text: #eaf7ff;
+      --muted: #8eaab7;
+      --dim: #4a6a7a;
+      --accent: #7df9c6;
+      --line: rgba(125,249,198,0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 20px 48px;
+      gap: 20px;
+      transition: background 0.35s, color 0.35s;
+    }
+
+    /* ── Header ── */
+    .header {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .back-link {
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      padding: 6px 14px;
+      border-radius: 999px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .back-link:hover { color: var(--text); border-color: var(--accent); }
+    .theme-btn {
+      background: rgba(125,249,198,0.08);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .theme-btn:hover { background: rgba(125,249,198,0.16); border-color: var(--accent); }
+    [data-theme="black"] .theme-btn { background: rgba(0,0,0,0.05); }
+
+    /* ── Title ── */
+    .title-block { text-align: center; max-width: 460px; }
+    .eyebrow { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+    h1 { font-size: clamp(20px, 4vw, 28px); font-weight: 600; line-height: 1.15; margin-bottom: 6px; }
+    .subtitle { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+    /* ── Orb ── */
+    .orb-wrap {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      background: var(--orb-bg);
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: inset 0 0 12px rgba(0,0,0,0.7), 0 0 32px rgba(125,249,198,0.05);
+      flex-shrink: 0;
+      transition: background 0.35s;
+    }
+    canvas { position: absolute; top: 0; left: 0; }
+
+    /* ── Speed screen ── */
+    .screen-speed {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transition: opacity 0.6s ease;
+    }
+    .spd-num {
+      font-size: 72px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      text-shadow: 0 0 14px rgba(0,0,0,0.6);
+    }
+    [data-theme="black"] .spd-num { color: #1a3a4a; text-shadow: none; }
+    .spd-unit {
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #7a99ad;
+      margin-top: 2px;
+    }
+
+    /* ── Parked screen ── */
+    .screen-parked {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .park-time {
+      font-size: 40px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      text-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    [data-theme="black"] .park-time { color: #1a3a4a; text-shadow: none; }
+    .park-weather {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .park-icon { font-size: 22px; line-height: 1; }
+    .park-temp {
+      font-size: 22px;
+      font-weight: 300;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+    .park-cond {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #7a99ad;
+    }
+    .park-extras {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .park-extra {
+      font-size: 10px;
+      color: #4a6a7a;
+      letter-spacing: 0.06em;
+    }
+    .park-wifi {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: #4a6a7a;
+      margin-top: 6px;
+    }
+    .wifi-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #4a6a7a;
+      transition: background 0.3s;
+    }
+    .wifi-dot.on { background: var(--accent); box-shadow: 0 0 5px rgba(125,249,198,0.5); }
+
+    /* ── State badge ── */
+    .state-badge {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+    .state-badge.parked { color: var(--accent); border-color: rgba(125,249,198,0.3); }
+
+    /* ── Sim controls ── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+    }
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .speed-row label {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      min-width: 60px;
+    }
+    .speed-row input[type=range] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+    .speed-row .speed-readout {
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      min-width: 52px;
+      text-align: right;
+    }
+    .btn-row { display: flex; gap: 8px; }
+    .ctrl-btn {
+      background: rgba(125,249,198,0.08);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .ctrl-btn:hover { background: rgba(125,249,198,0.16); }
+    [data-theme="black"] .ctrl-btn { background: rgba(0,0,0,0.05); }
+
+    /* ── Info note ── */
+    .info-note {
+      max-width: 360px;
+      font-size: 11px;
+      color: var(--dim);
+      text-align: center;
+      line-height: 1.65;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 16px;
+    }
+    .info-note strong { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <a class="back-link" href="../">← Preview Hub</a>
+    <button class="theme-btn" id="theme-btn">⬛ Black</button>
+  </div>
+
+  <div class="title-block">
+    <div class="eyebrow">WiFi + Internet Data</div>
+    <h1>Speed when driving · Weather when parked</h1>
+    <p class="subtitle">The orb shows speed as normal. When the car stops for 2 seconds, it crossfades to a parked info screen — time + weather pulled from WiFi. Speed resumes instantly on move.</p>
+  </div>
+
+  <!-- Orb -->
+  <div class="orb-wrap">
+    <canvas id="c" width="240" height="240"></canvas>
+
+    <!-- Speed screen -->
+    <div class="screen-speed" id="screen-speed">
+      <div class="spd-num" id="spd-num">58</div>
+      <div class="spd-unit">km/h</div>
+    </div>
+
+    <!-- Parked screen -->
+    <div class="screen-parked" id="screen-parked">
+      <div class="park-time" id="park-time">--:--</div>
+      <div class="park-weather">
+        <span class="park-icon" id="park-icon">☀</span>
+        <span class="park-temp" id="park-temp">--°C</span>
+      </div>
+      <div class="park-cond" id="park-cond">--</div>
+      <div class="park-extras">
+        <span class="park-extra" id="park-humidity">💧 --%</span>
+        <span class="park-extra" id="park-wind">🌬 -- km/h</span>
+        <span class="park-extra" id="park-sunset">🌆 --:--</span>
+      </div>
+      <div class="park-wifi">
+        <span class="wifi-dot" id="wifi-dot"></span>
+        <span id="wifi-label">offline</span>
+      </div>
+      <div id="park-pet-greeting" style="font-size: 10px; color: var(--accent); margin-top: 10px; text-align: center; max-width: 140px; line-height: 1.4; opacity: 0; transition: opacity 0.5s;"></div>
+    </div>
+  </div>
+
+  <!-- State badge -->
+  <div class="state-badge" id="state-badge">driving · 58 km/h</div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="speed-row">
+      <label>SPEED</label>
+      <input type="range" id="speed-slider" min="0" max="120" value="58" step="1">
+      <span class="speed-readout" id="speed-readout">58 km/h</span>
+    </div>
+    <div class="btn-row">
+      <button class="ctrl-btn" id="btn-drive">▶ Set 60 km/h</button>
+      <button class="ctrl-btn" id="btn-stop">■ Stop (0)</button>
+    </div>
+  </div>
+
+  <div class="info-note">
+    <strong>How it works:</strong> speed = 0 for 2 s → WiFi fetch → show time + weather.
+    Speed &gt; 0 → instant return to speed display. Open-Meteo API, no key required.
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const CX = 120, CY = 120;
+    let frame = 0;
+    let isDark = true;
+
+    // ── Sim state ──
+    let simSpeed = 58;
+    let simGas   = 0.72;
+    let simLoad  = 0.0;
+    let stoppedMs = 0;
+    const PARK_DELAY_MS = 2000;
+    let parkedVisible = false;
+
+    // ── Weather scenes (simulating WiFi fetch) ──
+    const WMO = {
+      0:  { cond: 'CLEAR',    icon: '☀️', humidity: 38, wind: 12 },
+      2:  { cond: 'CLOUDY',   icon: '⛅', humidity: 55, wind: 18 },
+      61: { cond: 'RAIN',     icon: '🌧', humidity: 82, wind: 24 },
+      71: { cond: 'SNOW',     icon: '❄️', humidity: 90, wind: 8  },
+      95: { cond: 'STORM',    icon: '⛈', humidity: 88, wind: 35 },
+    };
+    const scenes = [
+      { wc: 0,  temp: 24, wifiOn: true,  sunset: "18:30", pet: "Remember that spiders are actually your friends." },
+      { wc: 2,  temp: 19, wifiOn: true,  sunset: "18:00", pet: "Always pack a towel before hitting the road." },
+      { wc: 61, temp: 14, wifiOn: true,  sunset: "17:15", pet: "Don't forget to double tap the hazard light." },
+      { wc: 71, temp: -2, wifiOn: false, sunset: "16:00", pet: "" },
+      { wc: 95, temp: 17, wifiOn: true,  sunset: "19:00", pet: "Coffee isn't fuel, but it acts like it." },
+    ];
+    let sceneIdx = 0;
+    let weather = { ...scenes[0], ...WMO[scenes[0].wc] };
+
+    setInterval(() => {
+      if (simSpeed === 0) {
+        sceneIdx = (sceneIdx + 1) % scenes.length;
+        const s = scenes[sceneIdx];
+        weather = { ...s, ...WMO[s.wc] };
+        updateParkedDOM();
+      }
+    }, 3500);
+
+    // ── Screen crossfade ──
+    function setParkedScreen(show) {
+      if (show === parkedVisible) return;
+      parkedVisible = show;
+      document.getElementById('screen-speed').style.opacity  = show ? '0' : '1';
+      document.getElementById('screen-parked').style.opacity = show ? '1' : '0';
+      const badge = document.getElementById('state-badge');
+      badge.className = 'state-badge' + (show ? ' parked' : '');
+    }
+
+    function getTime() {
+      const d = new Date();
+      return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    function updateParkedDOM() {
+      const timeStr = getTime();
+      
+      // Auto night-mode trigger based on sunset
+      if (weather.sunset) {
+        document.getElementById('park-sunset').textContent = '🌆 ' + weather.sunset;
+        
+        let hh = parseInt(timeStr.split(':')[0]);
+        let mm = parseInt(timeStr.split(':')[1]);
+        let ss = parseInt(weather.sunset.split(':')[0]);
+        let ssm = parseInt(weather.sunset.split(':')[1]);
+        
+        let currMins = hh * 60 + mm;
+        let sunMins = ss * 60 + ssm;
+        
+        let nightMode = (currMins >= sunMins || hh < 6);
+        isDark = nightMode;
+        document.documentElement.setAttribute('data-theme', isDark ? 'black' : 'dark');
+        document.getElementById('theme-btn').textContent = isDark ? '⬛ Auto: Black' : '🌑 Auto: Dark';
+      }
+
+      // Display greeting briefly if newly parked and internet works
+      let $greet = document.getElementById('park-pet-greeting');
+      if (weather.pet && parkedVisible) {
+        $greet.textContent = `"${weather.pet}"`;
+        $greet.style.opacity = 1;
+        setTimeout(() => { $greet.style.opacity = 0; }, 8000);
+      } else {
+        $greet.style.opacity = 0;
+      }
+
+      document.getElementById('park-time').textContent = timeStr;
+      document.getElementById('park-icon').textContent = weather.icon;
+      document.getElementById('park-temp').textContent = weather.temp + '°C';
+      document.getElementById('park-cond').textContent = weather.cond;
+      document.getElementById('park-humidity').textContent = '💧 ' + weather.humidity + '%';
+      document.getElementById('park-wind').textContent = '🌬 ' + weather.wind + ' km/h';
+      const dot = document.getElementById('wifi-dot');
+      dot.className = 'wifi-dot' + (weather.wifiOn ? ' on' : '');
+      document.getElementById('wifi-label').textContent = weather.wifiOn ? 'wifi · open-meteo' : 'offline';
+    }
+
+    // ── Controls ──
+    const slider = document.getElementById('speed-slider');
+    const readout = document.getElementById('speed-readout');
+    const badge = document.getElementById('state-badge');
+
+    slider.addEventListener('input', () => {
+      simSpeed = parseInt(slider.value);
+      readout.textContent = simSpeed + ' km/h';
+      badge.textContent = simSpeed === 0 ? 'stopped — waiting…' : 'driving · ' + simSpeed + ' km/h';
+    });
+
+    document.getElementById('btn-drive').addEventListener('click', () => {
+      simSpeed = 60;
+      slider.value = 60;
+      readout.textContent = '60 km/h';
+    });
+    document.getElementById('btn-stop').addEventListener('click', () => {
+      simSpeed = 0;
+      slider.value = 0;
+      readout.textContent = '0 km/h';
+      badge.textContent = 'stopped — waiting…';
+    });
+
+    document.getElementById('theme-btn').addEventListener('click', () => {
+      isDark = !isDark;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'black');
+      document.getElementById('theme-btn').textContent = isDark ? '⬛ Black' : '🌑 Dark';
+    });
+
+    // ── Canvas draw ──
+    function draw(dt) {
+      ctx.clearRect(0, 0, 240, 240);
+
+      // Smooth load
+      const targetLoad = simSpeed > 0 ? Math.min(1, simSpeed / 120 + Math.sin(frame * 0.04) * 0.08) : 0;
+      simLoad += (targetLoad - simLoad) * 0.07;
+
+      const arcCol   = isDark ? '#eef6ff' : '#1a3a4a';
+      const loadR    = Math.floor(200 - simLoad * 150);
+      const loadCol  = isDark ? `rgb(255,${loadR},0)` : `rgb(${180 + Math.floor(simLoad*60)},${100 - Math.floor(simLoad*80)},0)`;
+      const labelCol = isDark ? '#7a99ad' : '#4a6a7a';
+      const valCol   = isDark ? '#eef6ff' : '#1a3a4a';
+      const rngCol   = isDark ? '#4caf8c' : '#0d7a5a';
+      const barBg    = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+      const barFg    = isDark ? '#7df9c6' : '#0d9488';
+      const divCol   = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)';
+
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 4;
+
+      // Gas arc — always visible (bottom-left)
+      ctx.strokeStyle = arcCol;
+      ctx.setLineDash([8, 4]);
+      ctx.beginPath();
+      const gasEnd = Math.PI / 2 + (Math.PI / 2) * simGas;
+      ctx.arc(CX, CY, 118, Math.PI / 2, gasEnd);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = 'bold 11px Courier New';
+      ctx.fillStyle = arcCol;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(Math.floor(simGas * 100) + '%',
+        CX + Math.cos(gasEnd) * 100,
+        CY + Math.sin(gasEnd) * 100);
+
+      // Load arc — top-right, fades out when parked
+      if (simLoad > 0.01) {
+        ctx.strokeStyle = loadCol;
+        ctx.beginPath();
+        ctx.arc(CX, CY, 118, -Math.PI / 2, -Math.PI / 2 + (Math.PI / 2) * simLoad);
+        ctx.stroke();
+      }
+
+      // TRIP / RNG row — only while driving
+      if (simSpeed > 0) {
+        const trip = (12.4 + frame * 0.0003).toFixed(1);
+        const rng  = Math.floor(420 * simGas);
+
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = labelCol; ctx.font = '10px Courier New';
+        ctx.fillText('TRIP', CX - 10, CY + 58);
+        ctx.fillStyle = valCol; ctx.font = 'bold 11px Courier New';
+        ctx.fillText(trip, CX - 10, CY + 70);
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = rngCol; ctx.font = '10px Courier New';
+        ctx.fillText('RNG', CX + 10, CY + 58);
+        ctx.fillStyle = valCol; ctx.font = 'bold 11px Courier New';
+        ctx.fillText(rng + ' km', CX + 10, CY + 70);
+
+        ctx.fillStyle = divCol;
+        ctx.fillRect(CX - 1, CY + 54, 2, 20);
+
+        ctx.fillStyle = barBg;
+        ctx.fillRect(CX - 30, CY + 82, 60, 2);
+        ctx.fillStyle = barFg;
+        ctx.fillRect(CX - 30, CY + 82, 60 * simGas, 2);
+      }
+
+      // Speed DOM
+      document.getElementById('spd-num').textContent = simSpeed;
+
+      // Parked logic
+      if (simSpeed === 0) {
+        stoppedMs += dt;
+        if (stoppedMs >= PARK_DELAY_MS) {
+          setParkedScreen(true);
+          updateParkedDOM();
+          badge.textContent = 'parked · wifi info';
+          badge.className = 'state-badge parked';
+        }
+      } else {
+        stoppedMs = 0;
+        setParkedScreen(false);
+        badge.className = 'state-badge';
+        badge.textContent = 'driving · ' + simSpeed + ' km/h';
+      }
+    }
+
+    // ── Loop ──
+    let lastTs = performance.now();
+    function loop(ts) {
+      const dt = ts - lastTs;
+      lastTs = ts;
+      frame++;
+      ctx.save(); draw(dt); ctx.restore();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

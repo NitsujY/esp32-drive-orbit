@@ -4,11 +4,11 @@
 
 > **Design note:** Companion orb clock display has been removed from this spec.
 > The companion_orb is deferred. The web dashboard uses browser time natively.
-> This spec covers NTP sync on the `dash_35` ESP32 gateway only.
+> This spec covers NTP sync on the `dash_35` (legacy) ESP32 gateway only.
 
 ## Objective
 
-Synchronize accurate time via NTP on `dash_35` so it can stamp WebSocket telemetry and the web dashboard can display a reliable clock.
+Synchronize accurate time via NTP on `dash_35` (legacy) so it can stamp WebSocket telemetry and the web dashboard can display a reliable clock.
 
 ## NTP Configuration
 

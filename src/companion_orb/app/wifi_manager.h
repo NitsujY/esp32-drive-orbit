@@ -1,0 +1,34 @@
+#pragma once
+
+#include <Arduino.h>
+#include <WiFi.h>
+
+namespace orb {
+
+class WifiManager {
+ public:
+  void begin(Print &log);
+  void poll(uint32_t now_ms);
+
+  bool isConnected() const;
+  bool isTimeSynced() const;
+  String localIp() const;
+  const char *hostname() const;
+  void stop(const char *reason);
+
+ private:
+  void startConnection(uint32_t now_ms, const char *reason);
+  void logScanDiagnostics();
+
+  Print *log_ = nullptr;
+  bool connected_ = false;
+  bool attempted_ = false;
+  uint32_t last_attempt_ms_ = 0;
+  uint32_t last_log_ms_ = 0;
+  wl_status_t last_status_ = WL_IDLE_STATUS;
+  bool connect_timeout_logged_ = false;
+  bool ntp_synced_ = false;
+  bool stopped_ = false;
+};
+
+}  // namespace orb

@@ -6,12 +6,12 @@ This document isolates the future board-to-board interaction contract from the r
 
 Current prioritization note:
 
-- `dash_35` standalone completion takes priority.
+- `dash_35` (legacy) standalone completion takes priority.
 - The transport contract remains valid, but live linkage and companion-board integration are intentionally deferred until the last implementation stage.
 
 ## Actors
 
-### Master: `dash_35`
+### Master: `dash_35` (legacy)
 
 - Produces telemetry and owns the main application state
 - Owns future vehicle connectivity and data normalization
@@ -31,13 +31,13 @@ No physical cable is required between boards in the first stage.
 
 ### Stage 1
 
-- `dash_35` runs standalone
+- `dash_35` (legacy) runs standalone
 - `companion_orb` is not required for bring-up
 - No inter-board transport is selected yet
 
 ### Stage 2
 
-- `dash_35` adds OBD2 Bluetooth Classic
+- `dash_35` (legacy) adds OBD2 Bluetooth Classic
 - `companion_orb` remains optional and secondary
 
 ### Stage 3
@@ -134,9 +134,9 @@ Parser behavior requirements:
 
 ### Nominal Flow
 
-1. `dash_35` boots and validates its local hardware.
-2. `dash_35` generates or acquires telemetry.
-3. `dash_35` derives a reduced companion state for the round display.
+1. `dash_35` (legacy) boots and validates its local hardware.
+2. `dash_35` (legacy) generates or acquires telemetry.
+3. `dash_35` (legacy) derives a reduced companion state for the round display.
 4. `companion_orb`, when introduced, renders assistant visuals from that reduced state.
 
 ### Smart Companion Behavior
@@ -166,7 +166,7 @@ Internet is only needed for later cloud-backed features such as:
 
 These items should be explicitly approved before implementation resumes:
 
-1. Is `dash_35` standalone hardware bring-up the correct first gate?
+1. Is `dash_35` (legacy) standalone hardware bring-up the correct first gate?
 2. Is a pure UI-preview stage the correct next step after hardware verification?
 3. Is Wi-Fi correctly deferred to a later feature stage?
 4. Should `companion_orb` stay secondary and display-oriented rather than connectivity-oriented?
@@ -174,4 +174,4 @@ These items should be explicitly approved before implementation resumes:
 
 ## Approval Gate
 
-Implementation should proceed only after the user approves this staged interaction model and the hardware verification checklist for `dash_35` has been completed.
+Implementation should proceed only after the user approves this staged interaction model and the hardware verification checklist for `dash_35` (legacy) has been completed.

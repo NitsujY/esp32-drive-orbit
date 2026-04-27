@@ -4,11 +4,11 @@
 
 ## Objective
 
-Save trip metrics and driving statistics to non-volatile storage so they survive power cycles and reboots. Currently all trip data resets when the dash_35 loses power.
+Save trip metrics and driving statistics to non-volatile storage so they survive power cycles and reboots. Currently all trip data resets when the dash_35 (legacy) loses power.
 
 ## Storage Target
 
-- Use ESP32 NVS (Non-Volatile Storage) on the dash_35.
+- Use ESP32 NVS (Non-Volatile Storage) on the dash_35 (legacy).
 - NVS is flash-based key-value storage built into the ESP-IDF/Arduino framework.
 - No external SD card or SPIFFS filesystem required for this scope.
 

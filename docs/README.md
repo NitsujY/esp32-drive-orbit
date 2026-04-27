@@ -37,8 +37,10 @@ This repository uses a lightweight spec-driven development structure.
 | Device | Role | Connection |
 | ------ | ---- | ---------- |
 | ESP32-C3 `companion_orb` | **Primary in-car display** (OBD2 only) | Direct UART → ELM327 OBD2 |
-| iPhone 15 (optional) | Secondary dashboard / data logging | *Decoupled, not used in orb-only mode* |
-| ESP32 `dash_35` | Deprecated (reference only) | N/A |
+| iPhone 15 (mobile app) | **ABANDONED** / Paused | N/A |
+| ESP32 `dash_35` (legacy) | **ABANDONED** / Deprecated | N/A |
+
+**Note**: The `dash_35` (legacy) hardware and the mobile app approaches are currently abandoned and should not be considered at this moment. The focus is entirely on the Companion Orb.
 
 The **Orb is now standalone**: it connects directly to the OBD2 adapter via UART, displays speed/RPM with tamagotchi UI, and needs no external relay. This eliminates the complexity of WiFi + ESP-NOW broadcasting, which was causing data loss.
 
@@ -59,4 +61,4 @@ Deferred later stage:
 6. Approve protocol behavior before implementation begins.
 7. Implement code against the task list.
 8. Record notable tradeoffs in `docs/decisions/` when the architecture changes.
-9. On `dash_35` hardware, press BOOT after startup to toggle local demo telemetry for web UI testing; do not hold BOOT during reset or power-on because GPIO 0 is still the ESP32 flash-mode strap.
+9. On `dash_35` (legacy) hardware, press BOOT after startup to toggle local demo telemetry for web UI testing; do not hold BOOT during reset or power-on because GPIO 0 is still the ESP32 flash-mode strap.

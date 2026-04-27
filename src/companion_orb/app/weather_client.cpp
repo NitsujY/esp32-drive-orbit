@@ -6,7 +6,7 @@
 
 #include "wifi_config.h"
 
-namespace app {
+namespace orb {
 
 namespace {
 
@@ -18,7 +18,7 @@ String buildWeatherUrl() {
   url += String(LOCATION_LAT, 4);
   url += "&longitude=";
   url += String(LOCATION_LON, 4);
-  url += "&current_weather=true";
+  url += "&current_weather=true&daily=sunset&timezone=auto";
   return url;
 }
 
@@ -30,7 +30,7 @@ void WeatherClient::begin(Print &log) {
 
 void WeatherClient::poll(uint32_t now_ms,
                          bool wifi_connected,
-                         telemetry::CarTelemetry &telemetry) {
+                         telemetry::DashboardTelemetry &telemetry) {
   telemetry.wifi_connected = wifi_connected;
 
   if (!wifi_connected) {
@@ -39,6 +39,8 @@ void WeatherClient::poll(uint32_t now_ms,
     first_fetch_pending_ = false;
     telemetry.weather_temp_c = last_temp_c_;
     telemetry.weather_code = last_weather_code_;
+    telemetry.sunset_minute = last_sunset_minute_;
+    strlcpy(telemetry.greeting, last_greeting_, sizeof(telemetry.greeting));
     return;
   }
 
@@ -60,25 +62,36 @@ void WeatherClient::poll(uint32_t now_ms,
   if (first_fetch_due || periodic_fetch_due || last_fetch_ms_ == 0) {
     int8_t temp_c = last_temp_c_;
     uint8_t weather_code = last_weather_code_;
-    if (fetchWeather(&temp_c, &weather_code)) {
+    uint16_t sunset_min = last_sunset_minute_;
+    if (fetchWeather(&temp_c, &weather_code, &sunset_min)) {
       last_temp_c_ = temp_c;
       last_weather_code_ = weather_code;
+      last_sunset_minute_ = sunset_min;
       last_fetch_ms_ = now_ms;
       first_fetch_pending_ = false;
-    } else if (last_fetch_ms_ == 0) {
+      if (last_greeting_[0] == '\0') {
+        fetchGreeting(last_greeting_, sizeof(last_greeting_));
+      }
+    } else {
       last_fetch_ms_ = now_ms;
+      // Delay the retries by resetting the connected time
+      if (first_fetch_pending_) {
+        connected_since_ms_ = now_ms;
+      }
     }
   }
 
   telemetry.weather_temp_c = last_temp_c_;
   telemetry.weather_code = last_weather_code_;
+  telemetry.sunset_minute = last_sunset_minute_;
+  strlcpy(telemetry.greeting, last_greeting_, sizeof(telemetry.greeting));
 }
 
 bool WeatherClient::hasFreshWeather() const {
   return has_fresh_weather_;
 }
 
-bool WeatherClient::fetchWeather(int8_t *temp_c_out, uint8_t *weather_code_out) {
+bool WeatherClient::fetchWeather(int8_t *temp_c_out, uint8_t *weather_code_out, uint16_t *sunset_min_out) {
   WiFiClientSecure secure_client;
   secure_client.setInsecure();
 
@@ -145,6 +158,31 @@ bool WeatherClient::fetchWeather(int8_t *temp_c_out, uint8_t *weather_code_out) 
     *weather_code_out = static_cast<uint8_t>(weather_code);
   }
 
+  if (sunset_min_out != nullptr) {
+    JsonVariant daily = doc["daily"];
+    if (!daily.isNull()) {
+      JsonVariant sunset_array = daily["sunset"];
+      if (!sunset_array.isNull() && sunset_array.is<JsonArray>()) {
+        const char* sunset_str = sunset_array[0].as<const char*>();
+        if (sunset_str != nullptr) {
+          // Format is usually YYYY-MM-DDTHH:MM
+          const char* t_idx = strchr(sunset_str, 'T');
+          if (t_idx != nullptr && strlen(t_idx) >= 6) {
+            int hh = atoi(t_idx + 1);
+            int mm = atoi(t_idx + 4);
+            *sunset_min_out = hh * 60 + mm;
+            if (log_ != nullptr) {
+              log_->print("[WEATHER] Sunset parsed: ");
+              log_->print(hh);
+              log_->print(":");
+              log_->println(mm);
+            }
+          }
+        }
+      }
+    }
+  }
+
   if (log_ != nullptr) {
     log_->print("[WEATHER] Download OK url=");
     log_->println(url);
@@ -165,4 +203,48 @@ bool WeatherClient::fetchWeather(int8_t *temp_c_out, uint8_t *weather_code_out) 
   return true;
 }
 
-}  // namespace app
+bool WeatherClient::fetchGreeting(char *greeting_out, size_t max_len) {
+  HTTPClient http;
+  const String url = "http://api.adviceslip.com/advice";
+  const uint32_t start_ms = millis();
+  if (!http.begin(url)) {
+    if (log_ != nullptr) log_->println("[GREETING] HTTP begin failed");
+    return false;
+  }
+
+  http.setTimeout(5000);
+  const int http_code = http.GET();
+  if (http_code != HTTP_CODE_OK) {
+    if (log_ != nullptr) {
+      log_->print("[GREETING] HTTP GET failed: ");
+      log_->println(http_code);
+    }
+    http.end();
+    return false;
+  }
+
+  const String response_body = http.getString();
+  JsonDocument doc;
+  const DeserializationError error = deserializeJson(doc, response_body);
+  http.end();
+  
+  if (error) {
+    if (log_ != nullptr) log_->println("[GREETING] JSON parse failed");
+    return false;
+  }
+
+  const char* advice = doc["slip"]["advice"];
+  if (advice && greeting_out) {
+    strlcpy(greeting_out, advice, max_len);
+    if (log_ != nullptr) {
+      log_->print("[GREETING] OK ms=");
+      log_->println(millis() - start_ms);
+      log_->print("[GREETING] Text: ");
+      log_->println(greeting_out);
+    }
+    return true;
+  }
+  return false;
+}
+
+}  // namespace orb

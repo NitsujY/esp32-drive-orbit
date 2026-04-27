@@ -137,7 +137,7 @@ const smoothnessScore = computeSmoothnessScore(tripStats);
 
 The trip summary overlay runs on the **iPhone (Capacitor iOS app)**, not on the ESP32 TFT.
 
-- The `dash_35` ESP32 is a headless telemetry gateway — it has no local UI rendering.
+- The `dash_35` (legacy) ESP32 is a headless telemetry gateway — it has no local UI rendering.
 - All trip sheet rendering, gestures, and animations are handled by the web frontend on the iPhone.
 - In landscape (primary orientation), the sheet body reorganizes into two columns for readability.
 - In portrait (fallback), the content stays stacked vertically.

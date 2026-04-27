@@ -3,7 +3,7 @@
 ## Status: Implemented (web dashboard — trip-summary-overlay)
 
 > **Design note:** The companion_orb emotion system originally in this spec has been removed.
-> The dash_35 is now a headless telemetry gateway; the companion_orb is deferred.
+> The dash_35 (legacy) is now a headless telemetry gateway; the companion_orb is deferred.
 > Scoring is computed **on the web dashboard frontend** and displayed via the trip-summary-overlay sheet.
 > ESP32-side NVS persistence of `last_trip_score` remains a future firmware enhancement (see `persistent-trip-data.md`).
 

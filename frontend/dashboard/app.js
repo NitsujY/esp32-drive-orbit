@@ -47,6 +47,14 @@ const el = {
   effValue: document.getElementById('eff-value'),
   gforceCanvas: document.getElementById('gforce-canvas'),
   gforceValue: document.getElementById('gforce-value'),
+  // Theme toggle
+  themeToggle: document.getElementById('theme-toggle'),
+  // Weather bar
+  weatherBar: document.getElementById('weather-bar'),
+  weatherIcon: document.getElementById('weather-icon'),
+  weatherTemp: document.getElementById('weather-temp'),
+  weatherHumidity: document.getElementById('weather-humidity'),
+  wifiStatus: document.getElementById('wifi-status'),
 };
 
 // ── Constants ──
@@ -642,6 +650,9 @@ function applyTelemetry(data) {
     const wc = data.wc ?? 0;
     setAmbientMode(weatherCodeToMode(wc));
   }
+
+  // Weather bar
+  updateWeatherBar(data);
 }
 
 // ── WebSocket ──
@@ -771,6 +782,8 @@ function nextSimSnapshot(deltaMs) {
     rng: Math.round(fuel * 4.6 * effFactor),
     obd: 1,
     wifi: 1,
+    wt: 22 + Math.round(Math.sin(simulationPhase * 0.01) * 4), // ~18–26°C
+    wc: [0, 1, 2, 3, 51, 61][Math.floor(simulationPhase / 10) % 6],
     fresh: 1,
   };
 }
@@ -911,4 +924,66 @@ if (params.has('sim') || params.get('simulation') === '1') {
   setSimulationMode(true);
 } else {
   connectSocket();
+}
+
+// ── Theme Toggle ──
+// Two modes, both dark:
+//   dark  (default) — deep navy tint, data-theme unset / "dark"
+//   black           — pure black, data-theme="black"
+
+let isBlackTheme = false;
+
+function applyTheme(black) {
+  isBlackTheme = black;
+  document.documentElement.setAttribute('data-theme', black ? 'black' : 'dark');
+  document.querySelector('meta[name="theme-color"]').setAttribute(
+    'content', black ? '#000000' : '#0c0c0c'
+  );
+  try { localStorage.setItem('driveOrbitTheme', black ? 'black' : 'dark'); } catch (_) {}
+}
+
+// Restore saved theme preference
+{
+  const saved = (() => { try { return localStorage.getItem('driveOrbitTheme'); } catch (_) { return null; } })();
+  applyTheme(saved === 'black');
+}
+
+el.themeToggle.addEventListener('click', () => applyTheme(!isBlackTheme));
+
+// ── Weather Bar ──
+
+const WMO_ICONS = {
+  0: '☀️', 1: '🌤', 2: '⛅', 3: '☁️',
+  45: '🌫', 48: '🌫',
+  51: '🌦', 53: '🌦', 55: '🌧',
+  61: '🌧', 63: '🌧', 65: '🌧',
+  71: '🌨', 73: '🌨', 75: '❄️',
+  80: '🌦', 81: '🌧', 82: '⛈',
+  95: '⛈', 96: '⛈', 99: '⛈',
+};
+
+function wmoIcon(code) {
+  if (code == null) return '☁';
+  return WMO_ICONS[code] ?? '🌡';
+}
+
+function updateWeatherBar(data) {
+  const wifiOn = data.wifi === 1 || data.wifi === true;
+  const tempC = data.wt ?? data.weather_temp_c;
+  const wc = data.wc ?? data.weather_code;
+
+  el.weatherBar.classList.toggle('wifi-off', !wifiOn);
+  el.wifiStatus.textContent = wifiOn ? 'online' : 'offline';
+
+  if (wifiOn && tempC != null && tempC !== -128) {
+    el.weatherTemp.textContent = tempC + '°C';
+    el.weatherIcon.textContent = wmoIcon(wc);
+    // Simulate humidity from weather code (real data would come from API)
+    const simHumidity = wc >= 51 ? 75 + Math.round((wc - 51) / 2) : 40 + Math.round(Math.random() * 10);
+    el.weatherHumidity.textContent = Math.min(simHumidity, 99) + '%';
+  } else if (!wifiOn) {
+    el.weatherTemp.textContent = '--°';
+    el.weatherHumidity.textContent = '--%';
+    el.weatherIcon.textContent = '☁';
+  }
 }

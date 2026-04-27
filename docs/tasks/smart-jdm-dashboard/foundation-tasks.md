@@ -15,10 +15,10 @@
 
 ## Stage 2: Hardware Verification
 
-- [x] Verify `dash_35` powers and enumerates over USB
-- [x] Verify `dash_35` display and touch baseline
-- [x] Verify `dash_35` PSRAM is detected on hardware
-- [x] Confirm `dash_35` is stable before protocol work
+- [x] Verify `dash_35` (legacy) powers and enumerates over USB
+- [x] Verify `dash_35` (legacy) display and touch baseline
+- [x] Verify `dash_35` (legacy) PSRAM is detected on hardware
+- [x] Confirm `dash_35` (legacy) is stable before protocol work
 
 ## Stage 3: Pure UI Preview
 
@@ -42,13 +42,13 @@
 - [x] Add PlatformIO multi-environment configuration
 - [x] Add shared telemetry packet definition
 - [x] Implement Master simulated telemetry publisher
-- [x] Build and verify `dash_35`
-- [x] Add `dash_35` standalone dashboard-state and trip/coaching pipeline
-- [x] Prioritize `dash_35` standalone embedded UI integration
-- [x] Add `dash_35` display smoke test using Waveshare ST7796 bring-up
-- [x] Add boot and welcome screen state to `dash_35`
+- [x] Build and verify `dash_35` (legacy)
+- [x] Add `dash_35` (legacy) standalone dashboard-state and trip/coaching pipeline
+- [x] Prioritize `dash_35` (legacy) standalone embedded UI integration
+- [x] Add `dash_35` (legacy) display smoke test using Waveshare ST7796 bring-up
+- [x] Add boot and welcome screen state to `dash_35` (legacy)
 - [x] Integrate ELM327 Bluetooth Classic transport on the Master
-- [x] Add explicit pre-connection, connecting, and live OBD status UX on `dash_35`
+- [x] Add explicit pre-connection, connecting, and live OBD status UX on `dash_35` (legacy)
 - [x] Validate Toyota Sienta adapter targeting and PID reads on hardware
 - [x] Replace simulated telemetry as the primary source once live vehicle data is verified
 - [x] Resolve `Orbital Driver View` overlap with the bottom toolbar on the embedded layout
@@ -60,7 +60,7 @@
 - [x] Build and verify `companion_orb`
 - [x] Connect the framed transport to real inter-board I/O
 - [x] Add GC9A01 rendering on the Slave
-- [ ] Validate live `dash_35` to `companion_orb` telemetry exchange
+- [ ] Validate live `dash_35` (legacy) to `companion_orb` telemetry exchange
 
 ## Follow-Up Tasks
 

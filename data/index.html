@@ -1,1 +1,138 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" /><meta name="theme-color" content="#0c0c0c" /><meta name="format-detection" content="telephone=no" /><title>Drive Orbit</title><link rel="icon" href="./icon.svg" type="image/svg+xml" /><link rel="stylesheet" href="./styles.css" /></head><body><main class="shell"><!-- Shift light bar --><div class="shift-bar" id="shift-bar"><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span></div><div class="speed-zone"><canvas id="ambient-canvas" class="ambient-canvas"></canvas><div class="speed-num" id="speed-value">0</div><div class="divider"></div><div class="speed-unit">km/h</div><span class="clock" id="clock-value">--:--</span></div><section class="aux-panel" aria-label="Drive details"><div class="rpm-zone"><div class="waveform" id="waveform" aria-label="RPM history"></div><div class="rpm-readout"><span class="rpm-val" id="rpm-value">0</span><span class="rpm-label">rpm</span></div></div><div class="info-divider"></div><div class="gauge-row"><div class="gauge-cell"><span class="gauge-lbl">LOAD</span><div class="gauge-micro-bar"><div class="gauge-micro-fill" id="load-fill"></div></div><span class="gauge-val" id="load-value">0%</span></div><div class="gauge-cell"><span class="gauge-lbl">BOOST</span><div class="gauge-micro-bar"><div class="gauge-micro-fill gauge-boost" id="boost-fill"></div></div><span class="gauge-val" id="boost-value">0.0</span></div><div class="gauge-cell"><span class="gauge-lbl">L/100</span><span class="gauge-val" id="eff-value">—</span></div><div class="gauge-cell gauge-cell-gforce"><canvas id="gforce-canvas" class="gforce-canvas" width="28" height="28"></canvas><span class="gauge-val" id="gforce-value">0.0</span></div></div><div class="info-divider"></div><div class="info-bar"><span class="gear-tag" id="gear-value">P</span><div class="fuel-cluster"><span class="fuel-pct" id="fuel-value">0%</span><div class="fuel-track"><div class="fuel-fill" id="fuel-fill"></div></div><span class="range-val" id="range-value">0 km</span></div><span class="trip-val" id="trip-value">0.0 km</span></div></section><button id="settings-toggle" class="settings-toggle" type="button" aria-expanded="false" aria-controls="settings-panel" aria-label="Open settings"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="1.5" fill="currentColor" /><circle cx="12" cy="12" r="1.5" fill="currentColor" /><circle cx="12" cy="19" r="1.5" fill="currentColor" /></svg></button><div class="status-dot" id="status-dot" title="Connecting"></div></main><div id="trip-sheet-backdrop" class="trip-sheet-backdrop" hidden></div><section id="trip-sheet" class="trip-sheet" hidden aria-label="Trip summary" aria-modal="true"><div class="trip-sheet-handle" aria-hidden="true"></div><div class="trip-sheet-header"><span class="trip-sheet-title">TRIP SUMMARY</span><button id="trip-reset-button" class="trip-reset-btn" type="button">Reset</button></div><div class="trip-stats-grid"><div class="trip-stat"><span class="trip-stat-value" id="ts-duration">0:00</span><span class="trip-stat-label">duration</span></div><div class="trip-stat"><span class="trip-stat-value" id="ts-distance">0.0 km</span><span class="trip-stat-label">distance</span></div><div class="trip-stat"><span class="trip-stat-value" id="ts-avg-speed">0 km/h</span><span class="trip-stat-label">avg speed</span></div><div class="trip-stat"><span class="trip-stat-value" id="ts-max-speed">0 km/h</span><span class="trip-stat-label">max speed</span></div></div><div class="trip-score-section"><div class="trip-section-rule">Score</div><div class="trip-score-row"><span class="trip-score-badge" id="ts-score-num">—</span><span class="trip-score-grade" id="ts-score-grade"></span><span class="trip-score-label" id="ts-score-label"></span></div><div class="trip-bar-row"><span class="trip-bar-label">smoothness</span><div class="trip-bar-track"><div class="trip-bar-fill" id="ts-bar-smoothness"></div></div></div><div class="trip-bar-row"><span class="trip-bar-label">speed consistency</span><div class="trip-bar-track"><div class="trip-bar-fill" id="ts-bar-consistency"></div></div></div></div><div class="trip-events-section"><div class="trip-section-rule">Events</div><div class="trip-event-row"><span class="trip-event-icon" style="color:var(--amber)">⚡</span><span id="ts-ev-accel" class="trip-event-text">0 harsh accelerations</span></div><div class="trip-event-row"><span class="trip-event-icon" style="color:var(--rose)">🛑</span><span id="ts-ev-brake" class="trip-event-text">0 harsh brakings</span></div><div class="trip-event-row"><span class="trip-event-icon" style="color:var(--teal)">✓</span><span id="ts-ev-overspeed" class="trip-event-text">0 over-speed events</span></div></div></section><div id="settings-backdrop" class="settings-backdrop" hidden></div><section id="settings-panel" class="settings-panel" hidden aria-label="Connection settings"><div class="settings-header"><h2>Settings</h2><button id="settings-close" class="settings-close" type="button" aria-label="Close settings"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><label class="field"><span>WebSocket endpoint</span><input id="ws-url" spellcheck="false" autocomplete="off" readonly /></label><div class="settings-actions"><button id="reset-button" type="button">Use Default</button></div><div class="settings-actions"><button id="simulation-button" type="button">Simulation Off</button></div><p class="settings-hint" id="simulation-status">Use live gateway telemetry.</p></section><script type="module" src="./app.js"></script></body></html>
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+	<meta name="theme-color" content="#0c0c0c" />
+	<meta name="format-detection" content="telephone=no" />
+	<title>Drive Orbit</title>
+	<link rel="icon" href="./icon.svg" type="image/svg+xml" />
+	<link rel="stylesheet" href="./styles.css" />
+</head>
+<body data-theme="dark">
+	<main class="shell">
+		<header class="hero-bar" aria-label="Weather and Wi-Fi status">
+			<div class="hero-copy">
+				<span class="hero-kicker">Connected weather</span>
+				<span class="hero-title">Drive Orbit</span>
+			</div>
+			<div class="hero-actions">
+				<button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to black theme">BLACK</button>
+				<div class="wifi-status live" id="wifi-status" title="Wi-Fi linked" aria-label="Wi-Fi linked">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M5 10a11 11 0 0 1 14 0" stroke-width="2" stroke-linecap="round"/>
+						<path d="M8 13a7 7 0 0 1 8 0" stroke-width="2" stroke-linecap="round"/>
+						<path d="M11 16a3 3 0 0 1 2 0" stroke-width="2" stroke-linecap="round"/>
+						<circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/>
+					</svg>
+				</div>
+			</div>
+		</header>
+
+		<section class="weather-card" aria-label="Weather summary">
+			<div class="weather-icon" id="weather-icon">☁</div>
+			<div class="weather-meta">
+				<span class="weather-temp" id="weather-temp">--°C</span>
+				<span class="weather-cond" id="weather-cond">weather offline</span>
+			</div>
+			<div class="weather-sub" id="weather-note">Wi-Fi • open-meteo</div>
+		</section>
+
+		<div class="shift-bar" id="shift-bar">
+			<span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
+		</div>
+
+		<div class="speed-zone">
+			<canvas id="ambient-canvas" class="ambient-canvas"></canvas>
+			<div class="speed-num" id="speed-value">0</div>
+			<div class="divider"></div>
+			<div class="speed-unit">km/h</div>
+			<span class="clock" id="clock-value">--:--</span>
+		</div>
+
+		<section class="aux-panel" aria-label="Drive details">
+			<div class="rpm-zone">
+				<div class="waveform" id="waveform" aria-label="RPM history"></div>
+				<div class="rpm-readout"><span class="rpm-val" id="rpm-value">0</span><span class="rpm-label">rpm</span></div>
+			</div>
+			<div class="info-divider"></div>
+			<div class="gauge-row">
+				<div class="gauge-cell">
+					<span class="gauge-lbl">LOAD</span>
+					<div class="gauge-micro-bar"><div class="gauge-micro-fill" id="load-fill"></div></div>
+					<span class="gauge-val" id="load-value">0%</span>
+				</div>
+				<div class="gauge-cell">
+					<span class="gauge-lbl">BOOST</span>
+					<div class="gauge-micro-bar"><div class="gauge-micro-fill gauge-boost" id="boost-fill"></div></div>
+					<span class="gauge-val" id="boost-value">0.0</span>
+				</div>
+				<div class="gauge-cell">
+					<span class="gauge-lbl">L/100</span>
+					<span class="gauge-val" id="eff-value">—</span>
+				</div>
+				<div class="gauge-cell gauge-cell-gforce">
+					<canvas id="gforce-canvas" class="gforce-canvas" width="28" height="28"></canvas>
+					<span class="gauge-val" id="gforce-value">0.0</span>
+				</div>
+			</div>
+			<div class="info-divider"></div>
+			<div class="info-bar">
+				<span class="gear-tag" id="gear-value">P</span>
+				<div class="fuel-cluster">
+					<span class="fuel-pct" id="fuel-value">0%</span>
+					<div class="fuel-track"><div class="fuel-fill" id="fuel-fill"></div></div>
+					<span class="range-val" id="range-value">0 km</span>
+				</div>
+				<span class="trip-val" id="trip-value">0.0 km</span>
+			</div>
+		</section>
+
+		<button id="settings-toggle" class="settings-toggle" type="button" aria-expanded="false" aria-controls="settings-panel" aria-label="Open settings">
+			<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="1.5" fill="currentColor" /><circle cx="12" cy="12" r="1.5" fill="currentColor" /><circle cx="12" cy="19" r="1.5" fill="currentColor" /></svg>
+		</button>
+		<div class="status-dot" id="status-dot" title="Connecting"></div>
+	</main>
+
+	<div id="trip-sheet-backdrop" class="trip-sheet-backdrop" hidden></div>
+	<section id="trip-sheet" class="trip-sheet" hidden aria-label="Trip summary" aria-modal="true">
+		<div class="trip-sheet-handle" aria-hidden="true"></div>
+		<div class="trip-sheet-header">
+			<span class="trip-sheet-title">TRIP SUMMARY</span>
+			<button id="trip-reset-button" class="trip-reset-btn" type="button">Reset</button>
+		</div>
+		<div class="trip-stats-grid">
+			<div class="trip-stat"><span class="trip-stat-value" id="ts-duration">0:00</span><span class="trip-stat-label">duration</span></div>
+			<div class="trip-stat"><span class="trip-stat-value" id="ts-distance">0.0 km</span><span class="trip-stat-label">distance</span></div>
+			<div class="trip-stat"><span class="trip-stat-value" id="ts-avg-speed">0 km/h</span><span class="trip-stat-label">avg speed</span></div>
+			<div class="trip-stat"><span class="trip-stat-value" id="ts-max-speed">0 km/h</span><span class="trip-stat-label">max speed</span></div>
+		</div>
+		<div class="trip-score-section">
+			<div class="trip-section-rule">Score</div>
+			<div class="trip-score-row"><span class="trip-score-badge" id="ts-score-num">—</span><span class="trip-score-grade" id="ts-score-grade"></span><span class="trip-score-label" id="ts-score-label"></span></div>
+			<div class="trip-bar-row"><span class="trip-bar-label">smoothness</span><div class="trip-bar-track"><div class="trip-bar-fill" id="ts-bar-smoothness"></div></div></div>
+			<div class="trip-bar-row"><span class="trip-bar-label">speed consistency</span><div class="trip-bar-track"><div class="trip-bar-fill" id="ts-bar-consistency"></div></div></div>
+		</div>
+		<div class="trip-events-section">
+			<div class="trip-section-rule">Events</div>
+			<div class="trip-event-row"><span class="trip-event-icon" style="color:var(--amber)">⚡</span><span id="ts-ev-accel" class="trip-event-text">0 harsh accelerations</span></div>
+			<div class="trip-event-row"><span class="trip-event-icon" style="color:var(--rose)">🛑</span><span id="ts-ev-brake" class="trip-event-text">0 harsh brakings</span></div>
+			<div class="trip-event-row"><span class="trip-event-icon" style="color:var(--teal)">✓</span><span id="ts-ev-overspeed" class="trip-event-text">0 over-speed events</span></div>
+		</div>
+	</section>
+
+	<div id="settings-backdrop" class="settings-backdrop" hidden></div>
+	<section id="settings-panel" class="settings-panel" hidden aria-label="Connection settings">
+		<div class="settings-header">
+			<h2>Settings</h2>
+			<button id="settings-close" class="settings-close" type="button" aria-label="Close settings"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+		</div>
+		<label class="field"><span>WebSocket endpoint</span><input id="ws-url" spellcheck="false" autocomplete="off" readonly /></label>
+		<div class="settings-actions"><button id="reset-button" type="button">Use Default</button></div>
+		<div class="settings-actions"><button id="simulation-button" type="button">Simulation Off</button></div>
+		<p class="settings-hint" id="simulation-status">Use live gateway telemetry.</p>
+	</section>
+
+	<script type="module" src="./app.js"></script>
+</body>
+</html>

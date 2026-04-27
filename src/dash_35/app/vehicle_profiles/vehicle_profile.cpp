@@ -76,8 +76,8 @@ uint16_t estimateRangeKm(const telemetry::DashboardTelemetry &telemetry) {
   const VehicleProfile &profile = activeProfile();
   const float fuel_ratio = constrain(telemetry.fuel_level_pct / 100.0f, 0.0f, 1.0f);
   const float liters_remaining = profile.fuel_tank_liters * fuel_ratio;
-  const float speed_factor = constrain(1.03f - (telemetry.speed_kph / 320.0f), 0.72f, 1.03f);
-  return static_cast<uint16_t>(liters_remaining * profile.baseline_efficiency_km_per_l * speed_factor);
+  // Compute purely from baseline so it's stable and doesn't jump based on instantaneous speed
+  return static_cast<uint16_t>(liters_remaining * profile.baseline_efficiency_km_per_l);
 }
 
 void refreshTelemetry(telemetry::DashboardTelemetry &telemetry) {

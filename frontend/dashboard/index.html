@@ -11,12 +11,48 @@
   </head>
   <body>
     <main class="shell">
+      <!-- Headlight icon — hidden, repurposed as theme toggle trigger -->
+      <svg id="headlight-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="display:none;">
+        <path d="M12 9c-2.76 0-5 2.24-5 5s2.24 5 5 5h3v-10h-3z" />
+      </svg>
+
+      <!-- Theme toggle (dark ↔ black) -->
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark/black theme">
+        <!-- Moon: shown in dark mode (click to go black) -->
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <!-- Circle: shown in black mode (click to go dark) -->
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/>
+          <circle cx="12" cy="12" r="9" stroke-dasharray="2 4" stroke-linecap="round"/>
+        </svg>
+      </button>
+
       <!-- Shift light bar -->
       <div class="shift-bar" id="shift-bar">
         <span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
         <span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
         <span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
         <span class="shift-led"></span><span class="shift-led"></span><span class="shift-led"></span>
+      </div>
+
+      <!-- Weather bar — shows internet-fetched ambient data -->
+      <div class="weather-bar wifi-off" id="weather-bar" aria-label="Ambient conditions">
+        <span class="weather-item">
+          <span class="weather-icon" id="weather-icon">☁</span>
+          <span class="weather-val" id="weather-temp">--°</span>
+        </span>
+        <span class="weather-sep"></span>
+        <span class="weather-item">
+          <span class="weather-icon">💧</span>
+          <span class="weather-val" id="weather-humidity">--%</span>
+        </span>
+        <span class="weather-sep"></span>
+        <span class="weather-item">
+          <span class="weather-icon">📶</span>
+          <span class="weather-val" id="wifi-status">offline</span>
+        </span>
       </div>
 
       <div class="speed-zone">

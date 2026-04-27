@@ -1,13 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <title>Compass Ticks</title>
   <style>
-    body { margin:0; background:#0c1116; color:#86e6ff; font-family:'Courier New',monospace; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
-    .wrap { position:relative; width:240px; height:240px; background:#07101a; border-radius:120px; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; }
+    :root { --body-bg:#0c1116; --orb-bg:#07101a; --text-col:#86e6ff; }
+    [data-theme="black"] { --body-bg:#000; --orb-bg:#05070b; --text-col:#f6fbff; }
+    body { margin:0; background:var(--body-bg); color:var(--text-col); font-family:'Courier New',monospace; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; overflow:hidden; gap:16px; transition:background 0.3s; }
+    .wrap { position:relative; width:240px; height:240px; background:var(--orb-bg); border-radius:120px; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; transition:background 0.3s; }
     canvas { position:absolute; top:0; left:0; z-index:1; }
     .ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none; }
+    .theme-btn { background:rgba(125,249,198,0.1); border:1px solid rgba(125,249,198,0.25); color:var(--text-col); font-family:'Courier New',monospace; font-size:11px; letter-spacing:0.1em; padding:6px 16px; border-radius:999px; cursor:pointer; transition:background 0.2s, border-color 0.2s; }
+    .theme-btn:hover { background:rgba(125,249,198,0.2); border-color:rgba(125,249,198,0.5); }
+    [data-theme="black"] .theme-btn { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.08); }
   </style>
 </head>
 <body>
@@ -15,27 +20,58 @@
     <canvas id="c" width="240" height="240"></canvas>
     <div class="ui" id="ui"></div>
   </div>
+  <button class="theme-btn" id="theme-btn">BLACK</button>
+  <div class="weather-chip" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:4px 10px;border-radius:999px;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#7a99ad;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)" id="weather-chip">WiFi / Weather</div>
   <script>
     const ctx = document.getElementById('c').getContext('2d');
     let frame = 0;
     const CX=120, CY=120;
-    
-    function getTelemetry() {
-        let gasLevel = 0.82;
-        return {
-            lod: Math.abs(Math.sin(frame*0.05)),
-            bst: Math.abs(Math.sin(frame*0.1)) * 1.5,
-            spd: 75 + Math.floor(Math.sin(frame*0.01)*20),
-            gas: gasLevel,
-            trp: 12.4 + (frame * 0.005),
-            rng: Math.floor(420 * gasLevel)
-        };
-    }
+    let isDark = true;
 
-    function draw() { 
-        ctx.clearRect(0,0,240,240); 
-        let t = getTelemetry();
-        ctx.lineWidth=2; for(let i=0;i<360;i+=10){{ let rad=i*Math.PI/180; let len=10; ctx.strokeStyle='rgba(255,255,255,0.1)'; if(i<t.gas*180) ctx.strokeStyle='#49c7ff'; if(i>180 && i<180+t.lod*180) ctx.strokeStyle='#ff7eb3'; ctx.beginPath(); ctx.moveTo(CX+Math.cos(rad)*(115-len), CY+Math.sin(rad)*(115-len)); ctx.lineTo(CX+Math.cos(rad)*115, CY+Math.sin(rad)*115); ctx.stroke(); }} ctx.fillStyle='#fff'; ctx.font='bold 40px Arial'; ctx.textAlign='center'; ctx.fillText(t.spd, CX, CY+15); 
+    document.getElementById('theme-btn').addEventListener('click', () => {
+      isDark = !isDark;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'black');
+      document.getElementById('theme-btn').textContent = isDark ? 'BLACK' : 'DARK';
+    });
+
+    function getTelemetry() {
+        const d = new Date();
+        const hr = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const temp = 22 + Math.sin(frame*0.01)*5;
+        const hum = 45 + Math.cos(frame*0.015)*15;
+        const scenes = ['CLEAR', 'CLOUDY', 'RAIN'];
+        return {
+          spd: hr + ':' + min,
+          trp: temp.toFixed(1),
+          gas: Math.max(0, Math.min(1, hum / 100)),
+          rng: scenes[Math.floor(frame / 180) % scenes.length],
+          lod: Math.max(0, Math.min(1, (temp - 10) / 25)),
+          bst: Math.max(0, Math.min(1, (hum - 20) / 60))
+        };
+      }
+
+    function draw() {
+      ctx.clearRect(0,0,240,240);
+      let t = getTelemetry();
+      const dimCol = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+      const c1 = isDark ? '#49c7ff' : '#0284c7';
+      const c2 = isDark ? '#ff7eb3' : '#e11d48';
+      const textCol = isDark ? '#fff' : '#1a3a4a';
+
+      ctx.lineWidth=2;
+      for(let i=0;i<360;i+=10) {
+        let rad=i*Math.PI/180; let len=10;
+        ctx.strokeStyle=dimCol;
+        if(i<t.gas*180) ctx.strokeStyle=c1;
+        if(i>180 && i<180+t.lod*180) ctx.strokeStyle=c2;
+        ctx.beginPath();
+        ctx.moveTo(CX+Math.cos(rad)*(115-len), CY+Math.sin(rad)*(115-len));
+        ctx.lineTo(CX+Math.cos(rad)*115, CY+Math.sin(rad)*115);
+        ctx.stroke();
+      }
+      ctx.fillStyle=textCol; ctx.font='bold 40px Arial'; ctx.textAlign='center';
+      ctx.fillText(t.spd, CX, CY+15);
     }
     setInterval(()=>{ frame++; ctx.save(); draw(); ctx.restore(); }, 33);
   </script>

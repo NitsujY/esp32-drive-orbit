@@ -9,14 +9,14 @@ This checklist follows the current delivery order: preview first, cleanup second
 - [ ] Confirm WebSocket reconnect behavior on browser refresh and temporary socket loss
 - [ ] Confirm the same dashboard build works with mock data and with a configurable live socket override
 - [ ] For each UI change, verify both the preview flow and the live OBD-backed board flow in the same iteration
-- [ ] Lock the design direction before further dash_35 cleanup starts
+- [ ] Lock the design direction before further dash_35 (legacy) cleanup starts
 
 ## Stage 2: Cleanup And Simplification
 
-- [ ] Remove unused dash_35 display sources from the active repository path once design is approved
-- [ ] Remove or retire unused dash_35 runtime features that are no longer in the release scope
-- [ ] Keep the active dash_35 code path limited to telemetry, Wi-Fi, mDNS, web serving, and WebSocket broadcast
-- [ ] Rebuild dash_35 after each cleanup step
+- [ ] Remove unused dash_35 (legacy) display sources from the active repository path once design is approved
+- [ ] Remove or retire unused dash_35 (legacy) runtime features that are no longer in the release scope
+- [ ] Keep the active dash_35 (legacy) code path limited to telemetry, Wi-Fi, mDNS, web serving, and WebSocket broadcast
+- [ ] Rebuild dash_35 (legacy) after each cleanup step
 
 ## Stage 3: iPhone Hotspot Reliability
 
@@ -27,9 +27,9 @@ This checklist follows the current delivery order: preview first, cleanup second
 - [ ] Record direct-IP access success separately from mDNS success
 - [ ] If `carconsole.local` is inconsistent on the hotspot, document it as a hotspot limitation and keep direct IP as the fallback path
 
-## Stage 4: Live dash_35 And Phone Behavior
+## Stage 4: Live dash_35 (legacy) And Phone Behavior
 
-- [ ] Connect the phone browser to the real dash_35 WebSocket endpoint
+- [ ] Connect the phone browser to the real dash_35 (legacy) WebSocket endpoint
 - [ ] Confirm live OBD values render cleanly and update smoothly
 - [ ] Confirm stale-data indication appears when telemetry pauses
 - [ ] Confirm reconnect behavior after board reset and after page reload

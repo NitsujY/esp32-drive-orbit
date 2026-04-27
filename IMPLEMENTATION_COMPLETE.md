@@ -44,7 +44,7 @@ RAM: 5.1%, Flash: 25.6%
 
 ### 3. Build Configuration Updated ✅
 **File**: `platformio.ini`
-- Changed `default_envs = dash_35` → `default_envs = companion_orb`
+- Changed `default_envs = dash_35 (legacy)` → `default_envs = companion_orb`
 - Orb is now the default build target
 
 ### 4. Documentation Created ✅
@@ -67,7 +67,7 @@ RAM: 5.1%, Flash: 25.6%
 ```
 OBD2 Adapter
     ↓ UART
-ESP32 (dash_35)
+ESP32 (dash_35 (legacy))
     ↓ WiFi → ESP-NOW broadcast
 ESP32-C3 (companion_orb)
     ↓ Unreliable reception
@@ -105,7 +105,7 @@ These are suggestions for future work, not blocking issues:
 2. **OBD2 Adapter Setup**: Verify ELM327 baud rate (default 38400)
 3. **GPIO Verification**: Confirm pins 20/21 are correct for your board variant
 4. **Extended Telemetry**: Add more OBD2 PIDs (coolant temp, throttle, etc.)
-5. **Archive dash_35**: Move to reference branch if no longer needed
+5. **Archive dash_35 (legacy)**: Move to reference branch if no longer needed
 
 ---
 
